@@ -183,7 +183,7 @@ class SentinelMetricsController extends Controller
 
             // Build response
             $response = [
-                'metrics' => $this->buildCurrentMetrics($cpuData, $memoryData, $diskUsage, $networkStats),
+                'metrics' => $this->buildCurrentMetrics($server, $cpuData, $memoryData, $diskUsage, $networkStats),
                 'historicalData' => $this->buildHistoricalData($cpuData, $memoryData, $diskUsage, $timeRange, $networkStats),
                 'alerts' => $this->buildAlerts($cpuData, $memoryData, $diskUsage),
             ];
@@ -209,7 +209,7 @@ class SentinelMetricsController extends Controller
     /**
      * Build current metrics object for frontend
      */
-    private function buildCurrentMetrics($cpuData, $memoryData, $diskUsage, ?array $networkStats = null): array
+    private function buildCurrentMetrics(Server $server, $cpuData, $memoryData, $diskUsage, ?array $networkStats = null): array
     {
         // Get latest values from historical data
         $cpuPercent = 0;
@@ -226,6 +226,17 @@ class SentinelMetricsController extends Controller
 
         $diskPercent = (int) ($diskUsage ?? 0);
 
+        // Get actual total memory from latest health check
+        $memoryTotalBytes = $server->healthChecks()
+            ->whereNotNull('memory_total_bytes')
+            ->latest('checked_at')
+            ->value('memory_total_bytes');
+
+        $memoryTotalBytes = $memoryTotalBytes ?: 0;
+        $memoryUsedBytes = $memoryTotalBytes > 0
+            ? (int) ($memoryPercent / 100 * $memoryTotalBytes)
+            : 0;
+
         return [
             'cpu' => [
                 'current' => round($cpuPercent, 1).'%',
@@ -233,9 +244,9 @@ class SentinelMetricsController extends Controller
                 'trend' => $cpuData ? $cpuData->pluck(1)->take(-20)->values()->toArray() : [],
             ],
             'memory' => [
-                'current' => $this->formatBytes($memoryPercent * 0.16 * 1024 * 1024 * 1024),
+                'current' => $memoryTotalBytes > 0 ? $this->formatBytes($memoryUsedBytes) : 'N/A',
                 'percentage' => round($memoryPercent, 1),
-                'total' => '16 GB', // TODO: Get actual total memory from server
+                'total' => $memoryTotalBytes > 0 ? $this->formatBytes($memoryTotalBytes) : 'N/A',
                 'trend' => $memoryData ? collect($memoryData)->map(fn ($item) => $item[1] ?? 0)->take(-20)->values()->toArray() : [],
             ],
             'disk' => [

@@ -9,6 +9,11 @@ use App\Actions\Migration\PreMigrationCheckAction;
 use App\Actions\Migration\RollbackMigrationAction;
 use App\Actions\Migration\ValidateMigrationChainAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\EnvironmentMigration\BatchStoreMigrationRequest;
+use App\Http\Requests\Api\EnvironmentMigration\CheckMigrationRequest;
+use App\Http\Requests\Api\EnvironmentMigration\EnvironmentCheckMigrationRequest;
+use App\Http\Requests\Api\EnvironmentMigration\RejectMigrationRequest;
+use App\Http\Requests\Api\EnvironmentMigration\StoreMigrationRequest;
 use App\Jobs\ExecuteMigrationJob;
 use App\Models\Application;
 use App\Models\Environment;
@@ -111,20 +116,14 @@ class EnvironmentMigrationController extends Controller
             new OA\Response(response: 401, description: 'Unauthorized'),
         ]
     )]
-    public function check(Request $request): JsonResponse
+    public function check(CheckMigrationRequest $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
 
-        $validated = $request->validate([
-            'source_type' => 'required|string|in:application,service,database',
-            'source_uuid' => 'required|string',
-            'target_environment_id' => 'required|integer|exists:environments,id',
-            'target_server_id' => 'nullable|integer|exists:servers,id',
-            'options' => 'nullable|array',
-        ]);
+        $validated = $request->validated();
 
         // Find source resource
         $resource = $this->findResource($validated['source_type'], $validated['source_uuid'], $teamId);
@@ -219,28 +218,14 @@ class EnvironmentMigrationController extends Controller
             new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
-    public function store(Request $request): JsonResponse
+    public function store(StoreMigrationRequest $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
 
-        $validated = $request->validate([
-            'source_type' => 'required|string|in:application,service,database',
-            'source_uuid' => 'required|string',
-            'target_environment_id' => 'required|integer|exists:environments,id',
-            'target_server_id' => 'required|integer|exists:servers,id',
-            'options' => 'nullable|array',
-            'options.mode' => 'nullable|string|in:clone,promote',
-            'options.copy_env_vars' => 'nullable|boolean',
-            'options.copy_volumes' => 'nullable|boolean',
-            'options.update_existing' => 'nullable|boolean',
-            'options.config_only' => 'nullable|boolean',
-            'options.auto_deploy' => 'nullable|boolean',
-            'options.fqdn' => 'nullable|string|max:255',
-            'dry_run' => 'nullable|boolean',
-        ]);
+        $validated = $request->validated();
 
         // Find source resource
         $resource = $this->findResource($validated['source_type'], $validated['source_uuid'], $teamId);
@@ -314,21 +299,14 @@ class EnvironmentMigrationController extends Controller
             new OA\Response(response: 401, description: 'Unauthorized'),
         ]
     )]
-    public function batchStore(Request $request): JsonResponse
+    public function batchStore(BatchStoreMigrationRequest $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
 
-        $validated = $request->validate([
-            'target_environment_id' => 'required|integer|exists:environments,id',
-            'target_server_id' => 'required|integer|exists:servers,id',
-            'resources' => 'required|array|min:1|max:50',
-            'resources.*.type' => 'required|string|in:application,service,database',
-            'resources.*.uuid' => 'required|string',
-            'options' => 'nullable|array',
-        ]);
+        $validated = $request->validated();
 
         $targetEnvironment = Environment::where('id', $validated['target_environment_id'])
             ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
@@ -512,16 +490,14 @@ class EnvironmentMigrationController extends Controller
             new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
-    public function reject(Request $request, string $uuid): JsonResponse
+    public function reject(RejectMigrationRequest $request, string $uuid): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
 
-        $validated = $request->validate([
-            'reason' => 'required|string|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $migration = EnvironmentMigration::where('uuid', $uuid)
             ->where('team_id', $teamId)
@@ -799,21 +775,14 @@ class EnvironmentMigrationController extends Controller
             new OA\Response(response: 401, description: 'Unauthorized'),
         ]
     )]
-    public function environmentCheck(Request $request): JsonResponse
+    public function environmentCheck(EnvironmentCheckMigrationRequest $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
 
-        $validated = $request->validate([
-            'source_environment_uuid' => 'required|string',
-            'target_environment_id' => 'required|integer|exists:environments,id',
-            'target_server_id' => 'required|integer|exists:servers,id',
-            'resources' => 'required|array|min:1',
-            'resources.*.type' => 'required|string|in:application,service,database',
-            'resources.*.uuid' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
         $sourceEnv = Environment::where('uuid', $validated['source_environment_uuid'])
             ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))

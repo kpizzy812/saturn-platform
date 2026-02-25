@@ -1,7 +1,7 @@
 import { useForm, Link } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Input, Button } from '@/components/ui';
-import { Github, Mail, GitBranch } from 'lucide-react';
+import { Input, Button, Badge } from '@/components/ui';
+import { Github, Mail, GitBranch, Users, Shield, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 
 interface OAuthProvider {
@@ -10,9 +10,23 @@ interface OAuthProvider {
     enabled: boolean;
 }
 
+interface InvitationData {
+    uuid: string;
+    email: string;
+    team_name: string;
+    role: string;
+}
+
+interface PlatformInviteData {
+    uuid: string;
+    email: string;
+}
+
 interface Props {
     isFirstUser?: boolean;
     enabled_oauth_providers?: OAuthProvider[];
+    invitation?: InvitationData | null;
+    platformInvite?: PlatformInviteData | null;
 }
 
 const providerConfig: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -24,12 +38,17 @@ const providerConfig: Record<string, { label: string; icon: React.ReactNode }> =
     discord: { label: 'Discord', icon: <Mail className="mr-2 h-4 w-4" /> },
 };
 
-export default function Register({ enabled_oauth_providers = [] }: Props) {
+export default function Register({ enabled_oauth_providers = [], invitation, platformInvite }: Props) {
+    const hasInvite = !!invitation || !!platformInvite;
+    const lockedEmail = invitation?.email ?? platformInvite?.email ?? '';
+
     const { data, setData, post, processing, errors } = useForm({
         name: '',
-        email: '',
+        email: lockedEmail,
         password: '',
         password_confirmation: '',
+        invite: invitation?.uuid ?? '',
+        platform_invite: platformInvite?.uuid ?? '',
     });
     const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
@@ -45,8 +64,60 @@ export default function Register({ enabled_oauth_providers = [] }: Props) {
 
     const hasOAuthProviders = enabled_oauth_providers.length > 0;
 
+    let title = 'Create Account';
+    let subtitle = 'Start deploying your applications for free.';
+    if (invitation) {
+        title = 'Join Team';
+        subtitle = `Create an account to join ${invitation.team_name}.`;
+    } else if (platformInvite) {
+        title = 'Create Account';
+        subtitle = 'You have been invited to join the platform.';
+    }
+
     return (
-        <AuthLayout title="Create Account" subtitle="Start deploying your applications for free.">
+        <AuthLayout title={title} subtitle={subtitle}>
+            {/* Team invitation context banner */}
+            {invitation && (
+                <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                            <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-semibold text-foreground">
+                                {invitation.team_name}
+                            </p>
+                            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                                <span>You'll join as</span>
+                                <Badge variant="secondary" size="sm">
+                                    <Shield className="mr-1 h-3 w-3" />
+                                    {invitation.role}
+                                </Badge>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Platform invite context banner */}
+            {!invitation && platformInvite && (
+                <div className="mb-6 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+                            <UserPlus className="h-5 w-5 text-emerald-500" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-semibold text-foreground">
+                                Platform Invitation
+                            </p>
+                            <p className="text-sm text-foreground-muted">
+                                You'll get your own workspace after registration.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
                     label="Name"
@@ -67,7 +138,13 @@ export default function Register({ enabled_oauth_providers = [] }: Props) {
                     onChange={(e) => setData('email', e.target.value)}
                     error={errors.email}
                     required
+                    disabled={hasInvite}
                 />
+                {hasInvite && (
+                    <p className="!mt-1 text-xs text-foreground-muted">
+                        Email is locked to the invitation address.
+                    </p>
+                )}
 
                 <Input
                     label="Password"
@@ -91,10 +168,10 @@ export default function Register({ enabled_oauth_providers = [] }: Props) {
                 />
 
                 <Button type="submit" className="w-full" loading={processing}>
-                    Create Account
+                    {invitation ? 'Create Account & Join Team' : 'Create Account'}
                 </Button>
 
-                {hasOAuthProviders && (
+                {hasOAuthProviders && !hasInvite && (
                     <>
                         {/* Divider */}
                         <div className="relative my-6">

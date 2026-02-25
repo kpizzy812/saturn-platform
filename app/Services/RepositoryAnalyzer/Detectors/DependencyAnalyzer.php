@@ -7,6 +7,7 @@ use App\Services\RepositoryAnalyzer\DTOs\DependencyAnalysisResult;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedApp;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedEnvVariable;
+use App\Services\RepositoryAnalyzer\DTOs\DetectedPersistentVolume;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedService;
 use JsonException;
 use Yosymfony\Toml\Toml;
@@ -73,6 +74,43 @@ class DependencyAnalyzer
         ],
     ];
 
+    /**
+     * SQLite detection rules — file-based DB, needs persistent volume instead of standalone database
+     */
+    private const SQLITE_RULES = [
+        'npm' => ['better-sqlite3', 'sql.js', 'sqlite3'],
+        'pip' => ['aiosqlite', 'databases[sqlite]'],
+        'composer' => ['ext-sqlite3'],
+        'gem' => ['sqlite3'],
+        'go' => ['github.com/mattn/go-sqlite3', 'modernc.org/sqlite', 'gorm.io/driver/sqlite'],
+        'cargo' => ['rusqlite', 'diesel'],
+    ];
+
+    /**
+     * Framework-specific SQLite mount paths and env vars
+     *
+     * When we detect SQLite for a known framework, we use the framework's
+     * conventional database directory so it works with minimal user config.
+     */
+    private const SQLITE_FRAMEWORK_DEFAULTS = [
+        'laravel' => [
+            'mount_path' => '/var/www/html/database',
+            'env_var_name' => 'DB_DATABASE',
+            'env_var_value' => '/var/www/html/database/database.sqlite',
+        ],
+        'django' => [
+            'mount_path' => '/app/data',
+            'env_var_name' => 'DATABASE_PATH',
+            'env_var_value' => '/app/data/db.sqlite3',
+        ],
+    ];
+
+    private const SQLITE_DEFAULT = [
+        'mount_path' => '/data',
+        'env_var_name' => 'DATABASE_PATH',
+        'env_var_value' => '/data/db.sqlite',
+    ];
+
     private const SERVICE_RULES = [
         's3' => [
             'npm' => ['@aws-sdk/client-s3', 'aws-sdk', 'minio'],
@@ -131,11 +169,13 @@ class DependencyAnalyzer
         $databases = $this->detectDatabases($appPath, $app);
         $services = $this->detectServices($appPath, $app);
         $envVariables = $this->detectEnvVariables($appPath, $app);
+        $persistentVolumes = $this->detectSqliteVolumes($appPath, $app);
 
         return new DependencyAnalysisResult(
             databases: $databases,
             services: $services,
             envVariables: $envVariables,
+            persistentVolumes: $persistentVolumes,
         );
     }
 
@@ -217,24 +257,268 @@ class DependencyAnalyzer
     }
 
     /**
-     * Detect environment variables from .env.example files
-     *
-     * Uses the existing EnvExampleParser service from Saturn.
+     * Detect environment variables from .env.example files,
+     * falling back to source code scanning.
      *
      * @return DetectedEnvVariable[]
      */
     private function detectEnvVariables(string $appPath, DetectedApp $app): array
     {
-        $envFiles = ['.env.example', '.env.sample', '.env.template', 'env.example'];
+        // Priority 1: .env.example / .env.sample / .env.template in app dir and subdirs
+        $envFileNames = ['.env.example', '.env.sample', '.env.template', 'env.example'];
 
-        foreach ($envFiles as $envFile) {
+        // Search in app directory first
+        foreach ($envFileNames as $envFile) {
             $filePath = $appPath.'/'.$envFile;
             if (file_exists($filePath) && filesize($filePath) <= self::MAX_FILE_SIZE) {
                 return $this->parseEnvFile($filePath, $app);
             }
         }
 
+        // Search in immediate subdirectories (e.g. bot/.env.example)
+        $subdirs = glob($appPath.'/*', GLOB_ONLYDIR) ?: [];
+        foreach ($subdirs as $subdir) {
+            foreach ($envFileNames as $envFile) {
+                $filePath = $subdir.'/'.$envFile;
+                if (file_exists($filePath) && filesize($filePath) <= self::MAX_FILE_SIZE) {
+                    return $this->parseEnvFile($filePath, $app);
+                }
+            }
+        }
+
+        // Priority 2: Scan source code for env var references
+        $fromSource = $this->detectEnvVariablesFromSource($appPath, $app);
+        if (! empty($fromSource)) {
+            return $fromSource;
+        }
+
+        // Priority 3: Extract from Dockerfile ENV directives
+        return $this->detectEnvVariablesFromDockerfile($appPath, $app);
+    }
+
+    /**
+     * Scan source code files for environment variable references
+     *
+     * Detects patterns like:
+     * - Python: os.getenv("KEY"), os.environ["KEY"], os.environ.get("KEY")
+     * - JS/TS: process.env.KEY
+     * - Go: os.Getenv("KEY")
+     * - Ruby: ENV["KEY"], ENV.fetch("KEY")
+     *
+     * @return DetectedEnvVariable[]
+     */
+    private function detectEnvVariablesFromSource(string $appPath, DetectedApp $app): array
+    {
+        $envVars = [];
+
+        // Scan Python files
+        $pythonFiles = array_merge(
+            glob($appPath.'/*.py') ?: [],
+            glob($appPath.'/src/*.py') ?: [],
+            glob($appPath.'/app/*.py') ?: [],
+            glob($appPath.'/bot/*.py') ?: [],
+            glob($appPath.'/config/*.py') ?: [],
+        );
+        foreach ($pythonFiles as $file) {
+            if (! $this->isReadableFile($file)) {
+                continue;
+            }
+            $content = file_get_contents($file);
+            // os.getenv("KEY"), os.environ.get("KEY")
+            if (preg_match_all('/os\.(?:getenv|environ\.get)\s*\(\s*["\']([A-Z_][A-Z0-9_]*)["\']/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+            // os.environ["KEY"]
+            if (preg_match_all('/os\.environ\s*\[\s*["\']([A-Z_][A-Z0-9_]*)["\']/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+        }
+
+        // Scan JS/TS files (avoid GLOB_BRACE — unavailable on Alpine/musl)
+        $jsDirs = [$appPath, $appPath.'/src', $appPath.'/config'];
+        $jsExts = ['js', 'ts', 'mjs', 'mts'];
+        $jsFiles = [];
+        foreach ($jsDirs as $dir) {
+            foreach ($jsExts as $ext) {
+                $jsFiles = array_merge($jsFiles, glob($dir.'/*.'.$ext) ?: []);
+            }
+        }
+        foreach ($jsFiles as $file) {
+            if (! $this->isReadableFile($file)) {
+                continue;
+            }
+            $content = file_get_contents($file);
+            // process.env.KEY
+            if (preg_match_all('/process\.env\.([A-Z_][A-Z0-9_]*)/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+        }
+
+        // Scan Go files
+        $goFiles = array_merge(
+            glob($appPath.'/*.go') ?: [],
+            glob($appPath.'/cmd/*.go') ?: [],
+            glob($appPath.'/internal/config/*.go') ?: [],
+        );
+        foreach ($goFiles as $file) {
+            if (! $this->isReadableFile($file)) {
+                continue;
+            }
+            $content = file_get_contents($file);
+            // os.Getenv("KEY")
+            if (preg_match_all('/os\.Getenv\s*\(\s*"([A-Z_][A-Z0-9_]*)"/', $content, $matches)) {
+                foreach ($matches[1] as $key) {
+                    $envVars[$key] = true;
+                }
+            }
+        }
+
+        // Filter out common non-configurable vars
+        $ignored = ['PATH', 'HOME', 'USER', 'SHELL', 'PWD', 'TERM', 'LANG', 'LC_ALL', 'NODE_ENV', 'PYTHONPATH'];
+        $envVars = array_diff_key($envVars, array_flip($ignored));
+
+        return array_map(fn ($key) => new DetectedEnvVariable(
+            key: $key,
+            defaultValue: null,
+            isRequired: true,
+            category: $this->categorizeEnvVar($key),
+            forApp: $app->name,
+        ), array_keys($envVars));
+    }
+
+    /**
+     * Extract env variables from Dockerfile ENV directives
+     *
+     * @return DetectedEnvVariable[]
+     */
+    private function detectEnvVariablesFromDockerfile(string $appPath, DetectedApp $app): array
+    {
+        $dockerfile = $appPath.'/Dockerfile';
+        if (! $this->isReadableFile($dockerfile)) {
+            return [];
+        }
+
+        $content = file_get_contents($dockerfile);
+        $envVars = [];
+
+        // Match ENV KEY=value and ENV KEY value
+        if (preg_match_all('/^ENV\s+([A-Z_][A-Z0-9_]*)[\s=]/m', $content, $matches)) {
+            foreach ($matches[1] as $key) {
+                $envVars[$key] = true;
+            }
+        }
+
+        // Match ARG KEY (build args that might need configuration)
+        if (preg_match_all('/^ARG\s+([A-Z_][A-Z0-9_]*)(?:\s*=)?/m', $content, $matches)) {
+            foreach ($matches[1] as $key) {
+                $envVars[$key] = true;
+            }
+        }
+
+        // Filter out standard/non-configurable vars
+        $ignored = ['PATH', 'HOME', 'PYTHONUNBUFFERED', 'PYTHONDONTWRITEBYTECODE', 'DEBIAN_FRONTEND', 'TZ', 'LANG', 'LC_ALL', 'NODE_ENV'];
+        $envVars = array_diff_key($envVars, array_flip($ignored));
+
+        return array_map(fn ($key) => new DetectedEnvVariable(
+            key: $key,
+            defaultValue: null,
+            isRequired: true,
+            category: $this->categorizeEnvVar($key),
+            forApp: $app->name,
+        ), array_keys($envVars));
+    }
+
+    /**
+     * Detect SQLite usage and create persistent volume recommendation
+     *
+     * SQLite is a file-based database — unlike PostgreSQL/MySQL, it doesn't need
+     * a standalone container. Instead, it needs a persistent volume so the
+     * database file survives container redeployments.
+     *
+     * @return DetectedPersistentVolume[]
+     */
+    private function detectSqliteVolumes(string $appPath, DetectedApp $app): array
+    {
+        $dependencies = $this->extractDependencies($appPath);
+
+        foreach ($dependencies as $packageManager => $deps) {
+            if (! isset(self::SQLITE_RULES[$packageManager])) {
+                continue;
+            }
+
+            $matchedDep = $this->findMatchingDependency($deps, self::SQLITE_RULES[$packageManager]);
+            if ($matchedDep === null) {
+                continue;
+            }
+
+            // Also check for Prisma with sqlite provider
+            if ($matchedDep === 'better-sqlite3' || $packageManager === 'npm') {
+                // Accept the match as-is for npm sqlite packages
+            }
+
+            // Determine mount path based on framework
+            $defaults = self::SQLITE_FRAMEWORK_DEFAULTS[$app->framework] ?? self::SQLITE_DEFAULT;
+
+            return [
+                new DetectedPersistentVolume(
+                    name: 'sqlite-data',
+                    mountPath: $defaults['mount_path'],
+                    reason: "SQLite database detected ({$matchedDep})",
+                    forApp: $app->name,
+                    envVarName: $defaults['env_var_name'],
+                    envVarValue: $defaults['env_var_value'],
+                ),
+            ];
+        }
+
+        // Also check for Prisma with sqlite datasource in schema.prisma
+        if ($this->detectPrismaSqlite($appPath)) {
+            $defaults = self::SQLITE_DEFAULT;
+
+            return [
+                new DetectedPersistentVolume(
+                    name: 'sqlite-data',
+                    mountPath: $defaults['mount_path'],
+                    reason: 'SQLite database detected (prisma:sqlite)',
+                    forApp: $app->name,
+                    envVarName: $defaults['env_var_name'],
+                    envVarValue: $defaults['env_var_value'],
+                ),
+            ];
+        }
+
         return [];
+    }
+
+    /**
+     * Check if Prisma schema uses sqlite as datasource provider
+     */
+    private function detectPrismaSqlite(string $appPath): bool
+    {
+        $schemaLocations = [
+            $appPath.'/prisma/schema.prisma',
+            $appPath.'/schema.prisma',
+        ];
+
+        foreach ($schemaLocations as $schemaPath) {
+            if (! $this->isReadableFile($schemaPath)) {
+                continue;
+            }
+
+            $content = file_get_contents($schemaPath);
+            // Match: provider = "sqlite"
+            if (preg_match('/provider\s*=\s*"sqlite"/i', $content)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -469,6 +753,7 @@ class DependencyAnalyzer
                 isRequired: $var['is_required'],
                 category: $this->categorizeEnvVar($var['key']),
                 forApp: $app->name,
+                comment: $var['comment'] ?? null,
             );
         }
 

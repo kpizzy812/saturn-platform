@@ -2,6 +2,7 @@
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Button, Badge } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Github, GitlabIcon as Gitlab, MessageSquare, Zap, Settings, CheckCircle2, XCircle, AlertCircle, Plus, ExternalLink, Trash2 } from 'lucide-react';
 import { Link, router } from '@inertiajs/react';
 
@@ -39,6 +40,8 @@ const sourceIcons = {
 
 export default function IntegrationsSettings({ sources = [], notificationChannels }: Props) {
     const { addToast } = useToast();
+    const { can } = usePermissions();
+    const canManageIntegrations = can('settings.integrations');
 
     const handleDeleteSource = (source: Source) => {
         if (source.applicationsCount > 0) {
@@ -71,12 +74,14 @@ export default function IntegrationsSettings({ sources = [], notificationChannel
                                     Connect GitHub and GitLab for automatic deployments
                                 </CardDescription>
                             </div>
-                            <Link href="/sources">
-                                <Button size="sm">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Source
-                                </Button>
-                            </Link>
+                            {canManageIntegrations && (
+                                <Link href="/sources">
+                                    <Button size="sm">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Source
+                                    </Button>
+                                </Link>
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -87,12 +92,14 @@ export default function IntegrationsSettings({ sources = [], notificationChannel
                                 <p className="mt-2 text-sm text-foreground-muted">
                                     Connect GitHub or GitLab to enable automatic deployments from your repositories.
                                 </p>
-                                <Link href="/sources" className="mt-4">
-                                    <Button>
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Add Git Source
-                                    </Button>
-                                </Link>
+                                {canManageIntegrations && (
+                                    <Link href="/sources" className="mt-4">
+                                        <Button>
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Add Git Source
+                                        </Button>
+                                    </Link>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -153,15 +160,17 @@ export default function IntegrationsSettings({ sources = [], notificationChannel
                                                         Settings
                                                     </Button>
                                                 </Link>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => handleDeleteSource(source)}
-                                                    disabled={source.applicationsCount > 0}
-                                                    title={source.applicationsCount > 0 ? 'Remove all applications first' : 'Delete source'}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {canManageIntegrations && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDeleteSource(source)}
+                                                        disabled={source.applicationsCount > 0}
+                                                        title={source.applicationsCount > 0 ? 'Remove all applications first' : 'Delete source'}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                     );

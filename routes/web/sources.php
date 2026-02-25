@@ -78,19 +78,30 @@ Route::prefix('sources')->group(function () {
             ]);
         })->name('sources.github.index');
 
-        Route::get('/create', function () {
-            // Use the public FQDN from InstanceSettings (set by admin),
-            // fall back to the current request URL (never config('app.url') which may be localhost)
-            $settings = \App\Models\InstanceSettings::get();
-            $fqdn = $settings->fqdn ?: request()->getSchemeAndHttpHost();
+        Route::get('/create', function (Request $request) {
+            // Store return-to context so the GitHub OAuth flow can redirect back
+            $from = $request->query('from');
+            if ($from === 'boarding') {
+                session(['github_app_return_to' => 'boarding']);
+            }
+
+            // Always use the current request URL for webhook registration.
+            // GitHub App webhooks must point to the exact environment (dev/staging/prod)
+            // where the app was created, not the canonical FQDN from InstanceSettings.
+            $webhookBase = request()->getSchemeAndHttpHost();
 
             return Inertia::render('Sources/GitHub/Create', [
-                'webhookUrl' => $fqdn.'/webhooks/source/github/events',
+                'webhookUrl' => $webhookBase.'/webhooks/source/github/events',
+                'from' => $from,
             ]);
         })->name('sources.github.create');
 
         // Create a placeholder GithubApp for the manifest flow
         Route::post('/', function (Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to create GitHub Apps.');
+            }
+
             $validated = $request->validate([
                 'is_public' => 'sometimes|boolean',
                 'name' => 'sometimes|string|max:255',
@@ -149,6 +160,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.show');
 
         Route::put('/{id}', function (string $id, Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to update GitHub Apps.');
+            }
+
             $query = \App\Models\GithubApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -164,6 +179,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.update');
 
         Route::post('/{id}/sync', function (string $id) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to sync GitHub Apps.');
+            }
+
             $query = \App\Models\GithubApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -218,6 +237,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.sync');
 
         Route::delete('/{id}', function (string $id) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to delete GitHub Apps.');
+            }
+
             $query = \App\Models\GithubApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -254,6 +277,10 @@ Route::prefix('sources')->group(function () {
         Route::get('/create', fn () => Inertia::render('Sources/GitLab/Create'))->name('sources.gitlab.create');
 
         Route::post('/', function (Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to create GitLab connections.');
+            }
+
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'api_url' => 'required|url',
@@ -308,6 +335,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.gitlab.show');
 
         Route::put('/{id}', function (string $id, Request $request) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to update GitLab connections.');
+            }
+
             $query = \App\Models\GitlabApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)
@@ -324,6 +355,10 @@ Route::prefix('sources')->group(function () {
         })->name('sources.gitlab.update');
 
         Route::delete('/{id}', function (string $id) {
+            if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
+                abort(403, 'You do not have permission to delete GitLab connections.');
+            }
+
             $query = \App\Models\GitlabApp::ownedByCurrentTeam();
             $source = is_numeric($id)
                 ? $query->findOrFail($id)

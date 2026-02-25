@@ -3,6 +3,7 @@
 namespace App\Services\DatabaseMetrics;
 
 use App\Traits\FormatHelpers;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for MySQL/MariaDB database metrics and operations.
@@ -10,6 +11,14 @@ use App\Traits\FormatHelpers;
 class MysqlMetricsService
 {
     use FormatHelpers;
+
+    /**
+     * Validate and return safe ORDER BY direction (ASC or DESC only).
+     */
+    private function safeOrderDir(string $dir): string
+    {
+        return InputValidator::safeOrderDirection($dir);
+    }
 
     /**
      * Collect MySQL/MariaDB metrics via SSH.
@@ -50,7 +59,10 @@ class MysqlMetricsService
                 $metrics['slowQueries'] = (int) $slowQueries;
             }
         } catch (\Exception $e) {
-            // Metrics will remain as defaults
+            Log::debug('Failed to collect MySQL metrics', [
+                'database_uuid' => $database->uuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -61,8 +73,8 @@ class MysqlMetricsService
      */
     public function getSettings(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
 
         $settings = [
             'slowQueryLog' => false,
@@ -74,38 +86,38 @@ class MysqlMetricsService
         ];
 
         // Get slow_query_log status
-        $slowQueryCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'slow_query_log';\" 2>/dev/null | awk '{print \$2}'";
+        $slowQueryCmd = "docker exec {$containerName} mysql -u root -p{$password} -N -e \"SHOW VARIABLES LIKE 'slow_query_log';\" 2>/dev/null | awk '{print \$2}'";
         $slowQueryLog = trim(instant_remote_process([$slowQueryCmd], $server, false) ?? '');
         $settings['slowQueryLog'] = strtoupper($slowQueryLog) === 'ON';
 
         // Get log_bin status (binary logging)
-        $logBinCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'log_bin';\" 2>/dev/null | awk '{print \$2}'";
+        $logBinCmd = "docker exec {$containerName} mysql -u root -p{$password} -N -e \"SHOW VARIABLES LIKE 'log_bin';\" 2>/dev/null | awk '{print \$2}'";
         $logBin = trim(instant_remote_process([$logBinCmd], $server, false) ?? '');
         $settings['binaryLogging'] = strtoupper($logBin) === 'ON';
 
         // Get max_connections
-        $maxConnCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'max_connections';\" 2>/dev/null | awk '{print \$2}'";
+        $maxConnCmd = "docker exec {$containerName} mysql -u root -p{$password} -N -e \"SHOW VARIABLES LIKE 'max_connections';\" 2>/dev/null | awk '{print \$2}'";
         $maxConnections = trim(instant_remote_process([$maxConnCmd], $server, false) ?? '');
         if (is_numeric($maxConnections)) {
             $settings['maxConnections'] = (int) $maxConnections;
         }
 
         // Get innodb_buffer_pool_size
-        $bufferPoolCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'innodb_buffer_pool_size';\" 2>/dev/null | awk '{print \$2}'";
+        $bufferPoolCmd = "docker exec {$containerName} mysql -u root -p{$password} -N -e \"SHOW VARIABLES LIKE 'innodb_buffer_pool_size';\" 2>/dev/null | awk '{print \$2}'";
         $bufferPoolSize = trim(instant_remote_process([$bufferPoolCmd], $server, false) ?? '');
         if (is_numeric($bufferPoolSize)) {
             $settings['innodbBufferPoolSize'] = $this->formatBytes((int) $bufferPoolSize);
         }
 
         // Get query_cache_size (deprecated in MySQL 8.0 but still available in MariaDB)
-        $queryCacheCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'query_cache_size';\" 2>/dev/null | awk '{print \$2}'";
+        $queryCacheCmd = "docker exec {$containerName} mysql -u root -p{$password} -N -e \"SHOW VARIABLES LIKE 'query_cache_size';\" 2>/dev/null | awk '{print \$2}'";
         $queryCacheSize = trim(instant_remote_process([$queryCacheCmd], $server, false) ?? '');
         if (is_numeric($queryCacheSize)) {
             $settings['queryCacheSize'] = $this->formatBytes((int) $queryCacheSize);
         }
 
         // Get wait_timeout (query timeout)
-        $timeoutCmd = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'wait_timeout';\" 2>/dev/null | awk '{print \$2}'";
+        $timeoutCmd = "docker exec {$containerName} mysql -u root -p{$password} -N -e \"SHOW VARIABLES LIKE 'wait_timeout';\" 2>/dev/null | awk '{print \$2}'";
         $timeout = trim(instant_remote_process([$timeoutCmd], $server, false) ?? '');
         if (is_numeric($timeout)) {
             $settings['queryTimeout'] = (int) $timeout;
@@ -119,10 +131,11 @@ class MysqlMetricsService
      */
     public function getUsers(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
 
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SELECT user, 'Standard' as role, 0 as connections FROM mysql.user WHERE user NOT IN ('root', 'mysql.sys', 'mysql.session', 'mysql.infoschema');\" 2>/dev/null || echo ''";
+        $sql = escapeshellarg("SELECT user, 'Standard' as role, 0 as connections FROM mysql.user WHERE user NOT IN ('root', 'mysql.sys', 'mysql.session', 'mysql.infoschema');");
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -N -e {$sql} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $users = [
@@ -221,10 +234,11 @@ class MysqlMetricsService
      */
     public function getActiveConnections(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
 
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SELECT ID, USER, DB, COMMAND, TIME, INFO, HOST FROM INFORMATION_SCHEMA.PROCESSLIST WHERE COMMAND != 'Daemon' ORDER BY TIME DESC LIMIT 50;\" 2>/dev/null || echo ''";
+        $sql = escapeshellarg("SELECT ID, USER, DB, COMMAND, TIME, INFO, HOST FROM INFORMATION_SCHEMA.PROCESSLIST WHERE COMMAND != 'Daemon' ORDER BY TIME DESC LIMIT 50;");
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -N -e {$sql} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $connections = [];
@@ -233,13 +247,13 @@ class MysqlMetricsService
             foreach (explode("\n", $result) as $line) {
                 $parts = preg_split('/\t/', trim($line));
                 if (count($parts) >= 5 && ! empty($parts[0])) {
-                    $time = (int) ($parts[4] ?? 0);
+                    $time = (int) $parts[4];
                     $connections[] = [
                         'id' => $id++,
                         'pid' => (int) $parts[0],
-                        'user' => $parts[1] ?? '',
-                        'database' => $parts[2] ?? '',
-                        'state' => strtolower($parts[3] ?? 'idle') === 'query' ? 'active' : 'idle',
+                        'user' => $parts[1],
+                        'database' => $parts[2],
+                        'state' => strtolower($parts[3]) === 'query' ? 'active' : 'idle',
                         'query' => $parts[5] ?? '<IDLE>',
                         'duration' => $time < 60 ? $time.'s' : round($time / 60, 1).'m',
                         'clientAddr' => explode(':', $parts[6] ?? '')[0],
@@ -256,10 +270,11 @@ class MysqlMetricsService
      */
     public function killConnection(mixed $server, mixed $database, int $pid): bool
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
 
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -e \"KILL {$pid};\" 2>&1";
+        $sql = escapeshellarg("KILL {$pid};");
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -e {$sql} 2>&1";
         $result = instant_remote_process([$command], $server, false) ?? '';
 
         return stripos($result, 'ERROR') === false;
@@ -298,11 +313,13 @@ class MysqlMetricsService
      */
     public function getTables(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
         $dbName = $database->mysql_database ?? 'mysql';
 
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SELECT TABLE_NAME, TABLE_ROWS, CONCAT(ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024, 1), ' KB') AS size FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{$dbName}' ORDER BY TABLE_ROWS DESC LIMIT 100;\" 2>/dev/null || echo ''";
+        $escapedDbName = str_replace("'", "''", $dbName);
+        $sql = escapeshellarg("SELECT TABLE_NAME, TABLE_ROWS, CONCAT(ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024, 1), ' KB') AS size FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{$escapedDbName}' ORDER BY TABLE_ROWS DESC LIMIT 100;");
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -N -e {$sql} 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $tables = [];
@@ -312,8 +329,8 @@ class MysqlMetricsService
                 if (count($parts) >= 3 && ! empty($parts[0])) {
                     $tables[] = [
                         'name' => $parts[0],
-                        'rows' => (int) ($parts[1] ?? 0),
-                        'size' => $parts[2] ?? '0 KB',
+                        'rows' => (int) $parts[1],
+                        'size' => $parts[2],
                     ];
                 }
             }
@@ -327,17 +344,19 @@ class MysqlMetricsService
      */
     public function getColumns(mixed $server, mixed $database, string $tableName): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
         $dbName = $database->mysql_database ?? 'mysql';
+        $escapedDbName = escapeshellarg($dbName);
 
         // Escape table and database names to prevent SQL injection
-        $escapedDbName = str_replace("'", "''", $dbName);
-        $escapedTableName = str_replace("'", "''", $tableName);
+        $escapedDbNameSql = str_replace("'", "''", $dbName);
+        $escapedTableNameSql = str_replace("'", "''", $tableName);
 
-        $query = "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, (CASE WHEN COLUMN_KEY = 'PRI' THEN 1 ELSE 0 END) as is_primary FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{$escapedDbName}' AND TABLE_NAME = '{$escapedTableName}' ORDER BY ORDINAL_POSITION";
+        $query = "SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT, (CASE WHEN COLUMN_KEY = 'PRI' THEN 1 ELSE 0 END) as is_primary FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = '{$escapedDbNameSql}' AND TABLE_NAME = '{$escapedTableNameSql}' ORDER BY ORDINAL_POSITION";
+        $escapedQuery = escapeshellarg($query);
 
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$query}\" 2>/dev/null | awk -F'\\t' '{print \$1\"|\"\$2\"|\"\$3\"|\"\$4\"|\"\$5}' || echo ''";
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -D {$escapedDbName} -N -e {$escapedQuery} 2>/dev/null | awk -F'\\t' '{print \$1\"|\"\$2\"|\"\$3\"|\"\$4\"|\"\$5}' || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
 
         $columns = [];
@@ -364,53 +383,53 @@ class MysqlMetricsService
      */
     public function getData(mixed $server, mixed $database, string $tableName, int $page, int $perPage, string $search, string $orderBy, string $orderDir, string $filters = ''): array
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
-        $dbName = $database->mysql_database ?? 'mysql';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
+        $dbName = escapeshellarg($database->mysql_database ?? 'mysql');
         $offset = ($page - 1) * $perPage;
 
         // Get columns first
         $columns = $this->getColumns($server, $database, $tableName);
         $columnNames = array_map(fn ($c) => $c['name'], $columns);
 
-        // Escape table name to prevent SQL injection
+        // Validate table name to prevent SQL injection
+        if (! InputValidator::isValidTableName($tableName)) {
+            return ['rows' => [], 'total' => 0, 'columns' => $columns];
+        }
         $escapedTableName = str_replace('`', '``', $tableName);
 
         // Build WHERE clause
         $whereConditions = [];
 
-        // Add search condition if provided
+        // Add search condition if provided (sanitized to prevent SQL injection)
         if ($search !== '') {
-            $escapedSearch = str_replace("'", "''", $search);
-            $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $columnNames);
-            $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
+            $escapedSearch = InputValidator::sanitizeSearch($search);
+            $safeColumns = array_filter($columnNames, fn ($col) => InputValidator::isValidColumnName($col));
+            $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $safeColumns);
+            if (! empty($searchConditions)) {
+                $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
+            }
         }
 
-        // Add filter conditions if provided (convert PostgreSQL syntax to MySQL)
-        if ($filters !== '') {
-            // Convert PostgreSQL ILIKE to MySQL LIKE
-            $mysqlFilters = str_replace('ILIKE', 'LIKE', $filters);
-            // Convert double quotes to backticks for column names
-            $mysqlFilters = preg_replace('/"([^"]+)"/', '`$1`', $mysqlFilters);
-            $whereConditions[] = "({$mysqlFilters})";
-        }
+        // Raw $filters removed — was a SQL injection vector (V5 audit SEC-CRIT-2)
 
         $whereClause = count($whereConditions) > 0 ? 'WHERE '.implode(' AND ', $whereConditions) : '';
 
-        // Build ORDER BY clause
+        // Build ORDER BY clause — validate direction against whitelist
         $orderClause = '';
         if ($orderBy !== '' && in_array($orderBy, $columnNames)) {
-            $orderClause = "ORDER BY `{$orderBy}` {$orderDir}";
+            $safeDir = $this->safeOrderDir($orderDir);
+            $orderClause = "ORDER BY `{$orderBy}` {$safeDir}";
         }
 
-        // Get total count
+        // Get total count — use escapeshellarg to prevent shell injection
         $countQuery = "SELECT COUNT(*) FROM `{$escapedTableName}` {$whereClause}";
-        $countCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$countQuery}\" 2>/dev/null || echo '0'";
+        $countCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e ".escapeshellarg($countQuery)." 2>/dev/null || echo '0'";
         $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
 
-        // Get data
+        // Get data — use escapeshellarg to prevent shell injection
         $dataQuery = "SELECT * FROM `{$escapedTableName}` {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
-        $dataCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$dataQuery}\" 2>/dev/null | awk -F'\\t' 'BEGIN{OFS=\"|\"} {for(i=1;i<=NF;i++) printf \"%s%s\", \$i, (i==NF?\"\\n\":OFS)}' || echo ''";
+        $dataCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e ".escapeshellarg($dataQuery)." 2>/dev/null | awk -F'\\t' 'BEGIN{OFS=\"|\"} {for(i=1;i<=NF;i++) printf \"%s%s\", \$i, (i==NF?\"\\n\":OFS)}' || echo ''";
         $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '');
 
         $rows = [];
@@ -435,35 +454,52 @@ class MysqlMetricsService
     }
 
     /**
+     * Validate column name against injection using centralized validator.
+     */
+    private function isValidColumnName(string $column): bool
+    {
+        return InputValidator::isValidColumnName($column);
+    }
+
+    /**
      * Update MySQL row.
      */
     public function updateRow(mixed $server, mixed $database, string $tableName, array $primaryKey, array $updates): bool
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
         $dbName = $database->mysql_database ?? 'mysql';
-
-        // Escape table name to prevent SQL injection
+        $escapedDbName = escapeshellarg($dbName);
         $escapedTableName = str_replace('`', '``', $tableName);
 
-        // Build SET clause
+        // Build SET clause — validate column names to prevent SQL injection
         $setClauses = [];
         foreach ($updates as $column => $value) {
-            $escapedValue = str_replace("'", "\\'", (string) $value);
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
+            }
+            $escapedValue = str_replace("'", "''", (string) $value);
             $setClauses[] = "`{$column}` = '{$escapedValue}'";
         }
-        $setClause = implode(', ', $setClauses);
+        if (empty($setClauses)) {
+            return false;
+        }
 
-        // Build WHERE clause from primary key
+        // Build WHERE clause — validate column names to prevent SQL injection
         $whereClauses = [];
         foreach ($primaryKey as $column => $value) {
-            $escapedValue = str_replace("'", "\\'", (string) $value);
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
+            }
+            $escapedValue = str_replace("'", "''", (string) $value);
             $whereClauses[] = "`{$column}` = '{$escapedValue}'";
         }
-        $whereClause = implode(' AND ', $whereClauses);
+        if (empty($whereClauses)) {
+            return false;
+        }
 
-        $query = "UPDATE `{$escapedTableName}` SET {$setClause} WHERE {$whereClause}";
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -e \"{$query}\" 2>&1";
+        $query = "UPDATE `{$escapedTableName}` SET ".implode(', ', $setClauses).' WHERE '.implode(' AND ', $whereClauses);
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -D {$escapedDbName} -e ".escapeshellarg($query).' 2>&1';
         $result = instant_remote_process([$command], $server, false);
 
         return ! str_contains($result ?? '', 'ERROR');
@@ -474,23 +510,27 @@ class MysqlMetricsService
      */
     public function deleteRow(mixed $server, mixed $database, string $tableName, array $primaryKey): bool
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
         $dbName = $database->mysql_database ?? 'mysql';
-
-        // Escape table name to prevent SQL injection
+        $escapedDbName = escapeshellarg($dbName);
         $escapedTableName = str_replace('`', '``', $tableName);
 
-        // Build WHERE clause from primary key
+        // Build WHERE clause — validate column names to prevent SQL injection
         $whereClauses = [];
         foreach ($primaryKey as $column => $value) {
-            $escapedValue = str_replace("'", "\\'", (string) $value);
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
+            }
+            $escapedValue = str_replace("'", "''", (string) $value);
             $whereClauses[] = "`{$column}` = '{$escapedValue}'";
         }
-        $whereClause = implode(' AND ', $whereClauses);
+        if (empty($whereClauses)) {
+            return false;
+        }
 
-        $query = "DELETE FROM `{$escapedTableName}` WHERE {$whereClause}";
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -e \"{$query}\" 2>&1";
+        $query = "DELETE FROM `{$escapedTableName}` WHERE ".implode(' AND ', $whereClauses);
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -D {$escapedDbName} -e ".escapeshellarg($query).' 2>&1';
         $result = instant_remote_process([$command], $server, false);
 
         return ! str_contains($result ?? '', 'ERROR');
@@ -501,29 +541,33 @@ class MysqlMetricsService
      */
     public function createRow(mixed $server, mixed $database, string $tableName, array $data): bool
     {
-        $containerName = $database->uuid;
-        $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $containerName = escapeshellarg($database->uuid);
+        $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
         $dbName = $database->mysql_database ?? 'mysql';
-
-        // Escape table name to prevent SQL injection
+        $escapedDbName = escapeshellarg($dbName);
         $escapedTableName = str_replace('`', '``', $tableName);
 
-        // Build columns and values
-        $columns = array_keys($data);
-        $values = array_map(function ($value) {
-            if ($value === null) {
-                return 'NULL';
+        // Build columns and values — validate column names to prevent SQL injection
+        $safeColumns = [];
+        $values = [];
+        foreach ($data as $column => $value) {
+            if (! $this->isValidColumnName((string) $column)) {
+                continue;
             }
-            $escapedValue = str_replace("'", "\\'", (string) $value);
+            $safeColumns[] = "`{$column}`";
+            if ($value === null) {
+                $values[] = 'NULL';
+            } else {
+                $escapedValue = str_replace("'", "''", (string) $value);
+                $values[] = "'{$escapedValue}'";
+            }
+        }
+        if (empty($safeColumns)) {
+            return false;
+        }
 
-            return "'{$escapedValue}'";
-        }, array_values($data));
-
-        $columnsClause = '`'.implode('`, `', $columns).'`';
-        $valuesClause = implode(', ', $values);
-
-        $query = "INSERT INTO `{$escapedTableName}` ({$columnsClause}) VALUES ({$valuesClause})";
-        $command = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -e \"{$query}\" 2>&1";
+        $query = "INSERT INTO `{$escapedTableName}` (".implode(', ', $safeColumns).') VALUES ('.implode(', ', $values).')';
+        $command = "docker exec {$containerName} mysql -u root -p{$password} -D {$escapedDbName} -e ".escapeshellarg($query).' 2>&1';
         $result = instant_remote_process([$command], $server, false);
 
         return ! str_contains($result ?? '', 'ERROR');

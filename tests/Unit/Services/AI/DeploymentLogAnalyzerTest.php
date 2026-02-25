@@ -111,7 +111,6 @@ describe('DeploymentLogAnalyzer Log Processing', function () {
         $analyzer = new DeploymentLogAnalyzer;
         $reflection = new ReflectionClass($analyzer);
         $method = $reflection->getMethod('prepareLogs');
-        $method->setAccessible(true);
 
         $longLogs = str_repeat("Line of text for testing log truncation\n", 100);
         $prepared = $method->invoke($analyzer, $longLogs);
@@ -125,7 +124,6 @@ describe('DeploymentLogAnalyzer Log Processing', function () {
         $analyzer = new DeploymentLogAnalyzer;
         $reflection = new ReflectionClass($analyzer);
         $method = $reflection->getMethod('prepareLogs');
-        $method->setAccessible(true);
 
         $shortLogs = "Error: Build failed\nSome details here";
         $prepared = $method->invoke($analyzer, $shortLogs);

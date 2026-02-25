@@ -116,9 +116,24 @@ function githubApi(GithubApp|GitlabApp|null $source, string $endpoint, string $m
     ];
 }
 
+function isValidGithubUrl(string $url): bool
+{
+    $parsed = parse_url($url);
+
+    return $parsed !== false
+        && isset($parsed['scheme'], $parsed['host'])
+        && $parsed['scheme'] === 'https'
+        && (str_ends_with($parsed['host'], 'github.com') || str_ends_with($parsed['host'], '.ghe.com'));
+}
+
 function getInstallationPath(GithubApp $source)
 {
     $github = GithubApp::where('uuid', $source->uuid)->first();
+
+    if (! isValidGithubUrl($github->html_url)) {
+        throw new \RuntimeException('Invalid GitHub App html_url: must be a valid GitHub domain.');
+    }
+
     $name = str(Str::kebab($github->name));
     $installation_path = $github->html_url === 'https://github.com' ? 'apps' : 'github-apps';
 
@@ -128,6 +143,11 @@ function getInstallationPath(GithubApp $source)
 function getPermissionsPath(GithubApp $source)
 {
     $github = GithubApp::where('uuid', $source->uuid)->first();
+
+    if (! isValidGithubUrl($github->html_url)) {
+        throw new \RuntimeException('Invalid GitHub App html_url: must be a valid GitHub domain.');
+    }
+
     $name = str(Str::kebab($github->name));
 
     return "$github->html_url/settings/apps/$name/permissions";

@@ -19,6 +19,10 @@ class ServerManagerJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+
+    public $timeout = 120;
+
     /**
      * The time when this job execution started.
      */
@@ -62,13 +66,23 @@ class ServerManagerJob implements ShouldQueue
         $this->processScheduledTasks($servers);
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerManagerJob permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function getServers(): Collection
     {
-        $allServers = Server::where('ip', '!=', '1.2.3.4');
+        // Eager load settings to avoid N+1 in processServerTasks loop
+        // In cloud mode, also load team.subscription for subscription checks
+        $eagerLoad = isCloud() ? ['settings', 'team.subscription'] : ['settings'];
+        $allServers = Server::where('ip', '!=', '1.2.3.4')->with($eagerLoad);
 
         if (isCloud()) {
             $servers = $allServers->whereRelation('team.subscription', 'stripe_invoice_paid', true)->get();
-            $own = Team::find(0)->servers;
+            $own = Team::find(0)->servers()->with($eagerLoad)->get();
 
             return $servers->merge($own);
         } else {

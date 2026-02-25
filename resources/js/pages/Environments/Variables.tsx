@@ -18,6 +18,7 @@ import {
     ChevronRight,
     Link as LinkIcon
 } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface EnvironmentVariable {
     id: string;
@@ -43,6 +44,9 @@ interface Props {
 }
 
 export default function EnvironmentVariables({ environment, variables: propVariables = [], inheritedVariables = [] }: Props) {
+    const { can } = usePermissions();
+    const canEditVars = can('applications.env_vars') || can('services.env_vars') || can('databases.env_vars');
+    const canRevealVars = can('applications.env_vars_sensitive');
     const confirm = useConfirm();
     const [variables, setVariables] = useState<EnvironmentVariable[]>(propVariables);
     const [searchQuery, setSearchQuery] = useState('');
@@ -216,16 +220,18 @@ export default function EnvironmentVariables({ environment, variables: propVaria
                         Manage variables for {environment.name} environment
                     </p>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" onClick={() => setShowImportModal(true)}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Import .env
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={handleExport}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export
-                    </Button>
-                </div>
+                {canEditVars && (
+                    <div className="flex gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => setShowImportModal(true)}>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Import .env
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={handleExport}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Export
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Search */}
@@ -243,40 +249,42 @@ export default function EnvironmentVariables({ environment, variables: propVaria
             </div>
 
             {/* Add New Variable */}
-            <Card className="mb-6">
-                <CardContent className="p-4">
-                    <div className="flex items-end gap-3">
-                        <div className="flex-1">
-                            <Input
-                                label="Key"
-                                placeholder="VARIABLE_NAME"
-                                value={newKey}
-                                onChange={(e) => setNewKey(e.target.value)}
-                            />
+            {canEditVars && (
+                <Card className="mb-6">
+                    <CardContent className="p-4">
+                        <div className="flex items-end gap-3">
+                            <div className="flex-1">
+                                <Input
+                                    label="Key"
+                                    placeholder="VARIABLE_NAME"
+                                    value={newKey}
+                                    onChange={(e) => setNewKey(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <Input
+                                    label="Value"
+                                    placeholder="variable_value"
+                                    value={newValue}
+                                    onChange={(e) => setNewValue(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex-1">
+                                <Input
+                                    label="Group (optional)"
+                                    placeholder="Database, API, etc."
+                                    value={newGroup}
+                                    onChange={(e) => setNewGroup(e.target.value)}
+                                />
+                            </div>
+                            <Button onClick={handleAddVariable} disabled={!newKey.trim() || !newValue.trim()}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add
+                            </Button>
                         </div>
-                        <div className="flex-1">
-                            <Input
-                                label="Value"
-                                placeholder="variable_value"
-                                value={newValue}
-                                onChange={(e) => setNewValue(e.target.value)}
-                            />
-                        </div>
-                        <div className="flex-1">
-                            <Input
-                                label="Group (optional)"
-                                placeholder="Database, API, etc."
-                                value={newGroup}
-                                onChange={(e) => setNewGroup(e.target.value)}
-                            />
-                        </div>
-                        <Button onClick={handleAddVariable} disabled={!newKey.trim() || !newValue.trim()}>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Variables List */}
             <div className="space-y-6">
@@ -362,25 +370,29 @@ export default function EnvironmentVariables({ environment, variables: propVaria
                                                         </div>
                                                     </div>
                                                     <div className="flex shrink-0 gap-1">
-                                                        <button
-                                                            onClick={() => toggleMask(variable.id)}
-                                                            className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
-                                                            title={maskedValues.has(variable.id) ? 'Show value' : 'Hide value'}
-                                                        >
-                                                            {maskedValues.has(variable.id) ? (
-                                                                <Eye className="h-4 w-4" />
-                                                            ) : (
-                                                                <EyeOff className="h-4 w-4" />
-                                                            )}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => copyToClipboard(variable.value, variable.id)}
-                                                            className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
-                                                            title="Copy value"
-                                                        >
-                                                            <Copy className="h-4 w-4" />
-                                                        </button>
-                                                        {!variable.isInherited && (
+                                                        {canRevealVars && (
+                                                            <button
+                                                                onClick={() => toggleMask(variable.id)}
+                                                                className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                                                title={maskedValues.has(variable.id) ? 'Show value' : 'Hide value'}
+                                                            >
+                                                                {maskedValues.has(variable.id) ? (
+                                                                    <Eye className="h-4 w-4" />
+                                                                ) : (
+                                                                    <EyeOff className="h-4 w-4" />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                        {canRevealVars && (
+                                                            <button
+                                                                onClick={() => copyToClipboard(variable.value, variable.id)}
+                                                                className="rounded p-1.5 text-foreground-muted transition-colors hover:bg-background-tertiary hover:text-foreground"
+                                                                title="Copy value"
+                                                            >
+                                                                <Copy className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                        {!variable.isInherited && canEditVars && (
                                                             <>
                                                                 <button
                                                                     onClick={() => startEditing(variable)}

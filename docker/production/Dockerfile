@@ -31,19 +31,7 @@ RUN --mount=type=cache,target=/tmp/cache \
 USER www-data
 
 # =================================================================
-# Stage 2: Frontend assets compilation
-# =================================================================
-FROM node:24-alpine AS static-assets
-
-WORKDIR /app
-COPY package*.json vite.config.ts postcss.config.cjs tsconfig*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
-COPY . .
-RUN npm run build
-
-# =================================================================
-# Stage 3: Get MinIO client
+# Stage 2: Get MinIO client
 # =================================================================
 FROM minio/mc:${MINIO_VERSION} AS minio-client
 
@@ -100,9 +88,8 @@ COPY --chmod=755 docker/production/entrypoint.d/ /etc/entrypoint.d
 
 # Copy application files from previous stages
 COPY --from=base --chown=www-data:www-data /var/www/html/vendor ./vendor
-COPY --from=static-assets --chown=www-data:www-data /app/public/build ./public/build
 
-# Copy application source code
+# Copy application source code (public/build is pre-built by CI)
 COPY --chown=www-data:www-data composer.json composer.lock ./
 COPY --chown=www-data:www-data app ./app
 COPY --chown=www-data:www-data bootstrap ./bootstrap
@@ -118,7 +105,12 @@ COPY --chown=www-data:www-data artisan artisan
 COPY --chown=www-data:www-data openapi.yaml ./openapi.yaml
 COPY --chown=www-data:www-data changelogs/ ./changelogs/
 
-RUN composer dump-autoload
+# Clear cached service providers that may reference dev-only packages (e.g. laravel-ray)
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+
+# --no-scripts prevents package:discover from running (it boots Laravel which
+# fails without a database connection). Package discovery runs at container start.
+RUN composer dump-autoload --no-scripts
 
 # Configure Nginx and S6 overlay
 COPY docker/production/etc/nginx/conf.d/custom.conf /etc/nginx/conf.d/custom.conf
@@ -131,10 +123,10 @@ RUN mkdir -p /etc/nginx/conf.d && \
 
 # Ensure storage/logs has correct permissions for queue workers
 RUN mkdir -p /var/www/html/storage/logs && \
+    touch /var/www/html/storage/logs/laravel.log && \
     chown -R www-data:www-data /var/www/html/storage/logs && \
     chmod -R 755 /var/www/html/storage/logs && \
-    touch /var/www/html/storage/logs/laravel.log && \
-    chmod 640 /var/www/html/storage/logs/laravel.log
+    chmod 664 /var/www/html/storage/logs/laravel.log
 
 # Install MinIO client
 COPY --from=minio-client /usr/bin/mc /usr/bin/mc

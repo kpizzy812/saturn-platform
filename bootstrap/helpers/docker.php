@@ -139,8 +139,11 @@ function checkMinimumDockerEngineVersion($dockerVersion)
 }
 function executeInDocker(string $containerId, string $command)
 {
-    return "docker exec {$containerId} bash -c '{$command}'";
-    // return "docker exec {$this->deployment_uuid} bash -c '{$command} |& tee -a /proc/1/fd/1; [ \$PIPESTATUS -eq 0 ] || exit \$PIPESTATUS'";
+    // Escape single quotes for safe embedding inside bash -c '...'
+    // Standard bash idiom: replace ' with '\'' (end quote, escaped quote, start quote)
+    $escapedCommand = str_replace("'", "'\\''", $command);
+
+    return "docker exec {$containerId} bash -c '{$escapedCommand}'";
 }
 
 function getContainerStatus(Server $server, string $container_id, bool $all_data = false, bool $throwError = false)
@@ -686,6 +689,11 @@ function fqdnLabelsForTraefik(string $uuid, Collection $domains, bool $is_force_
 }
 function generateLabelsApplication(Application $application, ?ApplicationPreview $preview = null): array
 {
+    // Workers don't need proxy labels
+    if ($application->isWorker()) {
+        return [];
+    }
+
     $ports = $application->settings->is_static ? [80] : $application->ports_exposes_array;
     $onlyPort = null;
     if (count($ports) > 0) {

@@ -47,14 +47,16 @@ class ResourcesController extends Controller
         // General authorization check for viewing resources - using Project as base resource type
         $this->authorize('viewAny', Project::class);
 
-        $projects = Project::where('team_id', $teamId)->get();
+        $dbRelations = collect(DATABASE_TYPES)->map(fn ($db) => (string) str($db)->plural(2))->toArray();
+        $eagerLoad = array_merge(['applications', 'services'], $dbRelations);
+        $projects = Project::where('team_id', $teamId)->with($eagerLoad)->get();
         $resources = collect();
         $resources->push($projects->pluck('applications')->flatten());
         $resources->push($projects->pluck('services')->flatten());
-        foreach (collect(DATABASE_TYPES) as $db) {
-            $resources->push($projects->pluck(str($db)->plural(2))->flatten());
+        foreach ($dbRelations as $relation) {
+            $resources->push($projects->pluck($relation)->flatten());
         }
-        $resources = $resources->flatten();
+        $resources = $resources->flatten()->take(500);
         $resources = $resources->map(function ($resource) {
             $payload = $resource->toArray();
             $payload['status'] = $resource->status;

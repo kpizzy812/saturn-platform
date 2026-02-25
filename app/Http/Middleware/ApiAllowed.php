@@ -25,7 +25,7 @@ class ApiAllowed
 
         $settings = instanceSettings();
         if ($settings->is_api_enabled === false) {
-            return response()->json(['success' => true, 'message' => 'API is disabled.'], 403);
+            return response()->json(['success' => false, 'message' => 'API is disabled.'], 403);
         }
 
         if ($settings->allowed_ips) {
@@ -39,7 +39,7 @@ class ApiAllowed
             $allowedIps = array_filter($allowedIps); // Remove empty entries
 
             if (! empty($allowedIps) && ! checkIPAgainstAllowlist($request->ip(), $allowedIps)) {
-                return response()->json(['success' => true, 'message' => 'You are not allowed to access the API.'], 403);
+                return response()->json(['success' => false, 'message' => 'You are not allowed to access the API.'], 403);
             }
         }
 

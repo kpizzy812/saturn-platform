@@ -38,10 +38,8 @@ class ScheduledTaskJobTest extends TestCase
         $this->assertTrue($reflection->hasProperty('maxExceptions'));
 
         $triesProperty = $reflection->getProperty('tries');
-        $triesProperty->setAccessible(true);
 
         $maxExceptionsProperty = $reflection->getProperty('maxExceptions');
-        $maxExceptionsProperty->setAccessible(true);
 
         // Check default values via reflection on class definition
         $this->assertEquals(3, $triesProperty->getDefaultValue());

@@ -8,6 +8,7 @@
  */
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Visus\Cuid2\Cuid2;
@@ -32,6 +33,8 @@ Route::get('/servers/create', function () {
 })->name('servers.create');
 
 Route::post('/servers', function (Request $request) {
+    Gate::authorize('create', \App\Models\Server::class);
+
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'description' => 'nullable|string|max:500',
@@ -93,6 +96,8 @@ Route::get('/servers/{uuid}/settings/general', function (string $uuid) {
 
 Route::patch('/servers/{uuid}/settings/general', function (string $uuid, Request $request) {
     $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+    Gate::authorize('update', $server);
 
     $validated = $request->validate([
         'name' => 'required|string|max:255',
@@ -286,6 +291,8 @@ Route::get('/servers/{uuid}/metrics', function (string $uuid) {
 Route::get('/servers/{uuid}/terminal', function (string $uuid) {
     $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
+    Gate::authorize('canAccessTerminal');
+
     return Inertia::render('Servers/Terminal/Index', [
         'server' => $server,
     ]);
@@ -341,6 +348,8 @@ Route::prefix('/servers/{uuid}/proxy')->group(function () {
     Route::post('/configuration', function (string $uuid, Request $request) {
         $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
+        Gate::authorize('manageProxy', $server);
+
         $validated = $request->validate([
             'configuration' => 'required|string',
         ]);
@@ -356,6 +365,8 @@ Route::prefix('/servers/{uuid}/proxy')->group(function () {
 
     Route::post('/configuration/reset', function (string $uuid) {
         $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('manageProxy', $server);
 
         try {
             $configuration = \App\Actions\Proxy\GetProxyConfiguration::run($server, forceRegenerate: true);
@@ -443,24 +454,36 @@ Route::prefix('/servers/{uuid}/proxy')->group(function () {
     })->name('servers.proxy.domains');
 
     Route::post('/domains', function (string $uuid, Request $request) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+        Gate::authorize('manageProxy', $server);
+
         // Note: Domains in Saturn Platform are managed at the application/service level,
         // not directly through the proxy. To add a domain, configure it on the application or service.
         return redirect()->back()->with('info', 'Domains are managed at the application/service level. Please configure domains on your applications or services.');
     })->name('servers.proxy.domains.store');
 
     Route::patch('/domains/{domainId}', function (string $uuid, int $domainId, Request $request) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+        Gate::authorize('manageProxy', $server);
+
         // Note: Domains in Saturn Platform are managed at the application/service level,
         // not directly through the proxy. To update a domain, configure it on the application or service.
         return redirect()->back()->with('info', 'Domains are managed at the application/service level. Please update domains on your applications or services.');
     })->name('servers.proxy.domains.update');
 
     Route::delete('/domains/{domainId}', function (string $uuid, int $domainId) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+        Gate::authorize('manageProxy', $server);
+
         // Note: Domains in Saturn Platform are managed at the application/service level,
         // not directly through the proxy. To remove a domain, configure it on the application or service.
         return redirect()->back()->with('info', 'Domains are managed at the application/service level. Please remove domains from your applications or services.');
     })->name('servers.proxy.domains.destroy');
 
     Route::post('/domains/{domainId}/renew-certificate', function (string $uuid, int $domainId) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+        Gate::authorize('manageProxy', $server);
+
         // Note: SSL certificates are automatically managed and renewed by the proxy.
         // Certificate renewal happens automatically when close to expiration.
         return redirect()->back()->with('info', 'SSL certificates are automatically renewed by the proxy. No manual action is required.');
@@ -486,6 +509,8 @@ Route::prefix('/servers/{uuid}/proxy')->group(function () {
     Route::post('/settings', function (string $uuid, Request $request) {
         $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
+        Gate::authorize('manageProxy', $server);
+
         // Note: Proxy settings in Saturn Platform are typically managed through the proxy configuration file
         // and server settings. This is a placeholder for future proxy-specific settings.
         return redirect()->back()->with('info', 'Proxy settings are currently managed through the proxy configuration file. Please use the Configuration tab to modify proxy settings.');
@@ -493,6 +518,8 @@ Route::prefix('/servers/{uuid}/proxy')->group(function () {
 
     Route::post('/restart', function (string $uuid) {
         $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('manageProxy', $server);
 
         try {
             \App\Jobs\RestartProxyJob::dispatch($server);
@@ -506,6 +533,8 @@ Route::prefix('/servers/{uuid}/proxy')->group(function () {
     Route::post('/start', function (string $uuid) {
         $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
 
+        Gate::authorize('manageProxy', $server);
+
         try {
             \App\Actions\Proxy\StartProxy::run($server);
 
@@ -517,6 +546,8 @@ Route::prefix('/servers/{uuid}/proxy')->group(function () {
 
     Route::post('/stop', function (string $uuid) {
         $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('manageProxy', $server);
 
         try {
             \App\Actions\Proxy\StopProxy::run($server);
@@ -573,6 +604,8 @@ Route::prefix('/servers/{uuid}/sentinel')->group(function () {
 // Server action routes
 Route::post('/servers/{uuid}/validate', function (string $uuid) {
     $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+    Gate::authorize('update', $server);
 
     try {
         // Validate server connection

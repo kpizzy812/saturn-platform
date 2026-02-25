@@ -1,5 +1,6 @@
+import * as React from 'react';
 import { AppLayout } from '@/components/layout';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { Card, CardContent, Badge, Button } from '@/components/ui';
 import { Sparkline } from '@/components/ui/Chart';
 import {
@@ -12,12 +13,20 @@ import {
     AlertCircle,
     CheckCircle,
     XCircle,
+    Cpu,
+    MemoryStick,
+    HardDrive,
+    Rocket,
+    Clock,
+    CheckCheck,
+    RefreshCw,
+    WifiOff,
 } from 'lucide-react';
 
 interface ServiceHealth {
     id: string;
     name: string;
-    status: 'healthy' | 'degraded' | 'down';
+    status: 'healthy' | 'degraded' | 'down' | 'unreachable';
     uptime: number;
     responseTime: number;
     errorRate: number;
@@ -36,43 +45,166 @@ interface MetricOverview {
     value: string;
     change: string;
     trend: 'up' | 'down' | 'neutral';
-    data: number[];
-    icon: any;
+    data: (number | null)[];
 }
+
+interface DeploymentStats {
+    today: number;
+    week: number;
+    successRate: number;
+    avgDuration: number;
+    success: number;
+    failed: number;
+}
+
+const metricIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    'Avg CPU': Cpu,
+    'Avg Memory': MemoryStick,
+    'Avg Disk': HardDrive,
+    'Active Deployments': Rocket,
+};
+
+// For resource metrics (CPU/Memory/Disk), rising = bad (red), falling = good (green)
+const isResourceMetric = (label: string) => ['Avg CPU', 'Avg Memory', 'Avg Disk'].includes(label);
 
 interface Props {
     metricsOverview?: MetricOverview[];
     services?: ServiceHealth[];
     recentAlerts?: Alert[];
+    deploymentStats?: DeploymentStats;
 }
 
 function MetricCard({ metric }: { metric: MetricOverview }) {
-    const Icon = metric.icon;
-    const trendColor =
-        metric.trend === 'up'
-            ? 'text-success'
+    const Icon = metricIconMap[metric.label] || Activity;
+    const isResource = isResourceMetric(metric.label);
+    const isNA = metric.value === 'N/A';
+
+    // For resource metrics: up is bad (red), down is good (green)
+    const trendColor = isResource
+        ? metric.trend === 'up'
+            ? 'text-danger'
             : metric.trend === 'down'
+              ? 'text-success'
+              : 'text-foreground-muted'
+        : metric.trend === 'up'
+          ? 'text-success'
+          : metric.trend === 'down'
             ? 'text-danger'
             : 'text-foreground-muted';
+
+    const sparklineColor = isResource
+        ? metric.trend === 'up'
+            ? 'rgb(239, 68, 68)'
+            : 'rgb(52, 211, 153)'
+        : 'rgb(99, 102, 241)';
+
+    // Filter out null values for sparkline rendering
+    const sparklineData = metric.data.filter((v): v is number => v !== null);
+    const hasSparklineData = sparklineData.length > 0 && sparklineData.some((v) => v > 0);
 
     return (
         <Card>
             <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                            <Icon className="h-5 w-5 text-primary" />
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isNA ? 'bg-foreground-muted/10' : 'bg-primary/10'}`}>
+                            <Icon className={`h-5 w-5 ${isNA ? 'text-foreground-muted' : 'text-primary'}`} />
                         </div>
                         <div>
                             <p className="text-sm text-foreground-muted">{metric.label}</p>
-                            <p className="text-2xl font-semibold text-foreground">{metric.value}</p>
+                            <p className={`text-2xl font-semibold ${isNA ? 'text-foreground-muted' : 'text-foreground'}`}>{metric.value}</p>
                         </div>
                     </div>
-                    <span className={`text-sm font-medium ${trendColor}`}>{metric.change}</span>
+                    {metric.change && <span className={`text-sm font-medium ${trendColor}`}>{metric.change}</span>}
                 </div>
-                <Sparkline data={metric.data} color={metric.trend === 'up' ? 'rgb(52, 211, 153)' : 'rgb(99, 102, 241)'} />
+                {hasSparklineData && <Sparkline data={sparklineData} color={sparklineColor} />}
+                {isNA && (
+                    <p className="text-xs text-foreground-subtle">No data available — server may be unreachable</p>
+                )}
             </CardContent>
         </Card>
+    );
+}
+
+function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
+}
+
+function DeploymentStatsSection({ stats }: { stats: DeploymentStats }) {
+    const rateColor = stats.successRate >= 90 ? 'text-success' : stats.successRate >= 70 ? 'text-warning' : 'text-danger';
+    const rateBg = stats.successRate >= 90 ? 'bg-success/10' : stats.successRate >= 70 ? 'bg-warning/10' : 'bg-danger/10';
+
+    return (
+        <div>
+            <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">Deployment Stats</h2>
+                <span className="text-sm text-foreground-muted">Last 7 days</span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                    <CardContent className="p-5">
+                        <div className="flex items-center gap-3">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${rateBg}`}>
+                                <CheckCheck className={`h-5 w-5 ${rateColor}`} />
+                            </div>
+                            <div>
+                                <p className="text-sm text-foreground-muted">Success Rate</p>
+                                <p className={`text-2xl font-semibold ${rateColor}`}>{stats.successRate}%</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                <Rocket className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-foreground-muted">Today / Week</p>
+                                <p className="text-2xl font-semibold text-foreground">
+                                    {stats.today}{' '}
+                                    <span className="text-base font-normal text-foreground-muted">/ {stats.week}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                                <Clock className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-foreground-muted">Avg Duration</p>
+                                <p className="text-2xl font-semibold text-foreground">{formatDuration(stats.avgDuration)}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+                                <TrendingUp className="h-5 w-5 text-success" />
+                            </div>
+                            <div>
+                                <p className="text-sm text-foreground-muted">Success / Failed</p>
+                                <p className="text-2xl font-semibold text-foreground">
+                                    <span className="text-success">{stats.success}</span>
+                                    {' / '}
+                                    <span className={stats.failed > 0 ? 'text-danger' : 'text-foreground-muted'}>{stats.failed}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
     );
 }
 
@@ -90,6 +222,12 @@ function ServiceHealthCard({ service }: { service: ServiceHealth }) {
             bg: 'bg-warning/10',
             badge: 'warning' as const,
         },
+        unreachable: {
+            icon: WifiOff,
+            color: 'text-warning',
+            bg: 'bg-warning/10',
+            badge: 'warning' as const,
+        },
         down: {
             icon: XCircle,
             color: 'text-danger',
@@ -98,7 +236,7 @@ function ServiceHealthCard({ service }: { service: ServiceHealth }) {
         },
     };
 
-    const config = statusConfig[service.status];
+    const config = statusConfig[service.status] || statusConfig.down;
     const StatusIcon = config.icon;
 
     return (
@@ -169,7 +307,29 @@ function AlertItem({ alert }: { alert: Alert }) {
     );
 }
 
-export default function ObservabilityIndex({ metricsOverview = [], services = [], recentAlerts = [] }: Props) {
+export default function ObservabilityIndex({
+    metricsOverview = [],
+    services = [],
+    recentAlerts = [],
+    deploymentStats,
+}: Props) {
+    const [isRefreshing, setIsRefreshing] = React.useState(false);
+
+    const handleRefresh = React.useCallback(() => {
+        setIsRefreshing(true);
+        router.reload({
+            onFinish: () => setIsRefreshing(false),
+        });
+    }, []);
+
+    // Auto-refresh every 60 seconds
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload();
+        }, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
         <AppLayout title="Observability" breadcrumbs={[{ label: 'Observability' }]}>
             <div className="space-y-6">
@@ -180,16 +340,9 @@ export default function ObservabilityIndex({ metricsOverview = [], services = []
                         <p className="text-foreground-muted">Monitor your infrastructure health and performance</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <select className="rounded-md border border-border bg-background-secondary px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary">
-                            <option>Last 1 hour</option>
-                            <option>Last 6 hours</option>
-                            <option>Last 24 hours</option>
-                            <option>Last 7 days</option>
-                            <option>Last 30 days</option>
-                        </select>
-                        <Button variant="secondary">
-                            <Activity className="mr-2 h-4 w-4" />
-                            Live Mode
+                        <Button variant="secondary" onClick={handleRefresh} disabled={isRefreshing}>
+                            <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            {isRefreshing ? 'Refreshing...' : 'Refresh'}
                         </Button>
                     </div>
                 </div>
@@ -200,19 +353,20 @@ export default function ObservabilityIndex({ metricsOverview = [], services = []
                         <div className="col-span-full p-12 text-center">
                             <Activity className="mx-auto h-12 w-12 text-foreground-muted" />
                             <h3 className="mt-4 text-lg font-medium text-foreground">No metrics available</h3>
-                            <p className="mt-2 text-foreground-muted">Metrics will appear once data is being collected</p>
+                            <p className="mt-2 text-foreground-muted">Metrics will appear once servers report health data</p>
                         </div>
                     ) : (
-                        metricsOverview.map((metric) => (
-                            <MetricCard key={metric.label} metric={metric} />
-                        ))
+                        metricsOverview.map((metric) => <MetricCard key={metric.label} metric={metric} />)
                     )}
                 </div>
+
+                {/* Deployment Stats */}
+                {deploymentStats && <DeploymentStatsSection stats={deploymentStats} />}
 
                 {/* Service Health Grid */}
                 <div>
                     <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-lg font-semibold text-foreground">Service Health</h2>
+                        <h2 className="text-lg font-semibold text-foreground">Server Health</h2>
                         <Link href="/observability/metrics">
                             <Button variant="ghost" size="sm">
                                 View All Metrics
@@ -223,8 +377,8 @@ export default function ObservabilityIndex({ metricsOverview = [], services = []
                     {services.length === 0 ? (
                         <Card className="p-12 text-center">
                             <Server className="mx-auto h-12 w-12 text-foreground-muted" />
-                            <h3 className="mt-4 text-lg font-medium text-foreground">No services monitored</h3>
-                            <p className="mt-2 text-foreground-muted">Services will appear once monitoring is configured</p>
+                            <h3 className="mt-4 text-lg font-medium text-foreground">No servers monitored</h3>
+                            <p className="mt-2 text-foreground-muted">Add a server to start monitoring</p>
                         </Card>
                     ) : (
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -236,13 +390,13 @@ export default function ObservabilityIndex({ metricsOverview = [], services = []
                 </div>
 
                 <div className="grid gap-6 lg:grid-cols-2">
-                    {/* Recent Alerts */}
+                    {/* Recent Issues */}
                     <div>
                         <div className="mb-4 flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-foreground">Recent Alerts</h2>
+                            <h2 className="text-lg font-semibold text-foreground">Recent Issues</h2>
                             <Link href="/observability/alerts">
                                 <Button variant="ghost" size="sm">
-                                    View All
+                                    Manage Alerts
                                     <ArrowRight className="ml-2 h-4 w-4" />
                                 </Button>
                             </Link>
@@ -250,7 +404,7 @@ export default function ObservabilityIndex({ metricsOverview = [], services = []
                         {recentAlerts.length === 0 ? (
                             <Card className="p-12 text-center">
                                 <CheckCircle className="mx-auto h-12 w-12 text-foreground-muted" />
-                                <h3 className="mt-4 text-lg font-medium text-foreground">No recent alerts</h3>
+                                <h3 className="mt-4 text-lg font-medium text-foreground">No recent issues</h3>
                                 <p className="mt-2 text-foreground-muted">All systems operating normally</p>
                             </Card>
                         ) : (

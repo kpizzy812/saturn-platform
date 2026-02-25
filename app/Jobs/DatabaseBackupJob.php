@@ -38,6 +38,8 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
     public $tries = 2;
 
+    public $backoff = [30, 60];
+
     public $maxExceptions = 1;
 
     public ?Team $team = null;
@@ -250,7 +252,11 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
                         }
 
                     } catch (\Throwable $e) {
-                        // Continue without env vars - will be handled in backup_standalone_mongodb method
+                        Log::warning('Failed to retrieve MongoDB env vars for backup, continuing with defaults', [
+                            'database_id' => $this->database->id ?? null,
+                            'container' => $this->container_name ?? null,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
                 }
             } else {

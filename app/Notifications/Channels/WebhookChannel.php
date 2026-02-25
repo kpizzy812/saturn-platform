@@ -5,6 +5,7 @@ namespace App\Notifications\Channels;
 use App\Contracts\HasWebhookNotification;
 use App\Jobs\SendWebhookJob;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 
 class WebhookChannel
 {
@@ -18,22 +19,17 @@ class WebhookChannel
         $webhookSettings = $notifiable->webhookNotificationSettings;
 
         if (! $webhookSettings || ! $webhookSettings->isEnabled() || ! $webhookSettings->webhook_url) {
-            if (isDev()) {
-                ray('Webhook notification skipped - not enabled or no URL configured');
-            }
+            Log::debug('Webhook notification skipped - not enabled or no URL configured');
 
             return;
         }
 
         $payload = $notification->toWebhook();
 
-        if (isDev()) {
-            ray('Dispatching webhook notification', [
-                'notification' => get_class($notification),
-                'url' => $webhookSettings->webhook_url,
-                'payload' => $payload,
-            ]);
-        }
+        Log::debug('Dispatching webhook notification', [
+            'notification' => get_class($notification),
+            'url' => $webhookSettings->webhook_url,
+        ]);
 
         SendWebhookJob::dispatch($payload, $webhookSettings->webhook_url);
     }

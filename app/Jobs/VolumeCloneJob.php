@@ -16,6 +16,12 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 1;
+
+    public int $timeout = 3600;
+
+    public int $maxExceptions = 1;
+
     protected string $cloneDir = '/data/saturn/clone';
 
     public function __construct(
@@ -40,6 +46,17 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
             Log::error("Failed to copy volume data for {$this->sourceVolume}: ".$e->getMessage());
             throw $e;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('VolumeCloneJob permanently failed', [
+            'source_volume' => $this->sourceVolume,
+            'target_volume' => $this->targetVolume,
+            'source_server_id' => $this->sourceServer->id,
+            'target_server_id' => $this->targetServer?->id,
+            'error' => $exception->getMessage(),
+        ]);
     }
 
     protected function cloneLocalVolume()

@@ -10,10 +10,19 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SubscriptionInvoiceFailedJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
+
+    public int $timeout = 120;
+
+    public int $maxExceptions = 2;
+
+    public array $backoff = [10, 30, 60];
 
     public function __construct(protected Team $team)
     {
@@ -60,6 +69,7 @@ class SubscriptionInvoiceFailedJob implements ShouldBeEncrypted, ShouldQueue
                         }
                     }
                 } catch (\Exception $e) {
+                    Log::warning('Stripe API check failed during invoice failure handling', ['team_id' => $this->team->id, 'error' => $e->getMessage()]);
                 }
             }
 
@@ -79,5 +89,14 @@ class SubscriptionInvoiceFailedJob implements ShouldBeEncrypted, ShouldQueue
             send_internal_notification('SubscriptionInvoiceFailedJob failed with: '.$e->getMessage());
             throw $e;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SubscriptionInvoiceFailedJob permanently failed', [
+            'team_id' => $this->team->id,
+            'error' => $exception->getMessage(),
+        ]);
+        send_internal_notification('SubscriptionInvoiceFailedJob permanently failed for team '.$this->team->id.': '.$exception->getMessage());
     }
 }

@@ -45,11 +45,23 @@ class CreatePrivateGhAppApplication
             'git_branch' => ['string', 'required', new \App\Rules\ValidGitBranch],
             'build_pack' => ['required', Rule::enum(BuildPackTypes::class)],
             'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
+            'application_type' => 'string|in:web,worker,both',
             'github_app_uuid' => 'string|required',
             'watch_paths' => 'string|nullable',
-            'docker_compose_location' => 'string',
+            'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
         ];
+
+        // Workers don't need ports
+        if ($request->application_type === 'worker') {
+            $validationRules['ports_exposes'] = 'string|regex:/^(\d+)(,\d+)*$/|nullable';
+        }
+
+        // Docker compose ports are optional
+        if ($request->build_pack === 'dockercompose') {
+            $validationRules['ports_exposes'] = 'string|nullable';
+        }
+
         $validationRules = array_merge(sharedDataApplications(), $validationRules);
 
         $validator = customApiValidator($request->all(), $validationRules);
@@ -63,8 +75,8 @@ class CreatePrivateGhAppApplication
         if (! $request->has('name')) {
             $request->offsetSet('name', generate_application_name($request->git_repository, $request->git_branch));
         }
-        if ($request->build_pack === 'dockercompose') {
-            $request->offsetSet('ports_exposes', '80');
+        if ($request->build_pack === 'dockercompose' && blank($request->ports_exposes)) {
+            $request->offsetSet('ports_exposes', null);
         }
 
         // Validate application data

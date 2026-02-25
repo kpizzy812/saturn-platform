@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Badge, useConfirm } from '@/components/ui';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import {
     Plus,
@@ -81,15 +82,16 @@ export default function TagsIndex({ tags = [] }: Props) {
                 {filteredTags.length === 0 ? (
                     tags.length === 0 ? <EmptyState onCreateClick={() => setShowCreateModal(true)} /> : <NoResults />
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {filteredTags.map((tag) => (
-                            <TagCard
-                                key={tag.id}
-                                tag={tag}
-                                onDelete={(e) => handleDelete(tag.id, e)}
-                            />
+                    <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {filteredTags.map((tag, i) => (
+                            <StaggerItem key={tag.id} index={i}>
+                                <TagCard
+                                    tag={tag}
+                                    onDelete={(e) => handleDelete(tag.id, e)}
+                                />
+                            </StaggerItem>
                         ))}
-                    </div>
+                    </StaggerList>
                 )}
             </div>
 
@@ -205,9 +207,10 @@ function TagCard({ tag, onDelete }: TagCardProps) {
 
 function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
     return (
+        <FadeIn>
         <Card className="p-12 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                <TagIcon className="h-8 w-8 text-foreground-muted" />
+                <TagIcon className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
             </div>
             <h3 className="mt-4 text-lg font-medium text-foreground">No tags yet</h3>
             <p className="mt-2 text-foreground-muted">
@@ -218,11 +221,13 @@ function EmptyState({ onCreateClick }: { onCreateClick: () => void }) {
                 Create Tag
             </Button>
         </Card>
+        </FadeIn>
     );
 }
 
 function NoResults() {
     return (
+        <FadeIn>
         <Card className="p-12 text-center">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
                 <Filter className="h-8 w-8 text-foreground-muted" />
@@ -232,6 +237,7 @@ function NoResults() {
                 Try adjusting your search query.
             </p>
         </Card>
+        </FadeIn>
     );
 }
 

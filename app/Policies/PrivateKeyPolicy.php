@@ -4,9 +4,14 @@ namespace App\Policies;
 
 use App\Models\PrivateKey;
 use App\Models\User;
+use App\Services\Authorization\ResourceAuthorizationService;
 
 class PrivateKeyPolicy
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view any models.
      */
@@ -20,8 +25,7 @@ class PrivateKeyPolicy
      */
     public function view(User $user, PrivateKey $privateKey): bool
     {
-        // Handle null team_id
-        if ($privateKey->team_id === null) {
+        if ($privateKey->team_id === null) { // @phpstan-ignore identical.alwaysFalse
             return false;
         }
 
@@ -30,7 +34,6 @@ class PrivateKeyPolicy
             return $user->canAccessSystemResources();
         }
 
-        // Regular resource: Check team membership
         return $user->teams->contains('id', $privateKey->team_id);
     }
 
@@ -39,9 +42,12 @@ class PrivateKeyPolicy
      */
     public function create(User $user): bool
     {
-        // Only admins/owners can create private keys
-        // Members should not be able to create SSH keys that could be used for deployments
-        return $user->isAdmin();
+        $team = currentTeam();
+        if (! $team) {
+            return false;
+        }
+
+        return $this->authService->hasPermission($user, 'servers.security', $team->id);
     }
 
     /**
@@ -49,19 +55,20 @@ class PrivateKeyPolicy
      */
     public function update(User $user, PrivateKey $privateKey): bool
     {
-        // Handle null team_id
-        if ($privateKey->team_id === null) {
+        if ($privateKey->team_id === null) { // @phpstan-ignore identical.alwaysFalse
             return false;
         }
 
-        // System resource (team_id=0): Only root team admins/owners can update
+        // System resource (team_id=0)
         if ($privateKey->team_id === 0) {
             return $user->canAccessSystemResources();
         }
 
-        // Regular resource: Must be admin/owner of the team
-        return $user->isAdminOfTeam($privateKey->team_id)
-            && $user->teams->contains('id', $privateKey->team_id);
+        if (! $user->teams->contains('id', $privateKey->team_id)) {
+            return false;
+        }
+
+        return $this->authService->hasPermission($user, 'servers.security', $privateKey->team_id);
     }
 
     /**
@@ -69,19 +76,20 @@ class PrivateKeyPolicy
      */
     public function delete(User $user, PrivateKey $privateKey): bool
     {
-        // Handle null team_id
-        if ($privateKey->team_id === null) {
+        if ($privateKey->team_id === null) { // @phpstan-ignore identical.alwaysFalse
             return false;
         }
 
-        // System resource (team_id=0): Only root team admins/owners can delete
+        // System resource (team_id=0)
         if ($privateKey->team_id === 0) {
             return $user->canAccessSystemResources();
         }
 
-        // Regular resource: Must be admin/owner of the team
-        return $user->isAdminOfTeam($privateKey->team_id)
-            && $user->teams->contains('id', $privateKey->team_id);
+        if (! $user->teams->contains('id', $privateKey->team_id)) {
+            return false;
+        }
+
+        return $this->authService->hasPermission($user, 'servers.security', $privateKey->team_id);
     }
 
     /**

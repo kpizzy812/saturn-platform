@@ -15,6 +15,7 @@ use App\Jobs\ServerCheckJob;
 use App\Models\ScheduledDatabaseBackup;
 use App\Models\ScheduledDatabaseBackupExecution;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -38,19 +39,22 @@ Route::get('/databases', function () {
             'name' => $db->environment->name,
             'type' => $db->environment->type ?? 'development',
         ] : null,
+        'project_name' => $db->environment?->project?->name,
+        'environment_name' => $db->environment?->name,
+        'environment_type' => $db->environment?->type ?? 'development',
         'created_at' => $db->created_at,
         'updated_at' => $db->updated_at,
     ];
 
     $databases = collect()
-        ->concat(\App\Models\StandalonePostgresql::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'postgresql')))
-        ->concat(\App\Models\StandaloneMysql::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mysql')))
-        ->concat(\App\Models\StandaloneMariadb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mariadb')))
-        ->concat(\App\Models\StandaloneMongodb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'mongodb')))
-        ->concat(\App\Models\StandaloneRedis::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'redis')))
-        ->concat(\App\Models\StandaloneKeydb::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'keydb')))
-        ->concat(\App\Models\StandaloneDragonfly::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'dragonfly')))
-        ->concat(\App\Models\StandaloneClickhouse::ownedByCurrentTeam()->with('environment')->get()->map(fn ($db) => $formatDb($db, 'clickhouse')))
+        ->concat(\App\Models\StandalonePostgresql::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'postgresql')))
+        ->concat(\App\Models\StandaloneMysql::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'mysql')))
+        ->concat(\App\Models\StandaloneMariadb::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'mariadb')))
+        ->concat(\App\Models\StandaloneMongodb::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'mongodb')))
+        ->concat(\App\Models\StandaloneRedis::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'redis')))
+        ->concat(\App\Models\StandaloneKeydb::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'keydb')))
+        ->concat(\App\Models\StandaloneDragonfly::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'dragonfly')))
+        ->concat(\App\Models\StandaloneClickhouse::ownedByCurrentTeam()->with('environment.project')->get()->map(fn ($db) => $formatDb($db, 'clickhouse')))
         ->sortByDesc('updated_at')
         ->values();
 
@@ -99,6 +103,8 @@ Route::get('/databases/create', function () {
 })->name('databases.create');
 
 Route::post('/databases', function (Request $request) {
+    Gate::authorize('create', \App\Models\StandalonePostgresql::class);
+
     $request->validate([
         'name' => 'required|string|max:255',
         'database_type' => 'required|string|in:postgresql,mysql,mariadb,mongodb,redis,keydb,dragonfly,clickhouse',
@@ -219,6 +225,8 @@ Route::get('/databases/{uuid}', function (string $uuid) {
 Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
     [$database, $type] = findDatabaseByUuid($uuid);
 
+    Gate::authorize('update', $database);
+
     $validated = $request->validate([
         // General
         'name' => 'sometimes|string|max:255',
@@ -295,6 +303,9 @@ Route::patch('/databases/{uuid}', function (string $uuid, Request $request) {
 
 Route::delete('/databases/{uuid}', function (string $uuid) {
     [$database, $type] = findDatabaseByUuid($uuid);
+
+    Gate::authorize('delete', $database);
+
     $database->delete();
 
     return redirect()->route('databases.index');
@@ -333,6 +344,10 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
                     'running' => 'in_progress',
                     default => $execution->status,
                 },
+                'restore_status' => $execution->restore_status,
+                'restore_started_at' => $execution->restore_started_at?->toISOString(),
+                'restore_finished_at' => $execution->restore_finished_at?->toISOString(),
+                'restore_message' => $execution->restore_message,
                 'created_at' => $execution->created_at,
             ];
         });
@@ -347,6 +362,8 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
 
 Route::post('/databases/{uuid}/backups', function (string $uuid) {
     [$database, $type] = findDatabaseByUuid($uuid);
+
+    Gate::authorize('manageBackups', $database);
 
     // Get or create a scheduled backup for this database
     $scheduledBackup = $database->scheduledBackups()->first();
@@ -368,6 +385,8 @@ Route::post('/databases/{uuid}/backups', function (string $uuid) {
 
 Route::patch('/databases/{uuid}/backups/schedule', function (string $uuid, \Illuminate\Http\Request $request) {
     [$database, $type] = findDatabaseByUuid($uuid);
+
+    Gate::authorize('manageBackups', $database);
 
     $validated = $request->validate([
         'enabled' => 'required|boolean',
@@ -395,6 +414,8 @@ Route::patch('/databases/{uuid}/backups/schedule', function (string $uuid, \Illu
 Route::post('/databases/{uuid}/backups/{executionId}/restore', function (string $uuid, int $executionId) {
     [$database, $type] = findDatabaseByUuid($uuid);
 
+    Gate::authorize('manageBackups', $database);
+
     $execution = ScheduledDatabaseBackupExecution::where('id', $executionId)
         ->whereHas('scheduledDatabaseBackup', function ($q) use ($database) {
             $q->where('database_id', $database->id);
@@ -405,15 +426,28 @@ Route::post('/databases/{uuid}/backups/{executionId}/restore', function (string 
         return back()->with('error', 'Cannot restore from a non-successful backup.');
     }
 
+    if ($execution->restore_status === 'in_progress') {
+        return back()->with('error', 'A restore is already in progress for this backup.');
+    }
+
+    $execution->update([
+        'restore_status' => 'pending',
+        'restore_message' => null,
+        'restore_started_at' => null,
+        'restore_finished_at' => null,
+    ]);
+
     $backup = $execution->scheduledDatabaseBackup;
     \App\Jobs\DatabaseRestoreJob::dispatch($backup, $execution);
 
-    return back()->with('success', 'Restore job queued. The database will be restored shortly.');
+    return back()->with('success', 'Restore job queued. Track progress in the Restore History below.');
 })->name('databases.backups.restore');
 
 // Delete a specific backup execution
 Route::delete('/databases/{uuid}/backups/{executionId}', function (string $uuid, int $executionId) {
     [$database, $type] = findDatabaseByUuid($uuid);
+
+    Gate::authorize('manageBackups', $database);
 
     $execution = ScheduledDatabaseBackupExecution::where('id', $executionId)
         ->whereHas('scheduledDatabaseBackup', function ($q) use ($database) {
@@ -644,6 +678,8 @@ Route::get('/databases/{uuid}/settings/backups', function (string $uuid) {
 Route::patch('/databases/{uuid}/settings/backups', function (string $uuid, Request $request) {
     [$database, $type] = findDatabaseByUuid($uuid);
 
+    Gate::authorize('manageBackups', $database);
+
     $request->validate([
         'backup_id' => 'nullable|exists:scheduled_database_backups,id',
         'enabled' => 'boolean',
@@ -692,6 +728,8 @@ Route::patch('/databases/{uuid}/settings/backups', function (string $uuid, Reque
 // Manual backup trigger endpoint
 Route::post('/databases/{uuid}/export', function (string $uuid, Request $request) {
     [$database, $type] = findDatabaseByUuid($uuid);
+
+    Gate::authorize('manage', $database);
 
     try {
         // Find or create a scheduled backup config for this database
@@ -817,6 +855,8 @@ Route::get('/databases/{uuid}/import', function (string $uuid) {
 Route::post('/databases/{uuid}/import/remote', function (string $uuid, Request $request) {
     [$database, $type] = findDatabaseByUuid($uuid);
 
+    Gate::authorize('manage', $database);
+
     $request->validate([
         'connection_string' => 'required|string|max:2000',
     ]);
@@ -854,6 +894,8 @@ Route::post('/databases/{uuid}/import/remote', function (string $uuid, Request $
 // Import: Restore uploaded file
 Route::post('/databases/{uuid}/import/upload', function (string $uuid, Request $request) {
     [$database, $type] = findDatabaseByUuid($uuid);
+
+    Gate::authorize('manage', $database);
 
     // Check for uploaded file in the upload storage path
     $uploadDir = "upload/{$database->uuid}/restore";
@@ -922,6 +964,8 @@ Route::get('/databases/{uuid}/overview', function (string $uuid) {
 
 Route::post('/databases/{uuid}/restart', function (string $uuid) {
     [$database, $type] = findDatabaseByUuid($uuid);
+
+    Gate::authorize('manage', $database);
 
     try {
         RestartDatabase::run($database);

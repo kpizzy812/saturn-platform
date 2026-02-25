@@ -17,6 +17,7 @@ use App\Services\RepositoryAnalyzer\DTOs\AnalysisResult;
 use App\Services\RepositoryAnalyzer\DTOs\AppDependency;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedApp;
 use App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase;
+use App\Services\RepositoryAnalyzer\DTOs\DetectedPersistentVolume;
 use App\Services\RepositoryAnalyzer\Exceptions\ProvisioningException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -42,6 +43,8 @@ class InfrastructureProvisioner
         string $serverUuid,
         array $gitConfig,
         ?string $monorepoGroupId = null,
+        array $appOverrides = [],
+        array $dbOverrides = [],
     ): ProvisioningResult {
         // Generate group ID for monorepo apps
         $groupId = $monorepoGroupId ?? ($analysis->monorepo->isMonorepo ? (string) Str::uuid() : null);
@@ -60,7 +63,7 @@ class InfrastructureProvisioner
         $destinationUuid = $destination->uuid;
 
         try {
-            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId) {
+            return DB::transaction(function () use ($analysis, $environment, $server, $destination, $destinationUuid, $gitConfig, $groupId, $appOverrides, $dbOverrides) {
                 // 1. Create databases first
                 $createdDatabases = $this->createDatabases(
                     $analysis->databases,
@@ -76,17 +79,24 @@ class InfrastructureProvisioner
                     $server,
                     $destination,
                     $gitConfig,
-                    $groupId
+                    $groupId,
+                    $appOverrides
                 );
 
                 // 3. Link databases to applications (ResourceLink with auto_inject)
-                $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases, $environment);
+                $this->createResourceLinks($createdApps, $createdDatabases, $analysis->databases, $environment, $dbOverrides);
 
                 // 4. Create internal URLs between apps (e.g., API_URL for frontend → backend)
-                $this->createInternalAppLinks($createdApps, $analysis->appDependencies);
+                $this->createInternalAppLinks($createdApps, $analysis->appDependencies, $analysis->applications);
 
                 // 5. Create environment variables from .env.example
                 $this->createEnvVariables($createdApps, $analysis->envVariables);
+
+                // 6. Apply user-provided env variable overrides
+                $this->applyEnvVarOverrides($createdApps, $appOverrides);
+
+                // 7. Create persistent volumes for file-based databases (SQLite)
+                $this->createPersistentVolumes($createdApps, $analysis->persistentVolumes);
 
                 return new ProvisioningResult(
                     applications: $createdApps,
@@ -216,17 +226,20 @@ class InfrastructureProvisioner
         StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
+        array $appOverrides = [],
     ): array {
         $created = [];
 
         foreach ($detectedApps as $app) {
+            $overrides = $appOverrides[$app->name] ?? [];
             $created[$app->name] = $this->createApplication(
                 $app,
                 $environment,
                 $server,
                 $destination,
                 $gitConfig,
-                $groupId
+                $groupId,
+                $overrides
             );
         }
 
@@ -240,6 +253,7 @@ class InfrastructureProvisioner
         StandaloneDocker $destination,
         array $gitConfig,
         ?string $groupId,
+        array $overrides = [],
     ): Application {
         $application = new Application;
         $application->uuid = (string) Str::uuid();
@@ -262,16 +276,33 @@ class InfrastructureProvisioner
         // Build configuration
         $application->build_pack = $app->buildPack;
 
-        // For Dockerfile buildpack in monorepo: use repo root as build context
-        // Monorepo Dockerfiles reference root-level files (lockfiles, shared packages)
-        if ($groupId && $app->buildPack === 'dockerfile' && $app->path !== '.') {
-            $application->base_directory = '';
-            $application->dockerfile_location = '/'.ltrim($app->path, '/').'/Dockerfile';
+        // Custom Dockerfile location (for compose-derived apps like hummingbot/Dockerfile.custom)
+        if ($app->dockerfileLocation) {
+            $application->dockerfile_location = $app->dockerfileLocation;
+        }
+
+        // Application type: user override takes priority, then detected mode
+        $applicationType = $overrides['application_type'] ?? $app->applicationMode;
+        $application->application_type = $applicationType;
+
+        // Apply base_directory: user override takes priority
+        if (! empty($overrides['base_directory'])) {
+            $baseDir = $overrides['base_directory'];
+            $application->base_directory = $baseDir === '/' ? '' : $baseDir;
         } else {
+            // Always use app subdirectory as base_directory (build context)
+            // Dockerfile is expected relative to this directory
             $application->base_directory = $app->path === '.' ? '' : '/'.ltrim($app->path, '/');
         }
 
-        $application->ports_exposes = (string) $app->defaultPort;
+        // Workers don't need ports; web/both apps use detected port or default to 80
+        if ($applicationType === 'worker') {
+            $application->ports_exposes = null;
+        } else {
+            $application->ports_exposes = $app->defaultPort > 0
+                ? (string) $app->defaultPort
+                : '80';
+        }
 
         // Apply CI config commands (install, build, start)
         if ($app->installCommand) {
@@ -296,34 +327,40 @@ class InfrastructureProvisioner
             }
         }
 
-        // Health check configuration — universal defaults that work for any app
-        // Dockerfile apps need longer start_period (migrations, compilation, etc.)
-        $isDockerfile = $app->buildPack === 'dockerfile' || $app->dockerfileInfo !== null;
-        $application->health_check_interval = 10;
-        $application->health_check_timeout = 5;
-        $application->health_check_retries = 10;
-        $application->health_check_start_period = $isDockerfile ? 30 : 15;
+        // Health check configuration
+        if ($applicationType === 'worker') {
+            // Workers don't serve HTTP — disable health check, use container stability check
+            $application->health_check_enabled = false;
+        } else {
+            // Universal defaults that work for any web app
+            // Dockerfile apps need longer start_period (migrations, compilation, etc.)
+            $isDockerfile = $app->buildPack === 'dockerfile' || $app->dockerfileInfo !== null;
+            $application->health_check_interval = 10;
+            $application->health_check_timeout = 5;
+            $application->health_check_retries = 10;
+            $application->health_check_start_period = $isDockerfile ? 30 : 15;
 
-        if ($app->healthCheck) {
-            $application->health_check_enabled = true;
-            $application->health_check_path = $app->healthCheck->path;
-            $application->health_check_method = $app->healthCheck->method ?? 'GET';
+            if ($app->healthCheck) {
+                $application->health_check_enabled = true;
+                $application->health_check_path = $app->healthCheck->path;
+                $application->health_check_method = $app->healthCheck->method ?? 'GET';
 
-            // Use detected values if more generous than defaults
-            if ($app->healthCheck->intervalSeconds > 0) {
-                $application->health_check_interval = $app->healthCheck->intervalSeconds;
-            }
-            if ($app->healthCheck->timeoutSeconds > 0) {
-                $application->health_check_timeout = $app->healthCheck->timeoutSeconds;
-            }
-            if ($app->healthCheck->retries > 0) {
-                $application->health_check_retries = max($app->healthCheck->retries, 10);
-            }
-            if ($app->healthCheck->startPeriodSeconds > 0) {
-                $application->health_check_start_period = max(
-                    $app->healthCheck->startPeriodSeconds,
-                    $application->health_check_start_period
-                );
+                // Use detected values if more generous than defaults
+                if ($app->healthCheck->intervalSeconds > 0) {
+                    $application->health_check_interval = $app->healthCheck->intervalSeconds;
+                }
+                if ($app->healthCheck->timeoutSeconds > 0) {
+                    $application->health_check_timeout = $app->healthCheck->timeoutSeconds;
+                }
+                if ($app->healthCheck->retries > 0) {
+                    $application->health_check_retries = max($app->healthCheck->retries, 10);
+                }
+                if ($app->healthCheck->startPeriodSeconds > 0) {
+                    $application->health_check_start_period = max(
+                        $app->healthCheck->startPeriodSeconds,
+                        $application->health_check_start_period
+                    );
+                }
             }
         }
 
@@ -332,10 +369,15 @@ class InfrastructureProvisioner
             $application->monorepo_group_id = $groupId;
         }
 
-        // Generate FQDN from project name + short ID (e.g. "pix11-a1b2c3.saturn.ac")
-        $projectName = $environment->project?->name;
-        $slug = generateSubdomainFromName($application->name, $server, $projectName);
-        $application->fqdn = generateFqdn($server, $slug);
+        // Workers don't need a domain — no HTTP traffic to route
+        if ($applicationType === 'worker') {
+            $application->fqdn = null;
+        } else {
+            // Generate FQDN from project name + short ID (e.g. "pix11-a1b2c3.saturn.ac")
+            $projectName = $environment->project?->name;
+            $slug = generateSubdomainFromName($application->name, $server, $projectName);
+            $application->fqdn = generateFqdn($server, $slug);
+        }
 
         $application->save();
 
@@ -349,13 +391,17 @@ class InfrastructureProvisioner
         array $createdApps,
         array $createdDatabases,
         array $detectedDatabases,
-        Environment $environment
+        Environment $environment,
+        array $dbOverrides = [],
     ): void {
         foreach ($detectedDatabases as $dbInfo) {
             $database = $createdDatabases[$dbInfo->type] ?? null;
             if (! $database) {
                 continue;
             }
+
+            // Custom env var name from user (e.g. "REDIS" instead of "REDIS_URL")
+            $injectAs = $dbOverrides[$dbInfo->type]['inject_as'] ?? null;
 
             foreach ($dbInfo->consumers as $appName) {
                 $application = $createdApps[$appName] ?? null;
@@ -370,7 +416,7 @@ class InfrastructureProvisioner
                     'target_type' => get_class($database),
                     'target_id' => $database->id,
                     'auto_inject' => true,
-                    'inject_as' => null, // Use default (DATABASE_URL, REDIS_URL, etc.)
+                    'inject_as' => $injectAs,
                     'use_external_url' => false,
                 ]);
             }
@@ -378,19 +424,44 @@ class InfrastructureProvisioner
     }
 
     /**
+     * Env var prefixes that are exposed to client-side JavaScript (browser).
+     * These MUST use public FQDN, not Docker internal URLs.
+     */
+    private const CLIENT_SIDE_ENV_PREFIXES = [
+        'NEXT_PUBLIC_',
+        'VITE_',
+        'REACT_APP_',
+        'NUXT_PUBLIC_',
+    ];
+
+    /**
      * Create internal URL environment variables between apps
      *
-     * For example, if frontend depends on backend, creates API_URL=http://backend:port
+     * For frontend apps (browser-side): uses public FQDN of the target backend
+     * For backend-to-backend: uses Docker internal DNS (container-name:port)
      *
      * @param  AppDependency[]  $appDependencies
+     * @param  DetectedApp[]  $detectedApps
      */
-    private function createInternalAppLinks(array $createdApps, array $appDependencies): void
+    private function createInternalAppLinks(array $createdApps, array $appDependencies, array $detectedApps): void
     {
+        // Build a type map from detected apps
+        $appTypeMap = [];
+        $appFrameworkMap = [];
+        foreach ($detectedApps as $detected) {
+            $appTypeMap[$detected->name] = $detected->type;
+            $appFrameworkMap[$detected->name] = $detected->framework;
+        }
+
         foreach ($appDependencies as $dependency) {
             $sourceApp = $createdApps[$dependency->appName] ?? null;
             if (! $sourceApp || empty($dependency->internalUrls)) {
                 continue;
             }
+
+            $sourceType = $appTypeMap[$dependency->appName] ?? 'unknown';
+            $sourceFramework = $appFrameworkMap[$dependency->appName] ?? '';
+            $isFrontend = $sourceType === 'frontend';
 
             foreach ($dependency->internalUrls as $envVarName => $targetAppName) {
                 $targetApp = $createdApps[$targetAppName] ?? null;
@@ -398,28 +469,74 @@ class InfrastructureProvisioner
                     continue;
                 }
 
-                // Build internal URL using docker network DNS
-                // Format: http://container-name:port
-                $containerName = $targetApp->uuid;
-                $port = $targetApp->ports_exposes ?? 3000;
+                // Determine if this env var is consumed by client-side JavaScript
+                $isClientSideVar = $this->isClientSideEnvVar($envVarName);
 
-                // Use first exposed port if multiple
-                if (str_contains((string) $port, ',')) {
-                    $port = explode(',', (string) $port)[0];
+                if ($isFrontend || $isClientSideVar) {
+                    // Frontend apps or client-side env vars: use public FQDN
+                    $url = $targetApp->fqdn;
+
+                    // Adapt env var name for the framework's client-side prefix
+                    $envVarName = $this->adaptEnvVarForFramework($envVarName, $sourceFramework);
+                } else {
+                    // Backend-to-backend: use Docker internal DNS
+                    $containerName = $targetApp->uuid;
+                    $port = $targetApp->ports_exposes ?? 3000;
+
+                    if (str_contains((string) $port, ',')) {
+                        $port = explode(',', (string) $port)[0];
+                    }
+
+                    $url = "http://{$containerName}:{$port}";
                 }
 
-                $internalUrl = "http://{$containerName}:{$port}";
-
-                // Create environment variable
                 $sourceApp->environment_variables()->updateOrCreate(
                     ['key' => $envVarName],
                     [
-                        'value' => $internalUrl,
-                        'is_buildtime' => false,
+                        'value' => $url,
+                        'is_buildtime' => $isFrontend || $isClientSideVar,
                     ]
                 );
             }
         }
+    }
+
+    /**
+     * Check if env var name is a client-side variable (exposed to browser)
+     */
+    private function isClientSideEnvVar(string $varName): bool
+    {
+        foreach (self::CLIENT_SIDE_ENV_PREFIXES as $prefix) {
+            if (str_starts_with($varName, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Adapt env var name to use the correct framework-specific client-side prefix
+     *
+     * For example, API_URL → NEXT_PUBLIC_API_URL for Next.js frontend
+     */
+    private function adaptEnvVarForFramework(string $envVarName, string $framework): string
+    {
+        // If already has a client-side prefix, keep it
+        if ($this->isClientSideEnvVar($envVarName)) {
+            return $envVarName;
+        }
+
+        // Add framework-specific prefix for client-side access
+        return match (true) {
+            str_contains($framework, 'next') => 'NEXT_PUBLIC_'.$envVarName,
+            str_contains($framework, 'nuxt') => 'NUXT_PUBLIC_'.$envVarName,
+            str_contains($framework, 'vite'),
+            str_contains($framework, 'vue'),
+            str_contains($framework, 'svelte') => 'VITE_'.$envVarName,
+            str_contains($framework, 'react') => 'REACT_APP_'.$envVarName,
+            default => $envVarName,
+        };
     }
 
     private function createEnvVariables(array $createdApps, array $envVariables): void
@@ -448,6 +565,77 @@ class InfrastructureProvisioner
                     'is_buildtime' => false,
                 ]
             );
+        }
+    }
+
+    /**
+     * Apply user-provided environment variable overrides
+     */
+    private function applyEnvVarOverrides(array $createdApps, array $appOverrides): void
+    {
+        foreach ($appOverrides as $appName => $overrides) {
+            $application = $createdApps[$appName] ?? null;
+            if (! $application || empty($overrides['env_vars'])) {
+                continue;
+            }
+
+            foreach ($overrides['env_vars'] as $envVar) {
+                if (empty($envVar['key']) || ! isset($envVar['value'])) {
+                    continue;
+                }
+
+                $application->environment_variables()->updateOrCreate(
+                    ['key' => $envVar['key']],
+                    [
+                        'value' => $envVar['value'],
+                        'is_buildtime' => false,
+                    ]
+                );
+            }
+        }
+    }
+
+    /**
+     * Create persistent volumes for file-based databases (e.g., SQLite)
+     *
+     * Unlike PostgreSQL/MySQL which run as separate containers, SQLite stores
+     * data in a file inside the app container. Without a persistent volume,
+     * this file is lost on every redeployment. This method auto-creates the
+     * volume and sets the appropriate environment variable.
+     *
+     * @param  Application[]  $createdApps
+     * @param  DetectedPersistentVolume[]  $persistentVolumes
+     */
+    private function createPersistentVolumes(array $createdApps, array $persistentVolumes): void
+    {
+        foreach ($persistentVolumes as $volume) {
+            $application = $createdApps[$volume->forApp] ?? null;
+            if (! $application) {
+                continue;
+            }
+
+            // Create persistent volume mount
+            $application->persistentStorages()->create([
+                'name' => $volume->name,
+                'mount_path' => $volume->mountPath,
+            ]);
+
+            // Set env var so the app knows where to store the database file
+            if ($volume->envVarName && $volume->envVarValue) {
+                $application->environment_variables()->updateOrCreate(
+                    ['key' => $volume->envVarName],
+                    [
+                        'value' => $volume->envVarValue,
+                        'is_buildtime' => false,
+                    ]
+                );
+            }
+
+            $this->logger->info('Auto-created persistent volume for SQLite', [
+                'app' => $volume->forApp,
+                'mount_path' => $volume->mountPath,
+                'reason' => $volume->reason,
+            ]);
         }
     }
 

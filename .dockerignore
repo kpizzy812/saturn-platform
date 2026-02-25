@@ -1,6 +1,5 @@
 /.phpunit.cache
 /node_modules
-/public/build
 /public/hot
 /public/storage
 /vendor
@@ -16,6 +15,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/bootstrap/cache/*.php
 /.npm
 /.bash_history
 /_data

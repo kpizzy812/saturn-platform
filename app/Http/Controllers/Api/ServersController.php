@@ -81,7 +81,7 @@ class ServersController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $servers = ModelsServer::whereTeamId($teamId)->select('id', 'name', 'uuid', 'ip', 'user', 'port', 'description')->get()->load(['settings'])->map(function ($server) {
+        $servers = ModelsServer::whereTeamId($teamId)->select('id', 'name', 'uuid', 'ip', 'user', 'port', 'description')->with('settings')->get()->map(function ($server) {
             $server['is_reachable'] = $server->settings->is_reachable;
             $server['is_usable'] = $server->settings->is_usable;
 
@@ -320,7 +320,7 @@ class ServersController extends Controller
 
             return response()->json(serializeApiResponse($domains));
         }
-        $projects = Project::where('team_id', $teamId)->get();
+        $projects = Project::where('team_id', $teamId)->with(['applications.destination.server', 'services.applications'])->get();
         $domains = collect();
         $applications = $projects->pluck('applications')->flatten();
         $settings = instanceSettings();
@@ -503,6 +503,8 @@ class ServersController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
+
+        $this->authorize('create', ModelsServer::class);
 
         $return = validateIncomingRequest($request);
         if ($return instanceof \Illuminate\Http\JsonResponse) {
@@ -710,6 +712,9 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('update', $server);
+
         if ($request->proxy_type) {
             $validProxyTypes = collect(ProxyTypes::cases())->map(function ($proxyType) {
                 return str($proxyType->value)->lower();
@@ -804,6 +809,9 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('delete', $server);
+
         if ($server->definedResources()->count() > 0) {
             return response()->json(['message' => 'Server has resources, so you need to delete them before.'], 400);
         }
@@ -882,6 +890,9 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('update', $server);
+
         ValidateServer::dispatch($server);
 
         return response()->json(['message' => 'Validation started.'], 201);
@@ -936,6 +947,8 @@ class ServersController extends Controller
         if (! $server) {
             return response()->json(['message' => 'Server not found.'], 404);
         }
+
+        $this->authorize('update', $server);
 
         if (! $server->isFunctional()) {
             return response()->json(['message' => 'Server is not reachable.'], 400);

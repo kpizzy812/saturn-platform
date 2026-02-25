@@ -9,6 +9,7 @@ use App\Models\ApplicationPreview;
 use App\Models\LocalFileVolume;
 use App\Models\LocalPersistentVolume;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Url\Url;
 use Symfony\Component\Yaml\Yaml;
@@ -1360,7 +1361,7 @@ class ApplicationComposeParser
             }
             $this->resource->docker_compose_raw = Yaml::dump($originalYaml, 10, 2);
         } catch (\Exception $e) {
-            ray('Failed to update docker_compose_raw in applicationParser: '.$e->getMessage());
+            Log::warning('Failed to update docker_compose_raw in applicationParser: '.$e->getMessage());
         }
 
         data_forget($this->resource, 'environment_variables');

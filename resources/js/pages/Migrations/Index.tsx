@@ -65,9 +65,14 @@ export default function MigrationsIndex({ migrations, statusFilter }: Props) {
             breadcrumbs={[{ label: 'Migrations' }]}
         >
             <div className="mx-auto max-w-6xl">
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-foreground">Environment Migrations</h1>
-                    <p className="text-foreground-muted">Deploy resources across environments: dev → uat → production</p>
+                <div className="mb-6 flex items-start justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-foreground">Environment Migrations</h1>
+                        <p className="text-foreground-muted">Deploy resources across environments: dev → uat → production</p>
+                    </div>
+                    <p className="text-xs text-foreground-subtle mt-2">
+                        View per-project timelines from the project page.
+                    </p>
                 </div>
 
                 {/* Status Filter */}

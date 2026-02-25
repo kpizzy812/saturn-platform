@@ -10,7 +10,9 @@ interface Props {
     application: Application;
     variables?: EnvironmentVariable[];
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
 // Structure from backend (matches routes/web.php)
@@ -27,7 +29,7 @@ interface EnvironmentVariable {
     created_at?: string;
 }
 
-export default function ApplicationVariables({ application, variables: propVariables, projectUuid, environmentUuid }: Props) {
+export default function ApplicationVariables({ application, variables: propVariables, projectUuid, projectName }: Props) {
     const confirm = useConfirm();
     const [variables, setVariables] = React.useState<EnvironmentVariable[]>(propVariables || []);
     const [revealedVars, setRevealedVars] = React.useState<Set<string | number>>(new Set());
@@ -192,8 +194,7 @@ export default function ApplicationVariables({ application, variables: propVaria
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Environment Variables' },
     ];
@@ -266,8 +267,8 @@ export default function ApplicationVariables({ application, variables: propVaria
                     <div className="space-y-4">
                         {/* Header Row */}
                         <div className="grid grid-cols-12 gap-4 pb-3 border-b border-border">
-                            <div className="col-span-4 text-sm font-medium text-foreground-muted">Key</div>
-                            <div className="col-span-5 text-sm font-medium text-foreground-muted">Value</div>
+                            <div className="col-span-5 text-sm font-medium text-foreground-muted">Key</div>
+                            <div className="col-span-4 text-sm font-medium text-foreground-muted">Value</div>
                             <div className="col-span-2 text-sm font-medium text-foreground-muted">Options</div>
                             <div className="col-span-1"></div>
                         </div>
@@ -284,7 +285,7 @@ export default function ApplicationVariables({ application, variables: propVaria
                         {/* Variables */}
                         {variables.map((variable) => (
                             <div key={variable.id} className="grid grid-cols-12 gap-4 items-start">
-                                <div className="col-span-4">
+                                <div className="col-span-5">
                                     <Input
                                         value={variable.key}
                                         onChange={(e) => handleUpdateVariable(variable.id, 'key', e.target.value)}
@@ -304,7 +305,7 @@ export default function ApplicationVariables({ application, variables: propVaria
                                         )}
                                     </div>
                                 </div>
-                                <div className="col-span-5">
+                                <div className="col-span-4">
                                     <div className="relative">
                                         <Input
                                             type={revealedVars.has(variable.id) ? 'text' : 'password'}

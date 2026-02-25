@@ -3,6 +3,7 @@ import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge } from '@/components/ui';
 import { useForm } from '@inertiajs/react';
 import { Send, CheckCircle2, Info } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface TelegramNotificationSettings {
     telegram_enabled: boolean;
@@ -62,6 +63,8 @@ const eventOptions = [
 
 export default function TelegramNotifications({ settings, lastTestAt, lastTestStatus }: Props) {
     const { data, setData, post, processing, errors, isDirty } = useForm(settings);
+    const { can } = usePermissions();
+    const canConfigureNotifications = can('settings.notifications');
     const [isTesting, setIsTesting] = React.useState(false);
     const [showAdvanced, setShowAdvanced] = React.useState(false);
 
@@ -239,7 +242,7 @@ export default function TelegramNotifications({ settings, lastTestAt, lastTestSt
                                         variant="secondary"
                                         onClick={handleTest}
                                         loading={isTesting}
-                                        disabled={!data.telegram_token || !data.telegram_chat_id || processing}
+                                        disabled={!data.telegram_token || !data.telegram_chat_id || processing || !canConfigureNotifications}
                                     >
                                         <Send className="mr-2 h-4 w-4" />
                                         Send Test Message
@@ -260,7 +263,7 @@ export default function TelegramNotifications({ settings, lastTestAt, lastTestSt
                                 <Button
                                     type="submit"
                                     loading={processing}
-                                    disabled={!isDirty}
+                                    disabled={!isDirty || !canConfigureNotifications}
                                 >
                                     Save Settings
                                 </Button>

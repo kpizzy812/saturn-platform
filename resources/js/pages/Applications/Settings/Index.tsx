@@ -18,15 +18,19 @@ interface Props {
     application: Application;
     applicationSettings?: ApplicationSettings;
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
-export default function ApplicationSettingsPage({ application, applicationSettings, projectUuid, environmentUuid }: Props) {
+export default function ApplicationSettingsPage({ application, applicationSettings, projectUuid, projectName, environmentUuid: _environmentUuid, environmentName: _environmentName }: Props) {
     const [settings, setSettings] = React.useState({
         name: application.name || '',
         description: application.description || '',
         git_branch: application.git_branch || 'main',
         base_directory: application.base_directory || '/',
+        dockerfile_location: application.dockerfile_location || '/Dockerfile',
+        docker_compose_location: application.docker_compose_location || '/docker-compose.yaml',
         build_command: application.build_command || '',
         install_command: application.install_command || '',
         start_command: application.start_command || '',
@@ -54,11 +58,11 @@ export default function ApplicationSettingsPage({ application, applicationSettin
     // Generate webhook URL based on git source
     const webhookUrl = React.useMemo(() => {
         const baseUrl = window.location.origin;
-        const source = (application as any).source?.type || 'github';
+        const source = application.source?.type || 'github';
         return `${baseUrl}/webhooks/source/${source}/events/manual`;
-    }, [(application as any).source?.type]);
+    }, [application.source?.type]);
 
-    const webhookSecret = (application as any).manual_webhook_secret_github || (application as any).manual_webhook_secret_gitlab || '';
+    const webhookSecret = application.manual_webhook_secret_github || application.manual_webhook_secret_gitlab || '';
 
     const copyToClipboard = (text: string, field: string) => {
         navigator.clipboard.writeText(text);
@@ -110,8 +114,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Settings' },
     ];
@@ -230,6 +233,36 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                         Root directory relative to repository root. For monorepos, use e.g. <code className="bg-muted px-1 rounded">apps/api</code>
                                     </p>
                                 </div>
+                                {settings.build_pack === 'dockerfile' && (
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground mb-2 block">
+                                            Dockerfile Location
+                                        </label>
+                                        <Input
+                                            value={settings.dockerfile_location}
+                                            onChange={(e) => setSettings({ ...settings, dockerfile_location: e.target.value })}
+                                            placeholder="/Dockerfile"
+                                        />
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            Path to the Dockerfile relative to repository root. E.g. <code className="bg-muted px-1 rounded">/apps/api/Dockerfile</code>
+                                        </p>
+                                    </div>
+                                )}
+                                {settings.build_pack === 'dockercompose' && (
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground mb-2 block">
+                                            Docker Compose Location
+                                        </label>
+                                        <Input
+                                            value={settings.docker_compose_location}
+                                            onChange={(e) => setSettings({ ...settings, docker_compose_location: e.target.value })}
+                                            placeholder="/docker-compose.yaml"
+                                        />
+                                        <p className="text-xs text-foreground-muted mt-1">
+                                            Path to docker-compose file relative to repository root.
+                                        </p>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="text-sm font-medium text-foreground mb-2 block">
                                         Install Command

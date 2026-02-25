@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link, router } from '@inertiajs/react';
-import { Plus, MoreHorizontal, Settings, Trash2, FolderOpen } from 'lucide-react';
+import { Plus, MoreHorizontal, Settings, Trash2, FolderOpen, FolderKanban, Clock } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { useConfirm, Button } from '@/components/ui';
+import { Badge, useConfirm, Button } from '@/components/ui';
 import { FadeIn, StaggerList, StaggerItem } from '@/components/animation';
 import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Project as BaseProject } from '@/types';
@@ -16,7 +16,7 @@ interface Project {
     servicesCount?: number;
     status?: 'active' | 'inactive' | 'deploying';
     updated_at?: string;
-    environments?: { applications?: unknown[]; databases?: unknown[]; services?: unknown[] }[];
+    environments?: { name?: string; applications?: unknown[]; databases?: unknown[]; services?: unknown[] }[];
 }
 
 interface Props {
@@ -38,13 +38,34 @@ const formatTimeAgo = (date?: string): string => {
     return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
 };
 
-// Helper to count services in a project
-const countServices = (project: Project): number => {
-    if (typeof project.servicesCount === 'number') return project.servicesCount;
-    if (!project.environments) return 0;
-    return project.environments.reduce((acc, env) => {
-        return acc + (env.applications?.length || 0) + (env.databases?.length || 0) + (env.services?.length || 0);
-    }, 0);
+// Helper to count resources by type
+const countResources = (project: Project): { apps: number; dbs: number; services: number; total: number } => {
+    if (!project.environments) {
+        const total = typeof project.servicesCount === 'number' ? project.servicesCount : 0;
+        return { apps: 0, dbs: 0, services: 0, total };
+    }
+    const counts = project.environments.reduce(
+        (acc, env) => ({
+            apps: acc.apps + (env.applications?.length || 0),
+            dbs: acc.dbs + (env.databases?.length || 0),
+            services: acc.services + (env.services?.length || 0),
+        }),
+        { apps: 0, dbs: 0, services: 0 }
+    );
+    return { ...counts, total: counts.apps + counts.dbs + counts.services };
+};
+
+const ENV_BADGE_VARIANTS: Record<string, 'info' | 'warning' | 'success' | 'default'> = {
+    development: 'info',
+    dev: 'info',
+    staging: 'warning',
+    uat: 'warning',
+    production: 'success',
+    prod: 'success',
+};
+
+const getEnvBadgeVariant = (name: string): 'info' | 'warning' | 'success' | 'default' => {
+    return ENV_BADGE_VARIANTS[name.toLowerCase()] || 'default';
 };
 
 function ProjectCard({ project }: { project: Project }) {
@@ -80,28 +101,43 @@ function ProjectCard({ project }: { project: Project }) {
 
     const status = project.status || 'active';
     const config = statusConfig[status];
-    const servicesCount = countServices(project);
+    const { apps, dbs, services: svcs, total } = countResources(project);
     const lastActivity = project.lastActivity || formatTimeAgo(project.updated_at);
     const projectUrl = project.uuid ? `/projects/${project.uuid}` : `/projects/${project.id}`;
+
+    const resourceSegments = [
+        { count: apps, label: 'app', dotColor: 'bg-info' },
+        { count: dbs, label: 'db', dotColor: 'bg-warning' },
+        { count: svcs, label: 'svc', dotColor: 'bg-primary' },
+    ].filter(s => s.count > 0);
 
     return (
         <Link
             href={projectUrl}
-            className={`group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/20 ${config.glow}`}
+            className={`group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20 ${config.glow}`}
         >
             {/* Subtle gradient overlay on hover */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
+            {/* Header: icon + status + name + menu */}
             <div className="relative flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                    <div className={`h-2.5 w-2.5 rounded-full ${config.dot}`} />
-                    <h3 className="font-medium text-foreground transition-colors group-hover:text-primary">{project.name}</h3>
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
+                        <FolderKanban className="h-5 w-5 text-primary transition-transform duration-200 group-hover:scale-110 group-hover:animate-wiggle" />
+                        <span className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background-secondary transition-transform duration-200 group-hover:scale-125 ${config.dot}`} />
+                    </div>
+                    <div>
+                        <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{project.name}</h3>
+                        <p className="text-sm text-foreground-muted">
+                            {total} resource{total !== 1 ? 's' : ''}
+                        </p>
+                    </div>
                 </div>
                 <Dropdown>
                     <DropdownTrigger>
                         <button
                             onClick={(e) => e.preventDefault()}
-                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-primary/10 group-hover:opacity-100"
+                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-white/10 group-hover:opacity-100"
                         >
                             <MoreHorizontal className="h-4 w-4 text-foreground-muted" />
                         </button>
@@ -127,13 +163,67 @@ function ProjectCard({ project }: { project: Project }) {
                     </DropdownContent>
                 </Dropdown>
             </div>
-            <div className="relative mt-4 flex items-center gap-3 text-sm text-foreground-muted">
-                <span className="flex items-center gap-1.5">
-                    <span className="text-foreground-subtle">{servicesCount}</span>
-                    <span>services</span>
-                </span>
-                <span className="text-foreground-subtle">·</span>
-                <span>{lastActivity}</span>
+
+            {/* Resource breakdown */}
+            {resourceSegments.length > 0 && (
+                <div className="relative mt-3 flex items-center gap-3">
+                    {resourceSegments.map((seg) => {
+                        const targetUrl = seg.label === 'app'
+                            ? `/applications?project=${encodeURIComponent(project.name)}`
+                            : seg.label === 'db'
+                            ? `/databases?project=${encodeURIComponent(project.name)}`
+                            : null;
+                        return targetUrl ? (
+                            <Link
+                                key={seg.label}
+                                href={targetUrl}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-all duration-200 hover:bg-white/10 hover:scale-105"
+                            >
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor} transition-transform duration-200 group-hover:scale-125`} />
+                                <span className="text-xs text-foreground-muted transition-colors hover:text-foreground">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </Link>
+                        ) : (
+                            <div key={seg.label} className="flex items-center gap-1.5">
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
+                                <span className="text-xs text-foreground-muted">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Environment badges */}
+            {project.environments && project.environments.length > 0 && (
+                <div className="relative mt-3 flex flex-wrap gap-1.5">
+                    {project.environments.slice(0, 4).map((env, i) => (
+                        <Link
+                            key={i}
+                            href={`${projectUrl}?env=${encodeURIComponent(env.name || '')}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex transition-transform duration-200 hover:scale-110"
+                        >
+                            <Badge variant={getEnvBadgeVariant(env.name || '')} size="sm" className="cursor-pointer transition-all duration-200 hover:shadow-md hover:brightness-110">
+                                {env.name || 'unknown'}
+                            </Badge>
+                        </Link>
+                    ))}
+                    {project.environments.length > 4 && (
+                        <Badge variant="default" size="sm">
+                            +{project.environments.length - 4}
+                        </Badge>
+                    )}
+                </div>
+            )}
+
+            {/* Last updated */}
+            <div className="relative mt-3 flex items-center gap-1.5 border-t border-border/30 pt-3">
+                <Clock className="h-3 w-3 text-foreground-subtle" />
+                <span className="text-xs text-foreground-subtle">{lastActivity}</span>
             </div>
         </Link>
     );
@@ -143,8 +233,7 @@ function NewProjectCard() {
     return (
         <Link
             href="/projects/create"
-            className="group relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/50 bg-gradient-to-br from-background-secondary/30 to-transparent p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/10"
-            style={{ minHeight: '118px' }}
+            className="group relative flex h-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/50 bg-gradient-to-br from-background-secondary/30 to-transparent p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:bg-primary/5 hover:shadow-xl hover:shadow-primary/10"
         >
             {/* Animated gradient background */}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/5 via-transparent to-purple-500/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
@@ -210,8 +299,8 @@ export default function Dashboard({ projects = [] }: Props) {
                             </p>
                         </div>
                         <Link href="/projects/create">
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
+                            <Button className="group">
+                                <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                                 New Project
                             </Button>
                         </Link>

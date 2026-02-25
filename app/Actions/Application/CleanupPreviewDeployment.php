@@ -128,7 +128,10 @@ class CleanupPreviewDeployment
                 instant_remote_process(["docker rm -f {$escapedUuid}"], $server);
             }
         } catch (\Throwable $e) {
-            // Silently handle - container may already be gone
+            Log::debug('Failed to kill helper container during preview cleanup (may already be gone)', [
+                'deployment_uuid' => $deployment_uuid,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

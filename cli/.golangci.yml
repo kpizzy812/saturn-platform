@@ -69,7 +69,7 @@ formatters:
       sections:
         - standard
         - default
-        - prefix(github.com/coollabsio)
+        - prefix(github.com/saturn-platform)
 
   exclusions:
     generated: lax

@@ -3,6 +3,7 @@ import { SettingsLayout } from '../Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Checkbox, Button, Badge } from '@/components/ui';
 import { useForm } from '@inertiajs/react';
 import { Send, CheckCircle2, Code } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface WebhookNotificationSettings {
     webhook_enabled: boolean;
@@ -68,6 +69,8 @@ const examplePayload = `{
 
 export default function WebhookNotifications({ settings, lastTestAt, lastTestStatus }: Props) {
     const { data, setData, post, processing, errors, isDirty } = useForm(settings);
+    const { can } = usePermissions();
+    const canConfigureNotifications = can('settings.notifications');
     const [isTesting, setIsTesting] = React.useState(false);
     const [showPayloadExample, setShowPayloadExample] = React.useState(false);
 
@@ -219,7 +222,7 @@ export default function WebhookNotifications({ settings, lastTestAt, lastTestSta
                                         variant="secondary"
                                         onClick={handleTest}
                                         loading={isTesting}
-                                        disabled={!data.webhook_url || processing}
+                                        disabled={!data.webhook_url || processing || !canConfigureNotifications}
                                     >
                                         <Send className="mr-2 h-4 w-4" />
                                         Send Test Webhook
@@ -240,7 +243,7 @@ export default function WebhookNotifications({ settings, lastTestAt, lastTestSta
                                 <Button
                                     type="submit"
                                     loading={processing}
-                                    disabled={!isDirty}
+                                    disabled={!isDirty || !canConfigureNotifications}
                                 >
                                     Save Settings
                                 </Button>
@@ -270,7 +273,11 @@ export default function WebhookNotifications({ settings, lastTestAt, lastTestSta
                                 <h4 className="font-medium text-foreground">Security Recommendations</h4>
                                 <ul className="mt-2 list-inside list-disc space-y-1 text-foreground-muted">
                                     <li>Use HTTPS for your webhook endpoint</li>
-                                    <li>Implement webhook signature verification (coming soon)</li>
+                                    <li>
+                                        For webhook signature verification, use{' '}
+                                        <strong>Team Webhooks</strong> (Settings → Team → Webhooks) which include HMAC-SHA256 signing via the{' '}
+                                        <code className="rounded bg-background-tertiary px-1 text-xs">X-Saturn-Signature</code> header
+                                    </li>
                                     <li>Rate limit your endpoint to prevent abuse</li>
                                     <li>Validate the payload structure before processing</li>
                                 </ul>

@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { ConfigureProjectsModal } from '@/components/team/ConfigureProjectsModal';
 import { KickMemberModal } from '@/components/team/KickMemberModal';
+import { StaggerList, StaggerItem } from '@/components/animation';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface TeamMember {
     id: number;
@@ -55,6 +57,7 @@ interface Props {
 }
 
 export default function TeamIndex({ team, members: initialMembers }: Props) {
+    const { can } = usePermissions();
     const [members, setMembers] = React.useState<TeamMember[]>(initialMembers);
     const [showKickModal, setShowKickModal] = React.useState(false);
     const [showRoleModal, setShowRoleModal] = React.useState(false);
@@ -203,19 +206,21 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                     Manage who has access to your team
                                 </CardDescription>
                             </div>
-                            <Link href="/settings/team/invite">
-                                <Button>
-                                    <Mail className="mr-2 h-4 w-4" />
-                                    Invite Member
-                                </Button>
-                            </Link>
+                            {can('team.invite') && (
+                                <Link href="/settings/team/invite">
+                                    <Button>
+                                        <Mail className="mr-2 h-4 w-4" />
+                                        Invite Member
+                                    </Button>
+                                </Link>
+                            )}
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-3">
-                            {members.map((member) => (
+                        <StaggerList className="space-y-3">
+                            {members.map((member, i) => (
+                                <StaggerItem key={member.id} index={i}>
                                 <div
-                                    key={member.id}
                                     className="flex items-center justify-between rounded-lg border border-border bg-background p-4 transition-all hover:border-border/80 hover:shadow-sm"
                                 >
                                     <div className="flex items-center gap-4">
@@ -267,61 +272,70 @@ export default function TeamIndex({ team, members: initialMembers }: Props) {
                                                             View Profile
                                                         </DropdownItem>
                                                     </Link>
-                                                    <DropdownItem
-                                                        onClick={() => {
-                                                            setSelectedMember(member);
-                                                            setNewRole(member.role);
-                                                            setShowRoleModal(true);
-                                                        }}
-                                                    >
-                                                        <UserCog className="h-4 w-4" />
-                                                        Change Role
-                                                    </DropdownItem>
+                                                    {can('team.manage_members') && (
+                                                        <DropdownItem
+                                                            onClick={() => {
+                                                                setSelectedMember(member);
+                                                                setNewRole(member.role);
+                                                                setShowRoleModal(true);
+                                                            }}
+                                                        >
+                                                            <UserCog className="h-4 w-4" />
+                                                            Change Role
+                                                        </DropdownItem>
+                                                    )}
                                                     {/* Configure Projects - available for all roles except owner */}
-                                                    <DropdownItem
-                                                        onClick={() => {
-                                                            setSelectedMember(member);
-                                                            setShowProjectsModal(true);
-                                                        }}
-                                                    >
-                                                        <FolderCog className="h-4 w-4" />
-                                                        <span className="flex items-center gap-2">
-                                                            Configure Projects
-                                                            {member.projectAccess?.hasNoAccess && (
-                                                                <Badge variant="danger" className="text-[10px] px-1 py-0">
-                                                                    No Access
-                                                                </Badge>
-                                                            )}
-                                                            {member.projectAccess?.hasLimitedAccess && (
-                                                                <Badge variant="warning" className="text-[10px] px-1 py-0">
-                                                                    {member.projectAccess.count}/{member.projectAccess.total}
-                                                                </Badge>
-                                                            )}
-                                                            {member.projectAccess?.hasFullAccess && (
-                                                                <Badge variant="success" className="text-[10px] px-1 py-0">
-                                                                    Full
-                                                                </Badge>
-                                                            )}
-                                                        </span>
-                                                    </DropdownItem>
-                                                    <DropdownDivider />
-                                                    <DropdownItem
-                                                        danger
-                                                        onClick={() => {
-                                                            setSelectedMember(member);
-                                                            setShowKickModal(true);
-                                                        }}
-                                                    >
-                                                        <UserX className="h-4 w-4" />
-                                                        Remove Member
-                                                    </DropdownItem>
+                                                    {can('team.manage_members') && (
+                                                        <DropdownItem
+                                                            onClick={() => {
+                                                                setSelectedMember(member);
+                                                                setShowProjectsModal(true);
+                                                            }}
+                                                        >
+                                                            <FolderCog className="h-4 w-4" />
+                                                            <span className="flex items-center gap-2">
+                                                                Configure Projects
+                                                                {member.projectAccess?.hasNoAccess && (
+                                                                    <Badge variant="danger" className="text-[10px] px-1 py-0">
+                                                                        No Access
+                                                                    </Badge>
+                                                                )}
+                                                                {member.projectAccess?.hasLimitedAccess && (
+                                                                    <Badge variant="warning" className="text-[10px] px-1 py-0">
+                                                                        {member.projectAccess.count}/{member.projectAccess.total}
+                                                                    </Badge>
+                                                                )}
+                                                                {member.projectAccess?.hasFullAccess && (
+                                                                    <Badge variant="success" className="text-[10px] px-1 py-0">
+                                                                        Full
+                                                                    </Badge>
+                                                                )}
+                                                            </span>
+                                                        </DropdownItem>
+                                                    )}
+                                                    {can('team.manage_members') && (
+                                                        <>
+                                                            <DropdownDivider />
+                                                            <DropdownItem
+                                                                danger
+                                                                onClick={() => {
+                                                                    setSelectedMember(member);
+                                                                    setShowKickModal(true);
+                                                                }}
+                                                            >
+                                                                <UserX className="h-4 w-4" />
+                                                                Remove Member
+                                                            </DropdownItem>
+                                                        </>
+                                                    )}
                                                 </DropdownContent>
                                             </Dropdown>
                                         )}
                                     </div>
                                 </div>
+                                </StaggerItem>
                             ))}
-                        </div>
+                        </StaggerList>
                     </CardContent>
                 </Card>
             </div>

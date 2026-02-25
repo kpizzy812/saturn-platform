@@ -1,0 +1,42 @@
+{
+  "name": "@saturn/panel",
+  "version": "0.1.0",
+  "description": "Saturn Platform TUI Panel",
+  "type": "module",
+  "bin": {
+    "saturn-panel": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.tsx",
+    "build": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ink": "^5.1.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "ink-select-input": "^6.0.0",
+    "react": "^19.2.4",
+    "ssh2": "^1.16.0",
+    "chalk": "^5.4.0",
+    "date-fns": "^4.1.0",
+    "conf": "^13.0.0",
+    "strip-ansi": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/ssh2": "^1.15.0",
+    "tsx": "^4.19.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "ink-testing-library": "^4.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

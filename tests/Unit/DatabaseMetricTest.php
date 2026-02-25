@@ -15,7 +15,6 @@ class DatabaseMetricTest extends TestCase
     {
         $reflection = new \ReflectionClass(DatabaseMetric::class);
         $method = $reflection->getMethod('parseSizeToGb');
-        $method->setAccessible(true);
 
         $model = new DatabaseMetric;
 

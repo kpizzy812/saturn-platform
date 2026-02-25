@@ -88,6 +88,15 @@ class Github extends Controller
             foreach ($applicationsByServer as $serverId => $serverApplications) {
                 foreach ($serverApplications as $application) {
                     $webhook_secret = data_get($application, 'manual_webhook_secret_github');
+                    if (empty($webhook_secret)) {
+                        $return_payloads->push([
+                            'application' => $application->name,
+                            'status' => 'failed',
+                            'message' => 'Webhook secret not configured.',
+                        ]);
+
+                        continue;
+                    }
                     $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
                     // Security: Always validate signature - never skip in dev mode
                     if (! hash_equals($x_hub_signature_256, $hmac)) {
@@ -555,9 +564,11 @@ class Github extends Controller
                     ->with('error', 'Invalid GitHub callback — missing parameters.');
             }
 
-            $github_app = GithubApp::where('uuid', $state)->first();
+            $github_app = GithubApp::where('uuid', $state)
+                ->where('team_id', currentTeam()->id)
+                ->first();
             if (! $github_app) {
-                \Log::error('GitHub App redirect: GithubApp not found', ['state' => $state]);
+                \Log::error('GitHub App redirect: GithubApp not found or unauthorized', ['state' => $state]);
 
                 return redirect()->route('sources.github.index')
                     ->with('error', 'GitHub App record not found. Please try creating again.');
@@ -639,23 +650,27 @@ class Github extends Controller
                     ->with('error', 'Invalid GitHub install callback — missing installation_id.');
             }
 
-            // Find GithubApp by UUID if source is provided
+            // Find GithubApp by UUID if source is provided (team-scoped)
             $github_app = null;
+            $teamId = currentTeam()->id;
             if ($source) {
-                $github_app = GithubApp::where('uuid', $source)->first();
+                $github_app = GithubApp::where('uuid', $source)
+                    ->where('team_id', $teamId)
+                    ->first();
             }
 
-            // Fallback: find by checking which app owns this installation via GitHub API
+            // Fallback: find by checking which app owns this installation via GitHub API (team-scoped)
             if (! $github_app) {
                 $candidates = GithubApp::whereNotNull('app_id')
                     ->whereNull('installation_id')
                     ->whereNotNull('private_key_id')
+                    ->where('team_id', $teamId)
                     ->get();
 
                 foreach ($candidates as $candidate) {
                     try {
                         $jwt = generateGithubJwt($candidate);
-                        $response = Http::withHeaders([
+                        $response = Http::timeout(15)->withHeaders([
                             'Authorization' => "Bearer $jwt",
                             'Accept' => 'application/vnd.github+json',
                         ])->get("{$candidate->api_url}/app/installations/{$installation_id}");
@@ -688,6 +703,12 @@ class Github extends Controller
                     'github_app_id' => $github_app->id,
                     'installation_id' => $installation_id,
                 ]);
+            }
+
+            // Redirect back to boarding if the user started from there
+            $returnTo = session()->pull('github_app_return_to');
+            if ($returnTo === 'boarding') {
+                return redirect('/boarding')->with('success', 'GitHub App connected successfully!');
             }
 
             return redirect()->route('sources.github.show', ['id' => $github_app->id]);

@@ -3,6 +3,7 @@ import { TemplateCard, Template } from '@/components/ui/TemplateCard';
 import { useState, useMemo } from 'react';
 import { Search, ArrowLeft } from 'lucide-react';
 import { Link } from '@inertiajs/react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     templates?: Template[];
@@ -119,11 +120,13 @@ export default function TemplatesIndex({ templates }: Props) {
                 {featuredTemplates.length > 0 && (
                     <div className="mb-8">
                         <h2 className="mb-4 text-xl font-semibold text-foreground">Featured Templates</h2>
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {featuredTemplates.map((template) => (
-                                <TemplateCard key={template.id} template={template} featured />
+                        <StaggerList className="grid gap-4 md:grid-cols-2">
+                            {featuredTemplates.map((template, i) => (
+                                <StaggerItem key={template.id} index={i}>
+                                    <TemplateCard template={template} featured />
+                                </StaggerItem>
                             ))}
-                        </div>
+                        </StaggerList>
                     </div>
                 )}
 
@@ -133,16 +136,19 @@ export default function TemplatesIndex({ templates }: Props) {
                         <h2 className="mb-4 text-xl font-semibold text-foreground">
                             {featuredTemplates.length > 0 ? 'More Templates' : 'All Templates'}
                         </h2>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {regularTemplates.map((template) => (
-                                <TemplateCard key={template.id} template={template} />
+                        <StaggerList className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {regularTemplates.map((template, i) => (
+                                <StaggerItem key={template.id} index={i}>
+                                    <TemplateCard template={template} />
+                                </StaggerItem>
                             ))}
-                        </div>
+                        </StaggerList>
                     </div>
                 )}
 
                 {/* No Results */}
                 {filteredTemplates.length === 0 && (
+                    <FadeIn>
                     <div className="rounded-xl border border-border/50 bg-background-secondary p-12 text-center">
                         <Search className="mx-auto mb-4 h-12 w-12 text-foreground-subtle" />
                         <h3 className="mb-2 text-lg font-semibold text-foreground">No templates found</h3>
@@ -150,6 +156,7 @@ export default function TemplatesIndex({ templates }: Props) {
                             Try adjusting your search or filters to find what you're looking for.
                         </p>
                     </div>
+                    </FadeIn>
                 )}
             </div>
         </AppLayout>

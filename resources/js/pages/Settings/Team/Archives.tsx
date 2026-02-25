@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Link, router } from '@inertiajs/react';
 import { ArrowLeft, Archive, Eye, Rocket, Activity, Download, FileText, RotateCcw, Trash2 } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface MemberArchiveItem {
     id: number;
@@ -153,17 +154,19 @@ export default function Archives({ archives, showDeleted }: Props) {
                 )}
 
                 {archives.length === 0 ? (
-                    <Card>
-                        <CardContent className="py-12">
-                            <div className="flex flex-col items-center text-center">
-                                <Archive className="h-12 w-12 text-foreground-subtle" />
-                                <h3 className="mt-4 text-lg font-medium text-foreground">No archives yet</h3>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    When team members are removed, their contribution archives will appear here.
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <FadeIn>
+                        <Card>
+                            <CardContent className="py-12">
+                                <div className="flex flex-col items-center text-center">
+                                    <Archive className="h-12 w-12 text-foreground-subtle animate-pulse-soft" />
+                                    <h3 className="mt-4 text-lg font-medium text-foreground">No archives yet</h3>
+                                    <p className="mt-1 text-sm text-foreground-muted">
+                                        When team members are removed, their contribution archives will appear here.
+                                    </p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </FadeIn>
                 ) : (
                     <Card>
                         <CardHeader>
@@ -187,12 +190,12 @@ export default function Archives({ archives, showDeleted }: Props) {
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-3">
-                                {archives.map((archive) => {
+                            <StaggerList className="space-y-3">
+                                {archives.map((archive, i) => {
                                     const isDeleted = !!archive.deleted_at;
                                     return (
+                                        <StaggerItem key={archive.id} index={i}>
                                         <div
-                                            key={archive.id}
                                             className={`flex items-center gap-3 rounded-lg border border-border bg-background p-4 transition-all hover:border-border/80 ${isDeleted ? 'opacity-50' : ''}`}
                                         >
                                             {/* Checkbox (only for active archives) */}
@@ -282,9 +285,10 @@ export default function Archives({ archives, showDeleted }: Props) {
                                                 )}
                                             </div>
                                         </div>
+                                        </StaggerItem>
                                     );
                                 })}
-                            </div>
+                            </StaggerList>
                         </CardContent>
                     </Card>
                 )}

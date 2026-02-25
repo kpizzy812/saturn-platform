@@ -1,34 +1,51 @@
 
+import React from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command } from 'lucide-react';
-import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
+import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command, BarChart3 } from 'lucide-react';
+import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider, useDropdown } from '@/components/ui/Dropdown';
 import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
 import { TeamSwitcher } from '@/components/ui/TeamSwitcher';
 import { useTheme } from '@/components/ui/ThemeProvider';
-import type { Notification } from '@/types';
+
+const UserMenuButton = React.forwardRef<HTMLButtonElement, { user: { name?: string; email?: string; avatar?: string | null } | null | undefined }>(
+    function UserMenuButton({ user, ...props }, ref) {
+        const { isOpen } = useDropdown();
+        return (
+            <button ref={ref} {...props} className="group flex items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-background-secondary">
+                {user?.avatar ? (
+                    <img
+                        src={user.avatar}
+                        alt={user.name || 'User'}
+                        className="h-8 w-8 rounded-full object-cover shadow-sm transition-transform duration-200 group-hover:scale-110"
+                    />
+                ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-medium text-white shadow-sm transition-transform duration-200 group-hover:scale-110">
+                        {user?.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                )}
+                <ChevronDown className={`h-4 w-4 text-foreground-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+        );
+    }
+);
 
 interface HeaderProps {
     showNewProject?: boolean;
     onCommandPalette?: () => void;
 }
 
-interface NotificationsData {
-    unreadCount: number;
-    recent: Notification[];
-}
-
 export function Header({ showNewProject = true, onCommandPalette }: HeaderProps) {
     const { props } = usePage();
-    const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null } | undefined;
-    const notificationsData = (props as any).notifications as NotificationsData | undefined;
+    const user = props.auth;
+    const notificationsData = props.notifications;
     const { isDark, toggleTheme } = useTheme();
 
     // Detect OS for keyboard shortcut display
     const isMac = typeof window !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 
     return (
-        <header className="flex h-14 items-center justify-between border-b border-border bg-background px-4">
+        <header className="flex h-14 items-center justify-between border-b border-primary/[0.08] bg-primary/[0.03] backdrop-blur-xl backdrop-saturate-150 px-4">
             {/* Left: Logo + Search */}
             <div className="flex items-center gap-4">
                 {/* Logo */}
@@ -43,11 +60,11 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                 {/* Command Palette Trigger */}
                 <button
                     onClick={onCommandPalette}
-                    className="hidden items-center gap-3 rounded-lg border border-border bg-background-secondary px-4 py-2 text-sm text-foreground-muted transition-all duration-200 hover:border-border/80 hover:bg-background-tertiary hover:text-foreground md:flex"
+                    className="group hidden items-center gap-3 rounded-lg border border-border bg-background-secondary px-4 py-2 text-sm text-foreground-muted transition-all duration-200 hover:border-border/80 hover:bg-background-tertiary hover:text-foreground md:flex"
                 >
-                    <Search className="h-4 w-4" />
+                    <Search className="h-4 w-4 group-hover:animate-wiggle" />
                     <span>Search...</span>
-                    <kbd className="ml-6 flex items-center gap-1 rounded-md bg-background-tertiary px-2 py-1 text-xs font-medium">
+                    <kbd className="ml-6 flex items-center gap-1 rounded-md bg-background-tertiary px-2 py-1 text-xs font-medium transition-transform duration-200 group-hover:scale-110">
                         {isMac ? <Command className="h-3 w-3" /> : <span>Ctrl</span>}
                         <span>K</span>
                     </kbd>
@@ -74,13 +91,22 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                     </Link>
                 )}
 
+                {/* Observability */}
+                <Link
+                    href="/observability"
+                    className="group rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground"
+                    title="Observability"
+                >
+                    <BarChart3 className="h-5 w-5 group-hover:animate-wiggle" />
+                </Link>
+
                 {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
-                    className="rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground"
+                    className="group rounded-lg p-2.5 text-foreground-muted transition-all duration-200 hover:bg-background-secondary hover:text-foreground"
                     title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
                 >
-                    {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                    {isDark ? <Sun className="h-5 w-5 group-hover:animate-wiggle" /> : <Moon className="h-5 w-5 group-hover:animate-wiggle" />}
                 </button>
 
                 {/* Notifications */}
@@ -92,20 +118,7 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                 {/* User Menu */}
                 <Dropdown>
                     <DropdownTrigger>
-                        <button className="flex items-center gap-2 rounded-lg p-2 transition-all duration-200 hover:bg-background-secondary">
-                            {user?.avatar ? (
-                                <img
-                                    src={user.avatar}
-                                    alt={user.name || 'User'}
-                                    className="h-8 w-8 rounded-full object-cover shadow-sm"
-                                />
-                            ) : (
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-medium text-white shadow-sm">
-                                    {user?.name?.charAt(0).toUpperCase() || 'U'}
-                                </div>
-                            )}
-                            <ChevronDown className="h-4 w-4 text-foreground-muted transition-transform duration-200" />
-                        </button>
+                        <UserMenuButton user={user} />
                     </DropdownTrigger>
                     <DropdownContent align="right" className="w-56">
                         <div className="px-3 py-2">

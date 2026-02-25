@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -264,6 +265,8 @@ Route::patch('/applications/{uuid}/envs/bulk', function (string $uuid, Request $
         return back()->with('error', 'Application not found.');
     }
 
+    Gate::authorize('update', $application);
+
     $variables = $request->input('variables', []);
 
     // Delete all existing non-preview environment variables
@@ -344,6 +347,8 @@ Route::post('/applications/{uuid}/envs/json', function (string $uuid, Request $r
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $application);
+
     $request->validate(['key' => 'required|string']);
 
     $env = $application->environment_variables()->create([
@@ -361,6 +366,8 @@ Route::patch('/applications/{uuid}/envs/json', function (string $uuid, Request $
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $application);
 
     $request->validate(['key' => 'required|string', 'value' => 'nullable|string']);
 
@@ -390,6 +397,8 @@ Route::delete('/applications/{uuid}/envs/{env_uuid}/json', function (string $uui
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $application);
 
     $env = $application->environment_variables()
         ->where('uuid', $env_uuid)

@@ -71,6 +71,9 @@ Route::prefix('admin')->middleware('is.superadmin')->group(function () {
     // Invitations management
     require __DIR__.'/admin/invitations.php';
 
+    // Platform invites (registration bypass)
+    require __DIR__.'/admin/platform-invites.php';
+
     // System notifications
     require __DIR__.'/admin/notifications.php';
 
@@ -109,4 +112,7 @@ Route::prefix('admin')->middleware('is.superadmin')->group(function () {
 
     // Resource transfer history
     require __DIR__.'/admin/transfers.php';
+
+    // Public status page management
+    require __DIR__.'/admin/status-page.php';
 });

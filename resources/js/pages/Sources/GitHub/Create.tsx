@@ -9,9 +9,11 @@ import {
 
 interface Props {
     webhookUrl: string;
+    from?: string;
 }
 
-export default function GitHubCreate({ webhookUrl }: Props) {
+export default function GitHubCreate({ webhookUrl, from }: Props) {
+    const isFromBoarding = from === 'boarding';
     const [isPublic, setIsPublic] = useState(false);
     const [creating, setCreating] = useState(false);
     const formRef = useRef<HTMLFormElement>(null);
@@ -82,7 +84,10 @@ export default function GitHubCreate({ webhookUrl }: Props) {
     return (
         <AppLayout
             title="Create GitHub App"
-            breadcrumbs={[
+            breadcrumbs={isFromBoarding ? [
+                { label: 'Onboarding', href: '/boarding' },
+                { label: 'Create GitHub App' },
+            ] : [
                 { label: 'Dashboard', href: '/new' },
                 { label: 'Sources', href: '/sources' },
                 { label: 'GitHub', href: '/sources/github' },
@@ -100,10 +105,10 @@ export default function GitHubCreate({ webhookUrl }: Props) {
             <div className="max-w-3xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
-                    <Link href="/sources/github">
+                    <Link href={isFromBoarding ? '/boarding' : '/sources/github'}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back
+                            {isFromBoarding ? 'Back to Setup' : 'Back'}
                         </Button>
                     </Link>
                 </div>

@@ -5,10 +5,20 @@ namespace App\Jobs;
 use App\Models\ScheduledDatabaseBackup;
 use App\Models\ScheduledTask;
 use App\Models\Server;
+use App\Models\ServiceDatabase;
+use App\Models\StandaloneClickhouse;
+use App\Models\StandaloneDragonfly;
+use App\Models\StandaloneKeydb;
+use App\Models\StandaloneMariadb;
+use App\Models\StandaloneMongodb;
+use App\Models\StandaloneMysql;
+use App\Models\StandalonePostgresql;
+use App\Models\StandaloneRedis;
 use App\Models\Team;
 use Cron\CronExpression;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -20,6 +30,10 @@ use Illuminate\Support\Facades\Log;
 class ScheduledJobManager implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 1;
+
+    public int $timeout = 120;
 
     /**
      * The time when this job execution started.
@@ -95,11 +109,30 @@ class ScheduledJobManager implements ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ScheduledJobManager permanently failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function processScheduledBackups(): void
     {
-        $backups = ScheduledDatabaseBackup::with(['database'])
-            ->where('enabled', true)
-            ->get();
+        // Eager load team.subscription to avoid N+1 when checking stripe_invoice_paid in shouldProcessBackup
+        $dbRelations = ['destination.server.settings', 'destination.server.team.subscription'];
+        $backups = ScheduledDatabaseBackup::with(['database' => function (MorphTo $morphTo) use ($dbRelations) {
+            $morphTo->morphWith([
+                StandalonePostgresql::class => $dbRelations,
+                StandaloneMysql::class => $dbRelations,
+                StandaloneMariadb::class => $dbRelations,
+                StandaloneMongodb::class => $dbRelations,
+                StandaloneRedis::class => $dbRelations,
+                StandaloneKeydb::class => $dbRelations,
+                StandaloneDragonfly::class => $dbRelations,
+                StandaloneClickhouse::class => $dbRelations,
+                ServiceDatabase::class => ['service.destination.server.settings', 'service.destination.server.team.subscription'],
+            ]);
+        }])->where('enabled', true)->get();
 
         foreach ($backups as $backup) {
             try {
@@ -134,9 +167,13 @@ class ScheduledJobManager implements ShouldQueue
 
     private function processScheduledTasks(): void
     {
-        $tasks = ScheduledTask::with(['service', 'application'])
-            ->where('enabled', true)
-            ->get();
+        // Eager load team.subscription to avoid N+1 when checking stripe_invoice_paid in shouldProcessTask
+        $tasks = ScheduledTask::with([
+            'service.destination.server.settings',
+            'service.destination.server.team.subscription',
+            'application.destination.server.settings',
+            'application.destination.server.team.subscription',
+        ])->where('enabled', true)->get();
 
         foreach ($tasks as $task) {
             try {
@@ -285,12 +322,13 @@ class ScheduledJobManager implements ShouldQueue
 
     private function getServersForCleanup(): Collection
     {
-        $query = Server::with('settings')
+        // Eager load team.subscription to avoid N+1 when checking stripe_invoice_paid in shouldProcessDockerCleanup
+        $query = Server::with(['settings', 'team.subscription'])
             ->where('ip', '!=', '1.2.3.4');
 
         if (isCloud()) {
             $servers = $query->whereRelation('team.subscription', 'stripe_invoice_paid', true)->get();
-            $own = Team::find(0)->servers()->with('settings')->get();
+            $own = Team::find(0)->servers()->with(['settings', 'team.subscription'])->get();
 
             return $servers->merge($own);
         }

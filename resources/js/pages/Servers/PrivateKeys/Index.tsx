@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge, useConfirm } from '@/components/ui';
 import { ArrowLeft, Plus, Key, Trash2 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Props {
     server: ServerType;
@@ -95,76 +96,80 @@ export default function ServerPrivateKeysIndex({ server, privateKeys = [] }: Pro
 
             {/* Private Keys List */}
             {privateKeys.length > 0 ? (
-                <div className="space-y-3">
-                    {privateKeys.map((key) => (
-                        <Card key={key.uuid}>
-                            <CardContent className="p-5">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${
-                                            key.is_default ? 'bg-primary/10' : 'bg-background-tertiary'
-                                        }`}>
-                                            <Key className={`h-6 w-6 ${
-                                                key.is_default ? 'text-primary' : 'text-foreground-subtle'
-                                            }`} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <h3 className="font-semibold text-foreground">{key.name}</h3>
-                                                {key.is_default && (
-                                                    <Badge variant="primary" size="sm">Default</Badge>
-                                                )}
+                <StaggerList className="space-y-3">
+                    {privateKeys.map((key, i) => (
+                        <StaggerItem key={key.uuid} index={i}>
+                            <Card>
+                                <CardContent className="p-5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${
+                                                key.is_default ? 'bg-primary/10' : 'bg-background-tertiary'
+                                            }`}>
+                                                <Key className={`h-6 w-6 ${
+                                                    key.is_default ? 'text-primary' : 'text-foreground-subtle'
+                                                }`} />
                                             </div>
-                                            {key.description && (
-                                                <p className="mt-0.5 text-sm text-foreground-muted">{key.description}</p>
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className="font-semibold text-foreground">{key.name}</h3>
+                                                    {key.is_default && (
+                                                        <Badge variant="primary" size="sm">Default</Badge>
+                                                    )}
+                                                </div>
+                                                {key.description && (
+                                                    <p className="mt-0.5 text-sm text-foreground-muted">{key.description}</p>
+                                                )}
+                                                <p className="mt-1 font-mono text-xs text-foreground-subtle">
+                                                    {key.fingerprint}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {!key.is_default && (
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => handleSetDefault(key)}
+                                                >
+                                                    Set Default
+                                                </Button>
                                             )}
-                                            <p className="mt-1 font-mono text-xs text-foreground-subtle">
-                                                {key.fingerprint}
-                                            </p>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => handleDelete(key)}
+                                            >
+                                                <Trash2 className="h-4 w-4 text-danger" />
+                                            </Button>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {!key.is_default && (
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() => handleSetDefault(key)}
-                                            >
-                                                Set Default
-                                            </Button>
-                                        )}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDelete(key)}
-                                        >
-                                            <Trash2 className="h-4 w-4 text-danger" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             ) : (
-                <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-16">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
-                            <Key className="h-8 w-8 text-foreground-subtle" />
-                        </div>
-                        <h3 className="mt-4 font-medium text-foreground">No SSH keys configured</h3>
-                        <p className="mt-1 text-sm text-foreground-muted">
-                            Add an SSH private key to authenticate with this server
-                        </p>
-                        <Button
-                            className="mt-4"
-                            onClick={() => router.visit(`/servers/${server.uuid}/private-keys/create`)}
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add SSH Key
-                        </Button>
-                    </CardContent>
-                </Card>
+                <FadeIn>
+                    <Card>
+                        <CardContent className="flex flex-col items-center justify-center py-16">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-secondary">
+                                <Key className="h-8 w-8 animate-pulse-soft text-foreground-subtle" />
+                            </div>
+                            <h3 className="mt-4 font-medium text-foreground">No SSH keys configured</h3>
+                            <p className="mt-1 text-sm text-foreground-muted">
+                                Add an SSH private key to authenticate with this server
+                            </p>
+                            <Button
+                                className="mt-4"
+                                onClick={() => router.visit(`/servers/${server.uuid}/private-keys/create`)}
+                            >
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add SSH Key
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </FadeIn>
             )}
 
             {/* How to Generate SSH Keys */}

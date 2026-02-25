@@ -607,3 +607,110 @@ test('main_port returns ports_exposes_array for non-static app', function () {
 
     expect($app->main_port())->toBe(['3000', '4000']);
 });
+
+// Worker Mode Tests (application_type)
+test('isWorker returns true when application_type is worker', function () {
+    $app = new Application;
+    $app->application_type = 'worker';
+
+    expect($app->isWorker())->toBeTrue();
+});
+
+test('isWorker returns false when application_type is web', function () {
+    $app = new Application;
+    $app->application_type = 'web';
+
+    expect($app->isWorker())->toBeFalse();
+});
+
+test('isWorker returns false when application_type is both', function () {
+    $app = new Application;
+    $app->application_type = 'both';
+
+    expect($app->isWorker())->toBeFalse();
+});
+
+test('isWorker returns false when application_type is null (default)', function () {
+    $app = new Application;
+
+    expect($app->isWorker())->toBeFalse();
+});
+
+test('needsProxy returns false for worker type', function () {
+    $app = new Application;
+    $app->application_type = 'worker';
+    $app->fqdn = 'https://example.com';
+
+    expect($app->needsProxy())->toBeFalse();
+});
+
+test('needsProxy returns true for web type with fqdn', function () {
+    $app = new Application;
+    $app->application_type = 'web';
+    $app->fqdn = 'https://example.com';
+
+    expect($app->needsProxy())->toBeTrue();
+});
+
+test('needsProxy returns false for web type without fqdn', function () {
+    $app = new Application;
+    $app->application_type = 'web';
+    $app->fqdn = null;
+
+    expect($app->needsProxy())->toBeFalse();
+});
+
+test('isHealthcheckDisabled returns true for worker type', function () {
+    $app = new Application;
+    $app->application_type = 'worker';
+    $app->health_check_enabled = true; // Even if enabled, workers should be disabled
+
+    expect($app->isHealthcheckDisabled())->toBeTrue();
+});
+
+test('isHealthcheckDisabled returns false for web type when enabled', function () {
+    $app = new Application;
+    $app->application_type = 'web';
+    $app->health_check_enabled = true;
+
+    expect($app->isHealthcheckDisabled())->toBeFalse();
+});
+
+test('main_port returns empty array for worker type', function () {
+    $app = new Application;
+    $app->application_type = 'worker';
+    $app->ports_exposes = '80';
+    $app->setRelation('settings', (object) ['is_static' => false]);
+
+    expect($app->main_port())->toBe([]);
+});
+
+test('main_port returns empty array for worker with null ports', function () {
+    $app = new Application;
+    $app->application_type = 'worker';
+    $app->ports_exposes = null;
+    $app->setRelation('settings', (object) ['is_static' => false]);
+
+    expect($app->main_port())->toBe([]);
+});
+
+test('application_type defaults to web', function () {
+    $app = new Application;
+
+    // New apps should default to web (via migration default)
+    expect($app->application_type)->toBeNull(); // null before saving, 'web' is DB default
+});
+
+test('portsExposesArray returns empty for worker with null ports_exposes', function () {
+    $app = new Application;
+    $app->application_type = 'worker';
+    $app->ports_exposes = null;
+
+    expect($app->ports_exposes_array)->toBe([]);
+});
+
+test('application_type is in fillable', function () {
+    $app = new Application;
+
+    expect($app->getFillable())->toContain('application_type');
+});

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ResourceLink\StoreResourceLinkRequest;
+use App\Http\Requests\Api\ResourceLink\UpdateResourceLinkRequest;
 use App\Models\Application;
 use App\Models\Environment;
 use App\Models\ResourceLink;
@@ -93,7 +95,7 @@ class ResourceLinkController extends Controller
             new OA\Response(response: 404, description: 'Environment, application, or target not found.'),
         ]
     )]
-    public function store(Request $request, string $environment_uuid)
+    public function store(StoreResourceLinkRequest $request, string $environment_uuid)
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -108,14 +110,7 @@ class ResourceLinkController extends Controller
             return response()->json(['message' => 'Environment not found.'], 404);
         }
 
-        $validated = $request->validate([
-            'source_id' => 'required|integer',
-            'target_type' => 'required|string|in:'.implode(',', array_keys($this->allowedTargetTypes)),
-            'target_id' => 'required|integer',
-            'inject_as' => 'nullable|string|max:255',
-            'auto_inject' => 'boolean',
-            'use_external_url' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         // Verify source application exists in this environment
         $application = Application::where('id', $validated['source_id'])
@@ -334,7 +329,7 @@ class ResourceLinkController extends Controller
             new OA\Response(response: 404, description: 'Link not found.'),
         ]
     )]
-    public function update(Request $request, string $environment_uuid, int $link_id)
+    public function update(UpdateResourceLinkRequest $request, string $environment_uuid, int $link_id)
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -357,11 +352,7 @@ class ResourceLinkController extends Controller
             return response()->json(['message' => 'Link not found.'], 404);
         }
 
-        $validated = $request->validate([
-            'inject_as' => 'nullable|string|max:255',
-            'auto_inject' => 'boolean',
-            'use_external_url' => 'boolean',
-        ]);
+        $validated = $request->validated();
 
         // Determine old env key before update
         $oldEnvKey = $link->target_type === Application::class

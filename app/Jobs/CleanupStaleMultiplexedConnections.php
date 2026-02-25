@@ -18,17 +18,23 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
 
     public function handle()
     {
-        $this->cleanupStaleConnections();
-        $this->cleanupNonExistentServerConnections();
+        // Single query for all servers, reused across both cleanup methods to avoid redundant DB queries
+        $servers = Server::select('uuid', 'ip', 'user')->get()->keyBy('uuid');
+
+        $this->cleanupStaleConnections($servers);
+        $this->cleanupNonExistentServerConnections($servers);
     }
 
-    private function cleanupStaleConnections()
+    /**
+     * @param  \Illuminate\Support\Collection<string, Server>  $servers
+     */
+    private function cleanupStaleConnections($servers): void
     {
         $muxFiles = Storage::disk('ssh-mux')->files();
 
         foreach ($muxFiles as $muxFile) {
             $serverUuid = $this->extractServerUuidFromMuxFile($muxFile);
-            $server = Server::where('uuid', $serverUuid)->first();
+            $server = $servers->get($serverUuid);
 
             if (! $server) {
                 $this->removeMultiplexFile($muxFile);
@@ -54,10 +60,13 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
         }
     }
 
-    private function cleanupNonExistentServerConnections()
+    /**
+     * @param  \Illuminate\Support\Collection<string, Server>  $servers
+     */
+    private function cleanupNonExistentServerConnections($servers): void
     {
         $muxFiles = Storage::disk('ssh-mux')->files();
-        $existingServerUuids = Server::pluck('uuid')->toArray();
+        $existingServerUuids = $servers->keys()->all();
 
         foreach ($muxFiles as $muxFile) {
             $serverUuid = $this->extractServerUuidFromMuxFile($muxFile);

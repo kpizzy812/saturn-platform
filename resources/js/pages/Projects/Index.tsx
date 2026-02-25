@@ -2,7 +2,8 @@ import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Badge, Button, useConfirm, useToast } from '@/components/ui';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
-import { Plus, FolderKanban, MoreVertical, Settings, Trash2 } from 'lucide-react';
+import { Plus, FolderKanban, MoreVertical, Settings, Trash2, Box, Database, Layers, Clock } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import type { Project } from '@/types';
 
 interface Props {
@@ -23,8 +24,8 @@ export default function ProjectsIndex({ projects = [] }: Props) {
                     <p className="text-foreground-muted">Manage your applications and services</p>
                 </div>
                 <Link href="/projects/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" />
+                    <Button className="group">
+                        <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                         New Project
                     </Button>
                 </Link>
@@ -34,44 +35,80 @@ export default function ProjectsIndex({ projects = [] }: Props) {
             {projects.length === 0 ? (
                 <EmptyState />
             ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {projects.map((project) => (
-                        <ProjectCard key={project.id} project={project} />
+                <StaggerList className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {projects.map((project, i) => (
+                        <StaggerItem key={project.id} index={i}>
+                            <ProjectCard project={project} />
+                        </StaggerItem>
                     ))}
-                </div>
+                </StaggerList>
             )}
             </div>
         </AppLayout>
     );
 }
 
+const ENV_BADGE_VARIANTS: Record<string, 'info' | 'warning' | 'success' | 'primary' | 'default'> = {
+    development: 'info',
+    dev: 'info',
+    staging: 'warning',
+    uat: 'warning',
+    production: 'success',
+    prod: 'success',
+};
+
+function getEnvBadgeVariant(name: string): 'info' | 'warning' | 'success' | 'primary' | 'default' {
+    return ENV_BADGE_VARIANTS[name.toLowerCase()] || 'default';
+}
+
+function timeAgo(dateStr: string): string {
+    const now = new Date();
+    const date = new Date(dateStr);
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 30) return `${diffDays}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+}
+
 function ProjectCard({ project }: { project: Project }) {
     const confirm = useConfirm();
     const { toast } = useToast();
 
-    const serviceCount = project.environments?.reduce(
-        (acc, env) => acc + (env.applications?.length || 0) + (env.databases?.length || 0),
-        0
-    ) || 0;
+    const counts = project.environments?.reduce(
+        (acc, env) => ({
+            apps: acc.apps + (env.applications?.length || 0),
+            dbs: acc.dbs + (env.databases?.length || 0),
+            services: acc.services + (env.services?.length || 0),
+        }),
+        { apps: 0, dbs: 0, services: 0 }
+    ) || { apps: 0, dbs: 0, services: 0 };
+
+    const totalResources = counts.apps + counts.dbs + counts.services;
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
 
-        const warningMessage = serviceCount > 0
-            ? `This project has ${serviceCount} resource(s) that will be permanently deleted along with all containers and data. This action cannot be undone.`
+        const warningMessage = totalResources > 0
+            ? `This project has ${totalResources} resource(s) that will be permanently deleted along with all containers and data. This action cannot be undone.`
             : `Are you sure you want to delete "${project.name}"? This action cannot be undone.`;
 
         const confirmed = await confirm({
             title: 'Delete Project',
             description: warningMessage,
-            confirmText: serviceCount > 0 ? 'Delete All' : 'Delete',
+            confirmText: totalResources > 0 ? 'Delete All' : 'Delete',
             variant: 'danger',
         });
         if (confirmed) {
             router.delete(`/projects/${project.uuid}`, {
                 preserveScroll: true,
-                preserveState: false, // Force refresh data after delete
+                preserveState: false,
                 onSuccess: () => {
                     toast({
                         title: 'Project deleted',
@@ -90,23 +127,32 @@ function ProjectCard({ project }: { project: Project }) {
         }
     };
 
+    const resourceSegments = [
+        { count: counts.apps, label: 'app', icon: Box, color: 'text-info', dotColor: 'bg-info' },
+        { count: counts.dbs, label: 'db', icon: Database, color: 'text-warning', dotColor: 'bg-warning' },
+        { count: counts.services, label: 'svc', icon: Layers, color: 'text-primary', dotColor: 'bg-primary' },
+    ].filter(s => s.count > 0);
+
+    const projectUrl = `/projects/${project.uuid}`;
+
     return (
         <Link
-            href={`/projects/${project.uuid}`}
+            href={projectUrl}
             className="group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20"
         >
             {/* Subtle gradient overlay on hover */}
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
+            {/* Header: icon + name + menu */}
             <div className="relative flex items-start justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
-                        <FolderKanban className="h-5 w-5 text-primary" />
+                        <FolderKanban className="h-5 w-5 text-primary transition-transform duration-200 group-hover:scale-110 group-hover:animate-wiggle" />
                     </div>
                     <div>
                         <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{project.name}</h3>
                         <p className="text-sm text-foreground-muted">
-                            {serviceCount} service{serviceCount !== 1 ? 's' : ''}
+                            {totalResources} resource{totalResources !== 1 ? 's' : ''}
                         </p>
                     </div>
                 </div>
@@ -141,44 +187,89 @@ function ProjectCard({ project }: { project: Project }) {
                 </Dropdown>
             </div>
 
-            {/* Environments */}
-            <div className="relative mt-4 flex flex-wrap gap-2">
-                {project.environments?.slice(0, 3).map((env) => (
-                    <Badge key={env.id} variant="default">
-                        {env.name}
-                    </Badge>
+            {/* Resource breakdown */}
+            {resourceSegments.length > 0 && (
+                <div className="relative mt-3 flex items-center gap-3">
+                    {resourceSegments.map((seg) => {
+                        const targetUrl = seg.label === 'app'
+                            ? `/applications?project=${encodeURIComponent(project.name)}`
+                            : seg.label === 'db'
+                            ? `/databases?project=${encodeURIComponent(project.name)}`
+                            : null;
+                        return targetUrl ? (
+                            <Link
+                                key={seg.label}
+                                href={targetUrl}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-all duration-200 hover:bg-white/10 hover:scale-105"
+                            >
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor} transition-transform duration-200 group-hover:scale-125`} />
+                                <span className="text-xs text-foreground-muted transition-colors hover:text-foreground">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </Link>
+                        ) : (
+                            <div key={seg.label} className="flex items-center gap-1.5">
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
+                                <span className="text-xs text-foreground-muted">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Environment badges */}
+            <div className="relative mt-3 flex flex-wrap gap-1.5">
+                {project.environments?.slice(0, 4).map((env) => (
+                    <Link
+                        key={env.id}
+                        href={`${projectUrl}?env=${encodeURIComponent(env.name)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex transition-transform duration-200 hover:scale-110"
+                    >
+                        <Badge variant={getEnvBadgeVariant(env.name)} size="sm" className="cursor-pointer transition-all duration-200 hover:shadow-md hover:brightness-110">
+                            {env.name}
+                        </Badge>
+                    </Link>
                 ))}
-                {(project.environments?.length || 0) > 3 && (
-                    <Badge variant="default">
-                        +{(project.environments?.length || 0) - 3} more
+                {(project.environments?.length || 0) > 4 && (
+                    <Badge variant="default" size="sm">
+                        +{(project.environments?.length || 0) - 4}
                     </Badge>
                 )}
             </div>
 
             {/* Last updated */}
-            <p className="relative mt-4 text-xs text-foreground-subtle">
-                Updated {new Date(project.updated_at).toLocaleDateString()}
-            </p>
+            <div className="relative mt-3 flex items-center gap-1.5 border-t border-border/30 pt-3">
+                <Clock className="h-3 w-3 text-foreground-subtle" />
+                <span className="text-xs text-foreground-subtle">
+                    {timeAgo(project.updated_at)}
+                </span>
+            </div>
         </Link>
     );
 }
 
 function EmptyState() {
     return (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
-                <FolderKanban className="h-8 w-8 text-foreground-muted" />
+        <FadeIn>
+            <div className="flex flex-col items-center justify-center rounded-xl border border-border/50 bg-background-secondary/30 py-16">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
+                    <FolderKanban className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium text-foreground">No projects yet</h3>
+                <p className="mt-1 text-sm text-foreground-muted">
+                    Create your first project to start deploying applications.
+                </p>
+                <Link href="/projects/create" className="mt-6">
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Project
+                    </Button>
+                </Link>
             </div>
-            <h3 className="mt-4 text-lg font-medium text-foreground">No projects yet</h3>
-            <p className="mt-1 text-sm text-foreground-muted">
-                Create your first project to start deploying applications.
-            </p>
-            <Link href="/projects/create" className="mt-6">
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Project
-                </Button>
-            </Link>
-        </div>
+        </FadeIn>
     );
 }

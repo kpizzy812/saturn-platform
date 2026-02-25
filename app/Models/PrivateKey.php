@@ -209,8 +209,15 @@ class PrivateKey extends BaseModel
         // Ensure the storage directory exists and is writable
         $this->ensureStorageDirectoryExists();
 
+        // Normalize key content — OpenSSH requires trailing newline
+        $keyContent = $this->private_key;
+        $keyContent = str_replace("\r\n", "\n", $keyContent);
+        if (! str_ends_with($keyContent, "\n")) {
+            $keyContent .= "\n";
+        }
+
         // Attempt to store the private key
-        $success = $disk->put($filename, $this->private_key);
+        $success = $disk->put($filename, $keyContent);
 
         if (! $success) {
             throw new \Exception("Failed to write SSH key to filesystem. Check disk space and permissions for: {$this->getKeyLocation()}");
@@ -222,12 +229,18 @@ class PrivateKey extends BaseModel
         }
 
         $storedContent = $disk->get($filename);
-        if (empty($storedContent) || $storedContent !== $this->private_key) {
+        if (empty($storedContent) || ! str_starts_with(trim($storedContent), '-----BEGIN ')) {
             $disk->delete($filename); // Clean up the bad file
             throw new \Exception("SSH key file content verification failed: {$this->getKeyLocation()}");
         }
 
-        return $this->getKeyLocation();
+        // SSH requires strict 0600 permissions on private key files
+        $fullPath = $this->getKeyLocation();
+        if (file_exists($fullPath)) {
+            @chmod($fullPath, 0600);
+        }
+
+        return $fullPath;
     }
 
     public static function deleteFromStorage(self $privateKey)

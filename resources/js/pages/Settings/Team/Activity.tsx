@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select';
 import { Input } from '@/components/ui/Input';
 import { ActivityTimeline } from '@/components/ui/ActivityTimeline';
 import { Link } from '@inertiajs/react';
+import { FadeIn } from '@/components/animation';
 import { useTeamActivity } from '@/hooks/useTeamActivity';
 import { escapeCSVValue, CSV_BOM, downloadFile } from '@/lib/csv';
 import type { ActivityLog } from '@/types';
@@ -295,26 +296,28 @@ export default function TeamActivity() {
                                 )}
                             </>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary mb-4">
-                                    <Filter className="h-8 w-8 text-foreground-muted" />
+                            <FadeIn>
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary mb-4">
+                                        <Filter className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                                    </div>
+                                    <p className="text-lg font-medium text-foreground">No activities found</p>
+                                    <p className="mt-1 text-sm text-foreground-muted">
+                                        {activeFiltersCount > 0
+                                            ? 'Try adjusting your filters or search query'
+                                            : 'Team activity will appear here as actions are performed'}
+                                    </p>
+                                    {activeFiltersCount > 0 && (
+                                        <Button
+                                            variant="secondary"
+                                            className="mt-4"
+                                            onClick={clearFilters}
+                                        >
+                                            Clear Filters
+                                        </Button>
+                                    )}
                                 </div>
-                                <p className="text-lg font-medium text-foreground">No activities found</p>
-                                <p className="mt-1 text-sm text-foreground-muted">
-                                    {activeFiltersCount > 0
-                                        ? 'Try adjusting your filters or search query'
-                                        : 'Team activity will appear here as actions are performed'}
-                                </p>
-                                {activeFiltersCount > 0 && (
-                                    <Button
-                                        variant="secondary"
-                                        className="mt-4"
-                                        onClick={clearFilters}
-                                    >
-                                        Clear Filters
-                                    </Button>
-                                )}
-                            </div>
+                            </FadeIn>
                         )}
                     </CardContent>
                 </Card>

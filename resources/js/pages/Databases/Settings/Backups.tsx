@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Checkbox, Select } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
@@ -55,7 +56,7 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
             disable_local_backup: disableLocalBackup,
         };
 
-        router.patch(`/databases/${database.uuid}/settings/backups`, settings as any, {
+        router.patch(`/databases/${database.uuid}/settings/backups`, settings as unknown as RouterPayload, {
             onSuccess: () => {
                 addToast('success', 'Backup settings saved successfully');
                 setHasChanges(false);

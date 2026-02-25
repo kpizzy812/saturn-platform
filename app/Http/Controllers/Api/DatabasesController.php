@@ -80,10 +80,13 @@ class DatabasesController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $projects = Project::where('team_id', $teamId)->get();
+        $dbRelations = collect(DATABASE_TYPES)->map(fn ($db) => (string) str($db)->plural(2))->toArray();
+        $projects = Project::where('team_id', $teamId)->with($dbRelations)->get();
         $databases = collect();
         foreach ($projects as $project) {
-            $databases = $databases->merge($project->databases());
+            foreach ($dbRelations as $relation) {
+                $databases = $databases->merge($project->$relation);
+            }
         }
 
         $databaseIds = $databases->pluck('id')->toArray();

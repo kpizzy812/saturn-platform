@@ -25,7 +25,6 @@ describe('getHardcodedRolePermission', function () {
         // Use reflection to test private method
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // Owner should have all permissions
         expect($method->invoke($service, 'owner', 'applications.view'))->toBeTrue();
@@ -39,7 +38,6 @@ describe('getHardcodedRolePermission', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // Admin should have most permissions
         expect($method->invoke($service, 'admin', 'applications.view'))->toBeTrue();
@@ -59,7 +57,6 @@ describe('getHardcodedRolePermission', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // Developer should have development permissions
         expect($method->invoke($service, 'developer', 'applications.view'))->toBeTrue();
@@ -79,7 +76,6 @@ describe('getHardcodedRolePermission', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // Member should have basic operational permissions
         expect($method->invoke($service, 'member', 'applications.view'))->toBeTrue();
@@ -98,7 +94,6 @@ describe('getHardcodedRolePermission', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // Viewer should have view-only permissions
         expect($method->invoke($service, 'viewer', 'applications.view'))->toBeTrue();
@@ -118,7 +113,6 @@ describe('getHardcodedRolePermission', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'unknown_role', 'applications.view'))->toBeFalse();
         expect($method->invoke($service, '', 'applications.view'))->toBeFalse();
@@ -131,7 +125,6 @@ describe('role hierarchy', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // A permission that requires developer level (rank 3): create
         // Should be granted to developer, admin, owner but not member, viewer
@@ -147,7 +140,6 @@ describe('role hierarchy', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // Delete requires admin level (rank 4)
         expect($method->invoke($service, 'owner', 'applications.delete'))->toBeTrue();
@@ -162,7 +154,6 @@ describe('role hierarchy', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // manage_roles requires owner level (rank 5)
         expect($method->invoke($service, 'owner', 'team.manage_roles'))->toBeTrue();
@@ -179,7 +170,6 @@ describe('sensitive permissions', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'owner', 'applications.env_vars_sensitive'))->toBeTrue();
         expect($method->invoke($service, 'admin', 'applications.env_vars_sensitive'))->toBeTrue();
@@ -193,7 +183,6 @@ describe('sensitive permissions', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'owner', 'applications.env_vars'))->toBeTrue();
         expect($method->invoke($service, 'admin', 'applications.env_vars'))->toBeTrue();
@@ -207,7 +196,6 @@ describe('sensitive permissions', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'owner', 'servers.security'))->toBeTrue();
         expect($method->invoke($service, 'admin', 'servers.security'))->toBeTrue();
@@ -221,7 +209,6 @@ describe('sensitive permissions', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'owner', 'settings.billing'))->toBeTrue();
         expect($method->invoke($service, 'admin', 'settings.billing'))->toBeFalse();
@@ -237,7 +224,6 @@ describe('team management permissions', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'owner', 'team.invite'))->toBeTrue();
         expect($method->invoke($service, 'admin', 'team.invite'))->toBeTrue();
@@ -251,7 +237,6 @@ describe('team management permissions', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'owner', 'team.manage_members'))->toBeTrue();
         expect($method->invoke($service, 'admin', 'team.manage_members'))->toBeTrue();
@@ -267,7 +252,6 @@ describe('unknown action handling', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         // Unknown action defaults to rank 3 (developer level)
         expect($method->invoke($service, 'owner', 'applications.unknown_action'))->toBeTrue();
@@ -284,7 +268,6 @@ describe('deployment permissions', function () {
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('getHardcodedRolePermission');
-        $method->setAccessible(true);
 
         expect($method->invoke($service, 'owner', 'applications.deploy'))->toBeTrue();
         expect($method->invoke($service, 'admin', 'applications.deploy'))->toBeTrue();

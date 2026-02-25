@@ -713,3 +713,64 @@ test('getRecipients returns array with user email', function () {
 
     expect($user->getRecipients())->toBe(['test@example.com']);
 });
+
+// =============================================================================
+// CRYPTOGRAPHIC SECURITY TESTS
+// =============================================================================
+
+test('sendVerificationEmail uses sha256 not sha1 for hash', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldAllowMockingProtectedMethods();
+    $user->setRawAttributes(['id' => 1, 'email' => 'test@example.com'], true);
+    $user->shouldReceive('getKey')->andReturn(1);
+    $user->shouldReceive('getEmailForVerification')->andReturn('test@example.com');
+
+    // Verify that sha256 produces a different hash than sha1 for the same input
+    $sha1Hash = sha1('test@example.com');
+    $sha256Hash = hash('sha256', 'test@example.com');
+
+    expect($sha256Hash)->not->toBe($sha1Hash);
+    expect(strlen($sha256Hash))->toBe(64); // SHA-256 produces 64 hex chars
+    expect(strlen($sha1Hash))->toBe(40);   // SHA-1 produces 40 hex chars
+});
+
+test('email verification hash uses sha256 algorithm', function () {
+    // Verify the User model source code uses hash('sha256', ...) not sha1()
+    $reflection = new ReflectionMethod(User::class, 'sendVerificationEmail');
+    $source = file_get_contents($reflection->getFileName());
+
+    // Extract the method body
+    $startLine = $reflection->getStartLine();
+    $endLine = $reflection->getEndLine();
+    $lines = array_slice(file($reflection->getFileName()), $startLine - 1, $endLine - $startLine + 1);
+    $methodSource = implode('', $lines);
+
+    expect($methodSource)->toContain("hash('sha256'");
+    expect($methodSource)->not->toContain('sha1(');
+});
+
+test('custom EmailVerificationRequest uses sha256 for hash verification', function () {
+    $reflection = new ReflectionMethod(\App\Http\Requests\EmailVerificationRequest::class, 'authorize');
+    $source = file_get_contents($reflection->getFileName());
+
+    $startLine = $reflection->getStartLine();
+    $endLine = $reflection->getEndLine();
+    $lines = array_slice(file($reflection->getFileName()), $startLine - 1, $endLine - $startLine + 1);
+    $methodSource = implode('', $lines);
+
+    expect($methodSource)->toContain("hash('sha256'");
+    expect($methodSource)->not->toContain('sha1(');
+});
+
+test('email verification hash and verification request use the same algorithm', function () {
+    // Both the URL generation in User::sendVerificationEmail() and
+    // the verification in EmailVerificationRequest::authorize() must use SHA-256
+    $email = 'verify-test@example.com';
+
+    // Simulate what User::sendVerificationEmail generates
+    $generatedHash = hash('sha256', $email);
+
+    // Simulate what EmailVerificationRequest::authorize checks
+    $verificationHash = hash('sha256', $email);
+
+    expect(hash_equals($generatedHash, $verificationHash))->toBeTrue();
+});

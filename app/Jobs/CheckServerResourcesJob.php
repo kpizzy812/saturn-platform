@@ -16,6 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -70,7 +71,7 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
             }
 
         } catch (\Throwable $e) {
-            ray($e->getMessage());
+            Log::warning('CheckServerResourcesJob error', ['error' => $e->getMessage()]);
         }
     }
 
@@ -264,7 +265,7 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
         // Check daily limit
         $provisionedToday = AutoProvisioningEvent::countProvisionedToday();
         if ($provisionedToday >= $settings->auto_provision_max_servers_per_day) {
-            ray('Daily auto-provisioning limit reached, skipping trigger');
+            Log::debug('Daily auto-provisioning limit reached, skipping trigger');
 
             return;
         }
@@ -296,7 +297,7 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
             $triggerMetrics
         );
 
-        ray('Auto-provisioning triggered', [
+        Log::info('Auto-provisioning triggered', [
             'server' => $this->server->name,
             'reason' => $triggerReason,
             'metrics' => $triggerMetrics,

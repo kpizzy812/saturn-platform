@@ -2,6 +2,7 @@ import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui';
 import {
     TrendingUp,
     TrendingDown,
@@ -10,7 +11,14 @@ import {
     XCircle,
     Clock,
     Zap,
+    Server,
+    Users,
+    DollarSign,
 } from 'lucide-react';
+import { router } from '@inertiajs/react';
+import { ResourceUsageTrends } from './ResourceUsageTrends';
+import { TeamPerformance } from './TeamPerformance';
+import { CostAnalytics } from './CostAnalytics';
 
 interface SystemMetrics {
     totalResources: number;
@@ -18,14 +26,18 @@ interface SystemMetrics {
     totalDeployments: number;
     successfulDeployments: number;
     failedDeployments: number;
-    averageDeploymentTime: number; // in seconds
+    averageDeploymentTime: number;
     deploymentsLast24h: number;
     deploymentsLast7d: number;
-    successRate: number; // percentage
+    successRate: number;
 }
 
 interface Props {
     metrics?: SystemMetrics;
+    activeTab?: string;
+    resourceUsage?: any;
+    teamPerformance?: any;
+    costAnalytics?: any;
 }
 
 const defaultMetrics: SystemMetrics = {
@@ -101,7 +113,35 @@ function formatTime(seconds: number): string {
     return `${minutes}m ${remainingSeconds}s`;
 }
 
-export default function AdminMetricsIndex({ metrics = defaultMetrics }: Props) {
+const tabs = [
+    { key: 'overview', label: 'Overview', icon: Activity },
+    { key: 'resource-usage', label: 'Resource Usage', icon: Server },
+    { key: 'team-performance', label: 'Team Performance', icon: Users },
+    { key: 'cost-analytics', label: 'Cost Analytics', icon: DollarSign },
+];
+
+export default function AdminMetricsIndex({
+    metrics = defaultMetrics,
+    activeTab = 'overview',
+    resourceUsage,
+    teamPerformance,
+    costAnalytics,
+}: Props) {
+    const [period, setPeriod] = React.useState('24h');
+
+    const switchTab = (tab: string) => {
+        const params: Record<string, string> = { tab };
+        if (tab === 'resource-usage') {
+            params.period = period;
+        }
+        router.get('/admin/metrics', params, { preserveState: true });
+    };
+
+    const switchPeriod = (newPeriod: string) => {
+        setPeriod(newPeriod);
+        router.get('/admin/metrics', { tab: 'resource-usage', period: newPeriod }, { preserveState: true });
+    };
+
     return (
         <AdminLayout title="System Metrics">
             <div className="mx-auto max-w-7xl">
@@ -113,154 +153,208 @@ export default function AdminMetricsIndex({ metrics = defaultMetrics }: Props) {
                     </p>
                 </div>
 
-                {/* Key Metrics Grid */}
-                <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-                    <MetricCard
-                        title="Total Resources"
-                        value={metrics.totalResources}
-                        subtitle={`${metrics.activeResources} active`}
-                        icon={Activity}
-                        trend="neutral"
-                    />
-                    <MetricCard
-                        title="Total Deployments"
-                        value={metrics.totalDeployments}
-                        subtitle={`${metrics.deploymentsLast24h} in last 24h`}
-                        icon={Zap}
-                        trend="up"
-                        trendValue={`+${metrics.deploymentsLast7d} this week`}
-                    />
-                    <MetricCard
-                        title="Success Rate"
-                        value={`${metrics.successRate.toFixed(1)}%`}
-                        subtitle={`${metrics.successfulDeployments}/${metrics.totalDeployments} successful`}
-                        icon={CheckCircle}
-                        trend={metrics.successRate >= 90 ? 'up' : metrics.successRate >= 70 ? 'neutral' : 'down'}
-                        trendValue={metrics.successRate >= 90 ? 'Excellent' : metrics.successRate >= 70 ? 'Good' : 'Needs attention'}
-                    />
-                    <MetricCard
-                        title="Avg Deploy Time"
-                        value={formatTime(metrics.averageDeploymentTime)}
-                        subtitle="Average deployment duration"
-                        icon={Clock}
-                        trend="neutral"
-                    />
+                {/* Tabs */}
+                <div className="mb-6 flex flex-wrap gap-2">
+                    {tabs.map((tab) => {
+                        const TabIcon = tab.icon;
+                        const isActive = activeTab === tab.key;
+                        return (
+                            <Button
+                                key={tab.key}
+                                variant={isActive ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => switchTab(tab.key)}
+                            >
+                                <TabIcon className="mr-2 h-4 w-4" />
+                                {tab.label}
+                            </Button>
+                        );
+                    })}
                 </div>
 
-                {/* Deployment Stats */}
-                <div className="grid gap-6 lg:grid-cols-2">
-                    <Card variant="glass">
-                        <CardHeader>
-                            <CardTitle>Deployment Status</CardTitle>
-                            <CardDescription>Breakdown of deployment outcomes</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="rounded-full bg-success/10 p-2">
-                                            <CheckCircle className="h-4 w-4 text-success" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground">Successful</p>
-                                            <p className="text-xs text-foreground-subtle">
-                                                Completed without errors
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm text-foreground-muted">
-                                            {metrics.successfulDeployments}
-                                        </span>
-                                        <Badge variant="success" size="sm">
-                                            {((metrics.successfulDeployments / Math.max(metrics.totalDeployments, 1)) * 100).toFixed(0)}%
-                                        </Badge>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="rounded-full bg-danger/10 p-2">
-                                            <XCircle className="h-4 w-4 text-danger" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-foreground">Failed</p>
-                                            <p className="text-xs text-foreground-subtle">
-                                                Deployments with errors
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm text-foreground-muted">
-                                            {metrics.failedDeployments}
-                                        </span>
-                                        <Badge variant="danger" size="sm">
-                                            {((metrics.failedDeployments / Math.max(metrics.totalDeployments, 1)) * 100).toFixed(0)}%
-                                        </Badge>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card variant="glass">
-                        <CardHeader>
-                            <CardTitle>Recent Activity</CardTitle>
-                            <CardDescription>Deployment trends over time</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between border-b border-border/50 pb-3">
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">Last 24 Hours</p>
-                                        <p className="text-xs text-foreground-subtle">Deployments today</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-2xl font-bold text-foreground">
-                                            {metrics.deploymentsLast24h}
-                                        </span>
-                                        <Badge variant="info" size="sm">24h</Badge>
-                                    </div>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-foreground">Last 7 Days</p>
-                                        <p className="text-xs text-foreground-subtle">This week's activity</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-2xl font-bold text-foreground">
-                                            {metrics.deploymentsLast7d}
-                                        </span>
-                                        <Badge variant="primary" size="sm">7d</Badge>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Coming Soon Section */}
-                <Card variant="glass" className="mt-6">
-                    <CardHeader>
-                        <CardTitle>Advanced Metrics</CardTitle>
-                        <CardDescription>More detailed analytics coming soon</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            <div className="rounded-lg border border-primary/10 bg-primary/[0.03] p-4">
-                                <p className="text-sm font-medium text-foreground-muted">Resource Usage Trends</p>
-                                <Badge variant="warning" size="sm" className="mt-2">Coming Soon</Badge>
-                            </div>
-                            <div className="rounded-lg border border-primary/10 bg-primary/[0.03] p-4">
-                                <p className="text-sm font-medium text-foreground-muted">Team Performance</p>
-                                <Badge variant="warning" size="sm" className="mt-2">Coming Soon</Badge>
-                            </div>
-                            <div className="rounded-lg border border-primary/10 bg-primary/[0.03] p-4">
-                                <p className="text-sm font-medium text-foreground-muted">Cost Analytics</p>
-                                <Badge variant="warning" size="sm" className="mt-2">Coming Soon</Badge>
-                            </div>
+                {/* Overview Tab */}
+                {activeTab === 'overview' && (
+                    <>
+                        {/* Key Metrics Grid */}
+                        <div className="mb-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+                            <MetricCard
+                                title="Total Resources"
+                                value={metrics.totalResources}
+                                subtitle={`${metrics.activeResources} active`}
+                                icon={Activity}
+                                trend="neutral"
+                            />
+                            <MetricCard
+                                title="Total Deployments"
+                                value={metrics.totalDeployments}
+                                subtitle={`${metrics.deploymentsLast24h} in last 24h`}
+                                icon={Zap}
+                                trend="up"
+                                trendValue={`+${metrics.deploymentsLast7d} this week`}
+                            />
+                            <MetricCard
+                                title="Success Rate"
+                                value={`${metrics.successRate.toFixed(1)}%`}
+                                subtitle={`${metrics.successfulDeployments}/${metrics.totalDeployments} successful`}
+                                icon={CheckCircle}
+                                trend={metrics.successRate >= 90 ? 'up' : metrics.successRate >= 70 ? 'neutral' : 'down'}
+                                trendValue={metrics.successRate >= 90 ? 'Excellent' : metrics.successRate >= 70 ? 'Good' : 'Needs attention'}
+                            />
+                            <MetricCard
+                                title="Avg Deploy Time"
+                                value={formatTime(metrics.averageDeploymentTime)}
+                                subtitle="Average deployment duration"
+                                icon={Clock}
+                                trend="neutral"
+                            />
                         </div>
-                    </CardContent>
-                </Card>
+
+                        {/* Deployment Stats */}
+                        <div className="grid gap-6 lg:grid-cols-2">
+                            <Card variant="glass">
+                                <CardHeader>
+                                    <CardTitle>Deployment Status</CardTitle>
+                                    <CardDescription>Breakdown of deployment outcomes</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="rounded-full bg-success/10 p-2">
+                                                    <CheckCircle className="h-4 w-4 text-success" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">Successful</p>
+                                                    <p className="text-xs text-foreground-subtle">
+                                                        Completed without errors
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm text-foreground-muted">
+                                                    {metrics.successfulDeployments}
+                                                </span>
+                                                <Badge variant="success" size="sm">
+                                                    {((metrics.successfulDeployments / Math.max(metrics.totalDeployments, 1)) * 100).toFixed(0)}%
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="rounded-full bg-danger/10 p-2">
+                                                    <XCircle className="h-4 w-4 text-danger" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-foreground">Failed</p>
+                                                    <p className="text-xs text-foreground-subtle">
+                                                        Deployments with errors
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm text-foreground-muted">
+                                                    {metrics.failedDeployments}
+                                                </span>
+                                                <Badge variant="danger" size="sm">
+                                                    {((metrics.failedDeployments / Math.max(metrics.totalDeployments, 1)) * 100).toFixed(0)}%
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card variant="glass">
+                                <CardHeader>
+                                    <CardTitle>Recent Activity</CardTitle>
+                                    <CardDescription>Deployment trends over time</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between border-b border-border/50 pb-3">
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">Last 24 Hours</p>
+                                                <p className="text-xs text-foreground-subtle">Deployments today</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-2xl font-bold text-foreground">
+                                                    {metrics.deploymentsLast24h}
+                                                </span>
+                                                <Badge variant="info" size="sm">24h</Badge>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">Last 7 Days</p>
+                                                <p className="text-xs text-foreground-subtle">This week's activity</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-2xl font-bold text-foreground">
+                                                    {metrics.deploymentsLast7d}
+                                                </span>
+                                                <Badge variant="primary" size="sm">7d</Badge>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </>
+                )}
+
+                {/* Resource Usage Tab */}
+                {activeTab === 'resource-usage' && (
+                    <div>
+                        <div className="mb-4 flex items-center gap-3">
+                            <span className="text-sm text-foreground-muted">Period:</span>
+                            {['24h', '7d', '30d'].map((p) => (
+                                <Button
+                                    key={p}
+                                    variant={period === p ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => switchPeriod(p)}
+                                >
+                                    {p}
+                                </Button>
+                            ))}
+                        </div>
+                        {resourceUsage ? (
+                            <ResourceUsageTrends data={resourceUsage} />
+                        ) : (
+                            <Card variant="glass">
+                                <CardContent className="p-8 text-center text-foreground-muted">
+                                    Loading resource usage data...
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                )}
+
+                {/* Team Performance Tab */}
+                {activeTab === 'team-performance' && (
+                    teamPerformance ? (
+                        <TeamPerformance data={teamPerformance} />
+                    ) : (
+                        <Card variant="glass">
+                            <CardContent className="p-8 text-center text-foreground-muted">
+                                Loading team performance data...
+                            </CardContent>
+                        </Card>
+                    )
+                )}
+
+                {/* Cost Analytics Tab */}
+                {activeTab === 'cost-analytics' && (
+                    costAnalytics ? (
+                        <CostAnalytics data={costAnalytics} />
+                    ) : (
+                        <Card variant="glass">
+                            <CardContent className="p-8 text-center text-foreground-muted">
+                                Loading cost analytics data...
+                            </CardContent>
+                        </Card>
+                    )
+                )}
             </div>
         </AdminLayout>
     );

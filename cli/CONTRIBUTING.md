@@ -1,6 +1,6 @@
-# Contributing to Coolify CLI
+# Contributing to Saturn CLI
 
-Thank you for your interest in contributing to the Coolify CLI! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to the Saturn CLI! This document provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Thank you for your interest in contributing to the Coolify CLI! This document pr
 Before you start contributing:
 
 1. **Read the [ARCHITECTURE.md](ARCHITECTURE.md)** for detailed architectural guidance
-2. **Review the [OpenAPI specification](https://github.com/coollabsio/coolify/blob/v4.x/openapi.json)** to understand available API endpoints
+2. **Review the [OpenAPI specification](https://github.com/saturn-platform/saturn/blob/v4.x/openapi.json)** to understand available API endpoints
 3. **Check existing issues** to see if your feature/bug is already being worked on
 4. **Open an issue** to discuss your proposed changes (for large features)
 
@@ -33,11 +33,11 @@ Before you start contributing:
 ```bash
 # Fork the repository on GitHub
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/coolify-cli.git
-cd coolify-cli
+git clone https://github.com/YOUR_USERNAME/saturn-cli.git
+cd saturn-cli
 
 # Build the CLI
-go build -o coolify ./coolify
+go build -o saturn ./saturn
 
 # Install locally
 go install
@@ -47,14 +47,14 @@ go install
 
 ```bash
 # Run without installing
-go run ./coolify [command]
+go run ./saturn [command]
 
 # Example commands
-go run ./coolify context list
-go run ./coolify server list --debug
+go run ./saturn context list
+go run ./saturn server list --debug
 
 # With flags
-go run ./coolify server list --format json --debug
+go run ./saturn server list --format json --debug
 ```
 
 ### Project Structure
@@ -63,7 +63,7 @@ go run ./coolify server list --format json --debug
 cmd/                 # CLI commands (organized by feature)
 ├── root.go          # Root command and global flags
 ├── application/     # Application management commands
-├── context/         # Manage Coolify instances
+├── context/         # Manage Saturn instances
 ├── server/          # Server management
 ├── project/         # Project management
 ├── database/        # Database management
@@ -87,10 +87,10 @@ test/                # Test utilities and fixtures
 
 ## Project Architecture
 
-The Coolify CLI follows a **layered architecture**:
+The Saturn CLI follows a **layered architecture**:
 
 ```
-User → Commands (cmd/) → Services (internal/service/) → API Client (internal/api/) → Coolify API
+User → Commands (cmd/) → Services (internal/service/) → API Client (internal/api/) → Saturn API
 ```
 
 ### Layer Responsibilities
@@ -166,9 +166,9 @@ import (
     "context"
     "fmt"
 
-    "github.com/coollabsio/coolify-cli/internal/cli"
-    "github.com/coollabsio/coolify-cli/internal/output"
-    "github.com/coollabsio/coolify-cli/internal/service"
+    "github.com/saturn-platform/saturn-cli/internal/cli"
+    "github.com/saturn-platform/saturn-cli/internal/output"
+    "github.com/saturn-platform/saturn-cli/internal/service"
     "github.com/spf13/cobra"
 )
 
@@ -219,8 +219,8 @@ package service
 import (
     "context"
 
-    "github.com/coollabsio/coolify-cli/internal/api"
-    "github.com/coollabsio/coolify-cli/internal/models"
+    "github.com/saturn-platform/saturn-cli/internal/api"
+    "github.com/saturn-platform/saturn-cli/internal/models"
 )
 
 type MyFeatureService struct {
@@ -285,7 +285,7 @@ Add your command to `cmd/root.go`:
 ```go
 import (
     // ... existing imports
-    "github.com/coollabsio/coolify-cli/cmd/myfeature"
+    "github.com/saturn-platform/saturn-cli/cmd/myfeature"
 )
 
 func init() {
@@ -308,8 +308,8 @@ import (
     "net/http/httptest"
     "testing"
 
-    "github.com/coollabsio/coolify-cli/internal/api"
-    "github.com/coollabsio/coolify-cli/internal/models"
+    "github.com/saturn-platform/saturn-cli/internal/api"
+    "github.com/saturn-platform/saturn-cli/internal/models"
     "github.com/stretchr/testify/assert"
     "github.com/stretchr/testify/require"
 )
@@ -605,10 +605,10 @@ Releases are automated using GoReleaser:
 
 ## Getting Help
 
-- **Discord**: https://coolify.io/discord
-- **Issues**: [Open an issue](https://github.com/coollabsio/coolify-cli/issues) for bugs or feature requests
+- **Discord**: https://saturn.io/discord
+- **Issues**: [Open an issue](https://github.com/saturn-platform/saturn-cli/issues) for bugs or feature requests
 - **Architecture**: Read [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design documentation
-- **API Reference**: See the [OpenAPI specification](https://github.com/coollabsio/coolify/blob/v4.x/openapi.json)
+- **API Reference**: See the [OpenAPI specification](https://github.com/saturn-platform/saturn/blob/v4.x/openapi.json)
 - **Code Guidance**: See [CLAUDE.md](CLAUDE.md) for AI assistant guidance
 
 ## License
@@ -617,4 +617,4 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ---
 
-Thank you for contributing to Coolify CLI! 🚀
+Thank you for contributing to Saturn CLI! 🚀

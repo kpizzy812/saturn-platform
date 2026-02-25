@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Url\Url;
@@ -43,6 +44,10 @@ class InstanceSettings extends Model
         'sentinel_token',
         'is_wire_navigate_enabled',
         'is_registration_enabled',
+        'is_status_page_enabled',
+        'status_page_title',
+        'status_page_description',
+        'status_page_mode',
         'is_dns_validation_enabled',
         'is_ai_code_review_enabled',
         'is_ai_error_analysis_enabled',
@@ -157,6 +162,10 @@ class InstanceSettings extends Model
         'sentinel_token' => 'encrypted',
         'is_wire_navigate_enabled' => 'boolean',
 
+        // Status Page
+        'is_status_page_enabled' => 'boolean',
+        'status_page_mode' => 'string',
+
         // AI features
         'is_ai_code_review_enabled' => 'boolean',
         'is_ai_error_analysis_enabled' => 'boolean',
@@ -256,7 +265,9 @@ class InstanceSettings extends Model
                         \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                     }
                 } catch (\Throwable $e) {
-                    // Don't break FQDN update if Cloudflare sync fails
+                    Log::warning('Cloudflare sync failed during instance settings FQDN update', [
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         });

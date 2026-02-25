@@ -18,7 +18,6 @@ class AiChatHealthStatusTest extends TestCase
             ->getMock();
 
         $method = new ReflectionMethod(CommandExecutor::class, 'determineHealthStatus');
-        $method->setAccessible(true);
 
         return $method->invoke($executor, $status);
     }

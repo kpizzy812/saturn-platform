@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 
 /**
  * @property-read Service|null $service
@@ -18,7 +19,7 @@ class ServiceApplication extends BaseModel
 
     /**
      * SECURITY: Using $fillable instead of $guarded = [] to prevent mass assignment vulnerabilities.
-     * Excludes: id, status (system-managed), last_online_at (system-managed)
+     * Excludes: id (auto-increment)
      */
     protected $fillable = [
         'uuid',
@@ -27,6 +28,8 @@ class ServiceApplication extends BaseModel
         'image',
         'fqdn',
         'service_id',
+        'status',
+        'last_online_at',
         'is_log_drain_enabled',
         'is_stripprefix_enabled',
         'is_gzip_enabled',
@@ -41,7 +44,10 @@ class ServiceApplication extends BaseModel
                     \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                 }
             } catch (\Throwable $e) {
-                // Don't block deletion if Cloudflare cleanup fails
+                Log::warning('Cloudflare sync failed during service application deletion', [
+                    'service_application_id' => $service->id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             $service->update(['fqdn' => null]);
@@ -55,7 +61,10 @@ class ServiceApplication extends BaseModel
                         \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                     }
                 } catch (\Throwable $e) {
-                    // Don't break FQDN update if Cloudflare sync fails
+                    Log::warning('Cloudflare sync failed during service application FQDN update', [
+                        'service_application_id' => $service->id ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         });

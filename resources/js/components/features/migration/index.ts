@@ -5,3 +5,5 @@ export { MigrateConfirmStep } from './MigrateConfirmStep';
 export { MigrateProgressStep } from './MigrateProgressStep';
 export { MigrationApprovalCard } from './MigrationApprovalCard';
 export { EnvironmentMigrateModal } from './EnvironmentMigrateModal';
+export { PreflightCheckPanel } from './PreflightCheckPanel';
+export { PromotionChainIndicator } from './PromotionChainIndicator';

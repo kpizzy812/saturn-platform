@@ -1,7 +1,9 @@
 import * as React from 'react';
-import { Head } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
+import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Badge, useToast } from '@/components/ui';
 import { Terminal, Copy, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CLICommand {
     name: string;
@@ -13,10 +15,22 @@ interface CLICommand {
 }
 
 const commands: CLICommand[] = [
+    // Auth
+    {
+        name: 'login',
+        description: 'Authenticate with a Saturn instance via browser',
+        usage: 'saturn login [url]',
+        category: 'Auth',
+        examples: [
+            { command: 'saturn login https://saturn.ac', description: 'Login to production' },
+            { command: 'saturn login https://dev.saturn.ac', description: 'Login to dev environment' },
+            { command: 'saturn login', description: 'Login using default instance URL' },
+        ],
+    },
     // Context
     {
         name: 'context add',
-        description: 'Add a new Saturn instance connection',
+        description: 'Add a new Saturn instance connection (for CI/CD or manual setup)',
         usage: 'saturn context add <name> <url> <token>',
         category: 'Context',
         examples: [
@@ -95,14 +109,47 @@ const commands: CLICommand[] = [
             { command: 'saturn app env sync abc-123 --file .env.production', description: 'Sync from .env file' },
         ],
     },
+    {
+        name: 'app rollback list',
+        description: 'List rollback events for an application',
+        usage: 'saturn app rollback list <app-uuid> [--take <n>]',
+        category: 'Applications',
+        options: [
+            { flag: '--take <n>', description: 'Number of rollback events to retrieve' },
+        ],
+        examples: [
+            { command: 'saturn app rollback list abc-123', description: 'List all rollback events' },
+            { command: 'saturn app rollback list abc-123 --take 5', description: 'List last 5 rollback events' },
+        ],
+    },
+    {
+        name: 'app rollback execute',
+        description: 'Rollback to a previous deployment',
+        usage: 'saturn app rollback execute <app-uuid> <deployment-uuid>',
+        category: 'Applications',
+        options: [
+            { flag: '-f, --force', description: 'Skip confirmation prompt' },
+        ],
+        examples: [
+            { command: 'saturn app rollback execute abc-123 dep-456', description: 'Rollback to specific deployment' },
+            { command: 'saturn app rollback execute abc-123 dep-456 --force', description: 'Rollback without confirmation' },
+        ],
+    },
     // Deployments
     {
         name: 'deploy uuid',
         description: 'Deploy a resource by UUID',
         usage: 'saturn deploy uuid <uuid>',
         category: 'Deployments',
+        options: [
+            { flag: '-w, --wait', description: 'Wait for deployment to complete before exiting' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
+            { flag: '--poll-interval <seconds>', description: 'Poll interval in seconds when using --wait (default 3)' },
+        ],
         examples: [
             { command: 'saturn deploy uuid abc-123-def', description: 'Deploy specific resource' },
+            { command: 'saturn deploy uuid abc-123-def --wait', description: 'Deploy and wait for completion' },
+            { command: 'saturn deploy uuid abc-123-def --wait --timeout 300', description: 'Deploy with 5min timeout' },
         ],
     },
     {
@@ -110,8 +157,13 @@ const commands: CLICommand[] = [
         description: 'Deploy multiple resources at once',
         usage: 'saturn deploy batch <uuid1>,<uuid2>,...',
         category: 'Deployments',
+        options: [
+            { flag: '-w, --wait', description: 'Wait for all deployments to complete' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
+        ],
         examples: [
             { command: 'saturn deploy batch app1,app2,app3', description: 'Deploy multiple apps' },
+            { command: 'saturn deploy batch app1,app2 --wait', description: 'Deploy and wait for all to complete' },
         ],
     },
     {
@@ -125,6 +177,38 @@ const commands: CLICommand[] = [
         description: 'Cancel a running deployment',
         usage: 'saturn deploy cancel <deployment-uuid>',
         category: 'Deployments',
+    },
+    {
+        name: 'deploy tag',
+        description: 'Deploy all resources by tag name',
+        usage: 'saturn deploy tag <tag-name>',
+        category: 'Deployments',
+        options: [
+            { flag: '--force', description: 'Force deployment' },
+            { flag: '-w, --wait', description: 'Wait for all deployments to complete' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
+        ],
+        examples: [
+            { command: 'saturn deploy tag v1.0.0', description: 'Deploy all resources tagged v1.0.0' },
+            { command: 'saturn deploy tag production --force', description: 'Force deploy by tag' },
+            { command: 'saturn deploy tag v1.0.0 --wait', description: 'Deploy by tag and wait for completion' },
+        ],
+    },
+    {
+        name: 'deploy pr',
+        description: 'Deploy a PR preview for an application',
+        usage: 'saturn deploy pr <app-uuid> <pr-id>',
+        category: 'Deployments',
+        options: [
+            { flag: '--force', description: 'Force deployment' },
+            { flag: '-w, --wait', description: 'Wait for deployment to complete' },
+            { flag: '--timeout <seconds>', description: 'Timeout in seconds when using --wait (default 600)' },
+        ],
+        examples: [
+            { command: 'saturn deploy pr abc-123 42', description: 'Deploy PR #42 preview' },
+            { command: 'saturn deploy pr abc-123 42 --force', description: 'Force deploy PR preview' },
+            { command: 'saturn deploy pr abc-123 42 --wait', description: 'Deploy PR and wait for completion' },
+        ],
     },
     // Services
     {
@@ -243,6 +327,11 @@ const commands: CLICommand[] = [
 
 const categories = Array.from(new Set(commands.map(cmd => cmd.category)));
 
+const cliTabs = [
+    { id: 'setup', label: 'Setup', href: '/cli/setup' },
+    { id: 'commands', label: 'Commands', href: '/cli/commands' },
+];
+
 export default function CLICommands() {
     const [searchQuery, setSearchQuery] = React.useState('');
     const [expandedCommands, setExpandedCommands] = React.useState<Set<string>>(new Set());
@@ -277,224 +366,239 @@ export default function CLICommands() {
     };
 
     return (
-        <>
-            <Head title="CLI Commands | Saturn" />
-            <div className="min-h-screen bg-background p-6">
-                <div className="mx-auto max-w-5xl space-y-6">
-                    {/* Header */}
-                    <div className="space-y-2">
-                        <h1 className="text-3xl font-bold text-foreground">CLI Command Reference</h1>
-                        <p className="text-foreground-muted">
-                            Complete guide to all Saturn CLI commands
-                        </p>
-                    </div>
+        <AppLayout title="CLI Commands">
+            <div className="mx-auto max-w-5xl space-y-6">
+                {/* Header */}
+                <div className="space-y-2">
+                    <h1 className="text-2xl font-semibold text-foreground">CLI Command Reference</h1>
+                    <p className="text-sm text-foreground-muted">
+                        Complete guide to all Saturn CLI commands
+                    </p>
+                </div>
 
-                    {/* Search */}
-                    <Card>
-                        <CardContent className="py-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-                                <Input
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search commands..."
-                                    className="pl-10"
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Quick Reference */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Quick Reference</CardTitle>
-                            <CardDescription>
-                                Essential commands to get started
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn context add</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Connect to Saturn instance</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn deploy uuid &lt;uuid&gt;</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Deploy a resource</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn app list</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">List all applications</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-background p-3">
-                                    <code className="text-sm font-medium text-foreground">saturn service create</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Create one-click service</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Global Flags */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Global Flags</CardTitle>
-                            <CardDescription>
-                                Available for all commands
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-2 sm:grid-cols-2">
-                                <div className="rounded-lg border border-border bg-background-secondary p-3">
-                                    <code className="text-sm font-medium text-foreground">--token &lt;token&gt;</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Override authentication token</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-background-secondary p-3">
-                                    <code className="text-sm font-medium text-foreground">--context &lt;name&gt;</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Use specific context</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-background-secondary p-3">
-                                    <code className="text-sm font-medium text-foreground">--format table|json|pretty</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Output format</p>
-                                </div>
-                                <div className="rounded-lg border border-border bg-background-secondary p-3">
-                                    <code className="text-sm font-medium text-foreground">--debug</code>
-                                    <p className="mt-1 text-xs text-foreground-muted">Enable debug logging</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Commands by Category */}
-                    {Object.entries(groupedCommands).map(([category, cmds]) => (
-                        cmds.length > 0 && (
-                            <Card key={category}>
-                                <CardHeader>
-                                    <div className="flex items-center gap-2">
-                                        <CardTitle>{category}</CardTitle>
-                                        <Badge variant="default">{cmds.length}</Badge>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-2">
-                                        {cmds.map((cmd) => {
-                                            const isExpanded = expandedCommands.has(cmd.name);
-                                            return (
-                                                <div
-                                                    key={cmd.name}
-                                                    className="rounded-lg border border-border bg-background"
-                                                >
-                                                    {/* Command Header */}
-                                                    <button
-                                                        onClick={() => toggleCommand(cmd.name)}
-                                                        className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-background-secondary"
-                                                    >
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-3">
-                                                                <Terminal className="h-4 w-4 text-primary" />
-                                                                <code className="font-medium text-foreground">
-                                                                    saturn {cmd.name}
-                                                                </code>
-                                                            </div>
-                                                            <p className="mt-1 text-sm text-foreground-muted">
-                                                                {cmd.description}
-                                                            </p>
-                                                        </div>
-                                                        {isExpanded ? (
-                                                            <ChevronDown className="h-5 w-5 text-foreground-muted" />
-                                                        ) : (
-                                                            <ChevronRight className="h-5 w-5 text-foreground-muted" />
-                                                        )}
-                                                    </button>
-
-                                                    {/* Command Details */}
-                                                    {isExpanded && (
-                                                        <div className="space-y-4 border-t border-border p-4">
-                                                            {/* Usage */}
-                                                            <div>
-                                                                <p className="mb-2 text-sm font-medium text-foreground">
-                                                                    Usage
-                                                                </p>
-                                                                <div className="relative">
-                                                                    <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-3 pr-12">
-                                                                        <code className="text-sm text-foreground">
-                                                                            {cmd.usage}
-                                                                        </code>
-                                                                    </pre>
-                                                                    <button
-                                                                        onClick={() => handleCopy(cmd.usage)}
-                                                                        className="absolute right-2 top-2 rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
-                                                                    >
-                                                                        <Copy className="h-3 w-3" />
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Options */}
-                                                            {cmd.options && cmd.options.length > 0 && (
-                                                                <div>
-                                                                    <p className="mb-2 text-sm font-medium text-foreground">
-                                                                        Options
-                                                                    </p>
-                                                                    <div className="space-y-2">
-                                                                        {cmd.options.map((option, idx) => (
-                                                                            <div
-                                                                                key={idx}
-                                                                                className="rounded-lg border border-border bg-background-secondary p-3"
-                                                                            >
-                                                                                <code className="text-sm font-medium text-foreground">
-                                                                                    {option.flag}
-                                                                                </code>
-                                                                                <p className="mt-1 text-sm text-foreground-muted">
-                                                                                    {option.description}
-                                                                                </p>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Examples */}
-                                                            {cmd.examples && cmd.examples.length > 0 && (
-                                                                <div>
-                                                                    <p className="mb-2 text-sm font-medium text-foreground">
-                                                                        Examples
-                                                                    </p>
-                                                                    <div className="space-y-3">
-                                                                        {cmd.examples.map((example, idx) => (
-                                                                            <div key={idx}>
-                                                                                <p className="mb-1 text-xs text-foreground-subtle">
-                                                                                    {example.description}
-                                                                                </p>
-                                                                                <div className="relative">
-                                                                                    <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-3 pr-12">
-                                                                                        <code className="text-sm text-foreground">
-                                                                                            {example.command}
-                                                                                        </code>
-                                                                                    </pre>
-                                                                                    <button
-                                                                                        onClick={() => handleCopy(example.command)}
-                                                                                        className="absolute right-2 top-2 rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
-                                                                                    >
-                                                                                        <Copy className="h-3 w-3" />
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )
+                {/* CLI Tab Navigation */}
+                <div className="flex items-center gap-1 border-b border-border">
+                    {cliTabs.map((tab) => (
+                        <Link
+                            key={tab.id}
+                            href={tab.href}
+                            className={cn(
+                                'px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px',
+                                tab.id === 'commands'
+                                    ? 'border-primary text-foreground'
+                                    : 'border-transparent text-foreground-muted hover:text-foreground hover:border-border'
+                            )}
+                        >
+                            {tab.label}
+                        </Link>
                     ))}
                 </div>
+
+                {/* Search */}
+                <Card>
+                    <CardContent className="py-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
+                            <Input
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search commands..."
+                                className="pl-10"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Quick Reference */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Quick Reference</CardTitle>
+                        <CardDescription>
+                            Essential commands to get started
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg border border-border bg-background p-3">
+                                <code className="text-sm font-medium text-foreground">saturn login &lt;url&gt;</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Authenticate via browser</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background p-3">
+                                <code className="text-sm font-medium text-foreground">saturn deploy uuid &lt;uuid&gt; --wait</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Deploy and wait for completion</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background p-3">
+                                <code className="text-sm font-medium text-foreground">saturn app list</code>
+                                <p className="mt-1 text-xs text-foreground-muted">List all applications</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background p-3">
+                                <code className="text-sm font-medium text-foreground">saturn service create</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Create one-click service</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Global Flags */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Global Flags</CardTitle>
+                        <CardDescription>
+                            Available for all commands
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                <code className="text-sm font-medium text-foreground">--token &lt;token&gt;</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Override authentication token</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                <code className="text-sm font-medium text-foreground">--context &lt;name&gt;</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Use specific context</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                <code className="text-sm font-medium text-foreground">--format table|json|pretty</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Output format</p>
+                            </div>
+                            <div className="rounded-lg border border-border bg-background-secondary p-3">
+                                <code className="text-sm font-medium text-foreground">--debug</code>
+                                <p className="mt-1 text-xs text-foreground-muted">Enable debug logging</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Commands by Category */}
+                {Object.entries(groupedCommands).map(([category, cmds]) => (
+                    cmds.length > 0 && (
+                        <Card key={category}>
+                            <CardHeader>
+                                <div className="flex items-center gap-2">
+                                    <CardTitle>{category}</CardTitle>
+                                    <Badge variant="default">{cmds.length}</Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-2">
+                                    {cmds.map((cmd) => {
+                                        const isExpanded = expandedCommands.has(cmd.name);
+                                        return (
+                                            <div
+                                                key={cmd.name}
+                                                className="rounded-lg border border-border bg-background"
+                                            >
+                                                {/* Command Header */}
+                                                <button
+                                                    onClick={() => toggleCommand(cmd.name)}
+                                                    className="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-background-secondary"
+                                                >
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-3">
+                                                            <Terminal className="h-4 w-4 text-primary" />
+                                                            <code className="font-medium text-foreground">
+                                                                saturn {cmd.name}
+                                                            </code>
+                                                        </div>
+                                                        <p className="mt-1 text-sm text-foreground-muted">
+                                                            {cmd.description}
+                                                        </p>
+                                                    </div>
+                                                    {isExpanded ? (
+                                                        <ChevronDown className="h-5 w-5 text-foreground-muted" />
+                                                    ) : (
+                                                        <ChevronRight className="h-5 w-5 text-foreground-muted" />
+                                                    )}
+                                                </button>
+
+                                                {/* Command Details */}
+                                                {isExpanded && (
+                                                    <div className="space-y-4 border-t border-border p-4">
+                                                        {/* Usage */}
+                                                        <div>
+                                                            <p className="mb-2 text-sm font-medium text-foreground">
+                                                                Usage
+                                                            </p>
+                                                            <div className="relative">
+                                                                <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-3 pr-12">
+                                                                    <code className="text-sm text-foreground">
+                                                                        {cmd.usage}
+                                                                    </code>
+                                                                </pre>
+                                                                <button
+                                                                    onClick={() => handleCopy(cmd.usage)}
+                                                                    className="absolute right-2 top-2 rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+                                                                >
+                                                                    <Copy className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Options */}
+                                                        {cmd.options && cmd.options.length > 0 && (
+                                                            <div>
+                                                                <p className="mb-2 text-sm font-medium text-foreground">
+                                                                    Options
+                                                                </p>
+                                                                <div className="space-y-2">
+                                                                    {cmd.options.map((option, idx) => (
+                                                                        <div
+                                                                            key={idx}
+                                                                            className="rounded-lg border border-border bg-background-secondary p-3"
+                                                                        >
+                                                                            <code className="text-sm font-medium text-foreground">
+                                                                                {option.flag}
+                                                                            </code>
+                                                                            <p className="mt-1 text-sm text-foreground-muted">
+                                                                                {option.description}
+                                                                            </p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {/* Examples */}
+                                                        {cmd.examples && cmd.examples.length > 0 && (
+                                                            <div>
+                                                                <p className="mb-2 text-sm font-medium text-foreground">
+                                                                    Examples
+                                                                </p>
+                                                                <div className="space-y-3">
+                                                                    {cmd.examples.map((example, idx) => (
+                                                                        <div key={idx}>
+                                                                            <p className="mb-1 text-xs text-foreground-subtle">
+                                                                                {example.description}
+                                                                            </p>
+                                                                            <div className="relative">
+                                                                                <pre className="overflow-x-auto rounded-lg bg-background-tertiary p-3 pr-12">
+                                                                                    <code className="text-sm text-foreground">
+                                                                                        {example.command}
+                                                                                    </code>
+                                                                                </pre>
+                                                                                <button
+                                                                                    onClick={() => handleCopy(example.command)}
+                                                                                    className="absolute right-2 top-2 rounded-md p-1.5 text-foreground-muted transition-colors hover:bg-background-secondary hover:text-foreground"
+                                                                                >
+                                                                                    <Copy className="h-3 w-3" />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )
+                ))}
             </div>
-        </>
+        </AppLayout>
     );
 }

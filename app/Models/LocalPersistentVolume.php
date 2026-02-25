@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -200,7 +201,7 @@ class LocalPersistentVolume extends Model
 
             return false;
         } catch (\Throwable $e) {
-            ray($e->getMessage(), 'Error checking read-only persistent volume');
+            Log::warning('Error checking read-only persistent volume', ['error' => $e->getMessage()]);
 
             return false;
         }

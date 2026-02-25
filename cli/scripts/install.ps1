@@ -31,7 +31,7 @@ if (-not $InstallDir -and $env:SATURN_INSTALL_DIR) {
 }
 
 # Configuration
-$Script:REPO = "saturn-platform/saturn-cli"
+$Script:REPO = "kpizzy812/saturn-cli"
 $Script:BINARY_NAME = "saturn.exe"
 $Script:GLOBAL_INSTALL_DIR = "$env:ProgramFiles\Saturn"
 $Script:USER_INSTALL_DIR = "$env:LOCALAPPDATA\Saturn"

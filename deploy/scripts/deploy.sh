@@ -107,13 +107,32 @@ validate_prerequisites() {
     # Create required directories
     log_info "Ensuring data directories exist..."
     mkdir -p "${SATURN_DATA}/ssh/keys"
+    mkdir -p "${SATURN_DATA}/ssh/mux"
     mkdir -p "${SATURN_DATA}/applications"
     mkdir -p "${SATURN_DATA}/databases"
     mkdir -p "${SATURN_DATA}/services"
     mkdir -p "${SATURN_DATA}/backups"
     mkdir -p "${SATURN_DATA}/uploads"
 
+    # Fix SSH directory ownership for www-data (uid 9999 inside container)
+    fix_ssh_permissions
+
     log_success "Prerequisites OK"
+}
+
+# =============================================================================
+# SSH Key Permissions
+# =============================================================================
+fix_ssh_permissions() {
+    log_info "Fixing SSH key permissions for container user (uid 9999)..."
+
+    # The container runs as www-data (uid=9999). SSH keys on the host volume
+    # must be readable by this user, otherwise SSH connections fail.
+    chown -R 9999:9999 "${SATURN_DATA}/ssh/"
+    chmod 700 "${SATURN_DATA}/ssh/keys" "${SATURN_DATA}/ssh/mux"
+    chmod 600 "${SATURN_DATA}/ssh/keys/"* 2>/dev/null || true
+
+    log_success "SSH key permissions fixed"
 }
 
 # =============================================================================
@@ -164,6 +183,22 @@ start_infrastructure() {
     compose_cmd up -d --wait postgres redis soketi
 
     log_success "Infrastructure healthy"
+}
+
+sync_db_password() {
+    log_step "Syncing database password..."
+
+    # PostgreSQL only sets POSTGRES_PASSWORD on first initdb.
+    # If the .env password was changed, the DB volume still has the old one.
+    # This ensures they always match.
+    local db_password
+    db_password=$(grep '^DB_PASSWORD=' "${SATURN_DATA}/source/.env" | cut -d= -f2-)
+
+    if [[ -n "$db_password" ]]; then
+        docker exec "${CONTAINER_DB}" psql -U saturn -d saturn \
+            -c "ALTER USER saturn PASSWORD '${db_password}';" > /dev/null 2>&1 || true
+        log_success "Database password synced"
+    fi
 }
 
 run_migrations() {
@@ -317,9 +352,11 @@ deploy() {
     pull_images
     stop_services
     start_infrastructure
+    sync_db_password
     run_migrations
     start_app
     run_seeders
+    fix_ssh_permissions  # Re-fix after seeders (may create new key files)
     clear_caches
     restore_proxy_config  # Restore multi-env Traefik config (old images may overwrite it)
     cleanup_old_backups

@@ -79,11 +79,7 @@ trait SshRetryable
         $maxRetries = config('constants.ssh.max_retries');
         $lastError = null;
         $lastErrorMessage = '';
-        // Randomly fail the command with a key exchange error for testing
-        // if (random_int(1, 10) === 1) { // 10% chance to fail
-        //     ray('SSH key exchange failed: kex_exchange_identification: read: Connection reset by peer');
-        //     throw new \RuntimeException('SSH key exchange failed: kex_exchange_identification: read: Connection reset by peer');
-        // }
+
         for ($attempt = 0; $attempt < $maxRetries; $attempt++) {
             try {
                 return $callback();

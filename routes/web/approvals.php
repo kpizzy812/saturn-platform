@@ -12,6 +12,7 @@ use App\Models\ApplicationDeploymentQueue;
 use App\Models\DeploymentApproval;
 use App\Models\ResourceTransfer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -161,6 +162,8 @@ Route::post('/applications/{uuid}/deploy/json', function (\Illuminate\Http\Reque
     $application = \App\Models\Application::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('deploy', $application);
 
     $deployment_uuid = new \Visus\Cuid2\Cuid2;
     $requires_approval = $request->boolean('requires_approval', false);
@@ -350,6 +353,11 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
         })
         ->firstOrFail();
 
+    // Authorize: user must be able to update resources in this environment
+    if (! in_array(auth()->user()->role(), ['owner', 'admin', 'developer'])) {
+        abort(403, 'You do not have permission to create resource links.');
+    }
+
     $validated = $request->validate([
         'source_id' => 'required|integer',
         'target_type' => 'required|string|in:postgresql,mysql,mariadb,redis,keydb,dragonfly,mongodb,clickhouse,application',
@@ -468,6 +476,10 @@ Route::patch('/environments/{uuid}/links/{linkId}/json', function (\Illuminate\H
         })
         ->firstOrFail();
 
+    if (! in_array(auth()->user()->role(), ['owner', 'admin', 'developer'])) {
+        abort(403, 'You do not have permission to update resource links.');
+    }
+
     $link = \App\Models\ResourceLink::where('id', $linkId)
         ->where('environment_id', $environment->id)
         ->firstOrFail();
@@ -512,6 +524,10 @@ Route::delete('/environments/{uuid}/links/{linkId}/json', function (string $uuid
             $query->whereRelation('team', 'id', currentTeam()->id);
         })
         ->firstOrFail();
+
+    if (! in_array(auth()->user()->role(), ['owner', 'admin', 'developer'])) {
+        abort(403, 'You do not have permission to delete resource links.');
+    }
 
     $link = \App\Models\ResourceLink::where('id', $linkId)
         ->where('environment_id', $environment->id)

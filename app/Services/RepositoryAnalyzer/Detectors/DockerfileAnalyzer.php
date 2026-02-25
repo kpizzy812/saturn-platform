@@ -21,7 +21,19 @@ class DockerfileAnalyzer
             return null;
         }
 
-        $content = file_get_contents($dockerfile);
+        return $this->analyzeFile($dockerfile);
+    }
+
+    /**
+     * Analyze a specific Dockerfile by its full path
+     */
+    public function analyzeFile(string $filePath): ?DockerfileInfo
+    {
+        if (! $this->isReadableFile($filePath)) {
+            return null;
+        }
+
+        $content = file_get_contents($filePath);
 
         return new DockerfileInfo(
             baseImage: $this->extractBaseImage($content),

@@ -38,7 +38,6 @@ class CollectDatabaseMetricsJobTest extends TestCase
 
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('getDatabaseType');
-        $method->setAccessible(true);
 
         $database = Mockery::mock(StandalonePostgresql::class);
         $result = $method->invoke($job, $database);
@@ -56,7 +55,6 @@ class CollectDatabaseMetricsJobTest extends TestCase
 
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('parseCpuPercent');
-        $method->setAccessible(true);
 
         $this->assertEquals(42.5, $method->invoke($job, '42.5%'));
         $this->assertEquals(0.0, $method->invoke($job, '0%'));
@@ -74,7 +72,6 @@ class CollectDatabaseMetricsJobTest extends TestCase
 
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('convertToBytes');
-        $method->setAccessible(true);
 
         // Test basic units
         $this->assertEquals(1000, $method->invoke($job, '1KB'));
@@ -102,7 +99,6 @@ class CollectDatabaseMetricsJobTest extends TestCase
 
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('parseMemoryBytes');
-        $method->setAccessible(true);
 
         // Docker stats format: "1.2GiB / 4GiB"
         $result = $method->invoke($job, '1.2GiB / 4GiB');
@@ -122,7 +118,6 @@ class CollectDatabaseMetricsJobTest extends TestCase
 
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('parseMemoryLimit');
-        $method->setAccessible(true);
 
         // Docker stats format: "1.2GiB / 4GiB"
         $result = $method->invoke($job, '1.2GiB / 4GiB');
@@ -142,7 +137,6 @@ class CollectDatabaseMetricsJobTest extends TestCase
 
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('parseNetworkBytes');
-        $method->setAccessible(true);
 
         // Docker stats format: "1.2MB / 500KB"
         $rxResult = $method->invoke($job, '1.2MB / 500KB', 'rx');
@@ -162,7 +156,6 @@ class CollectDatabaseMetricsJobTest extends TestCase
 
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('formatBytes');
-        $method->setAccessible(true);
 
         $this->assertEquals('0 B', $method->invoke($job, 0));
         $this->assertEquals('1 KB', $method->invoke($job, 1024));

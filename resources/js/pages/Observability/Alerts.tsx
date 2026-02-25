@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input, Select, Badge, Modal, ModalFooter, Checkbox, useConfirm } from '@/components/ui';
 import { Bell, Plus, Trash2, Edit, Check, X, AlertTriangle, TrendingUp, Activity } from 'lucide-react';
+import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 interface Alert {
     id: number;
@@ -274,24 +275,26 @@ export default function ObservabilityAlerts({ alerts: propAlerts = [], history =
                         </CardHeader>
                         <CardContent>
                             {alerts.length === 0 ? (
-                                <div className="py-12 text-center">
-                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
-                                        <Bell className="h-8 w-8 text-foreground-muted" />
+                                <FadeIn>
+                                    <div className="py-12 text-center">
+                                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary">
+                                            <Bell className="h-8 w-8 text-foreground-muted animate-pulse-soft" />
+                                        </div>
+                                        <h3 className="mt-4 text-lg font-medium text-foreground">No alerts configured</h3>
+                                        <p className="mt-2 text-foreground-muted">
+                                            Create your first alert to get notified of issues.
+                                        </p>
+                                        <Button onClick={handleOpenAdd} className="mt-6 group">
+                                            <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
+                                            Create Alert
+                                        </Button>
                                     </div>
-                                    <h3 className="mt-4 text-lg font-medium text-foreground">No alerts configured</h3>
-                                    <p className="mt-2 text-foreground-muted">
-                                        Create your first alert to get notified of issues.
-                                    </p>
-                                    <Button onClick={handleOpenAdd} className="mt-6">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Create Alert
-                                    </Button>
-                                </div>
+                                </FadeIn>
                             ) : (
-                                <div className="space-y-3">
-                                    {alerts.map((alert) => (
+                                <StaggerList className="space-y-3">
+                                    {alerts.map((alert, i) => (
+                                        <StaggerItem key={alert.id} index={i}>
                                         <div
-                                            key={alert.id}
                                             className="rounded-lg border border-border bg-background-secondary p-4 transition-colors hover:bg-background-tertiary"
                                         >
                                             <div className="flex items-start justify-between gap-4">
@@ -356,8 +359,9 @@ export default function ObservabilityAlerts({ alerts: propAlerts = [], history =
                                                 </div>
                                             </div>
                                         </div>
+                                        </StaggerItem>
                                     ))}
-                                </div>
+                                </StaggerList>
                             )}
                         </CardContent>
                     </Card>
@@ -372,13 +376,16 @@ export default function ObservabilityAlerts({ alerts: propAlerts = [], history =
                         <CardContent>
                             <div className="space-y-3">
                                 {history.length === 0 ? (
-                                    <div className="py-6 text-center text-sm text-foreground-muted">
-                                        No alert history yet
-                                    </div>
+                                    <FadeIn>
+                                        <div className="py-6 text-center text-sm text-foreground-muted">
+                                            No alert history yet
+                                        </div>
+                                    </FadeIn>
                                 ) : (
-                                    history.map((item) => (
+                                    <StaggerList className="space-y-3">
+                                    {history.map((item, i) => (
+                                        <StaggerItem key={item.id} index={i}>
                                         <div
-                                            key={item.id}
                                             className="rounded-lg border border-border bg-background p-3"
                                         >
                                             <div className="flex items-start justify-between gap-2 mb-2">
@@ -403,7 +410,9 @@ export default function ObservabilityAlerts({ alerts: propAlerts = [], history =
                                                 )}
                                             </div>
                                         </div>
-                                    ))
+                                        </StaggerItem>
+                                    ))}
+                                    </StaggerList>
                                 )}
                             </div>
                         </CardContent>

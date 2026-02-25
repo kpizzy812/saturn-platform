@@ -20,7 +20,7 @@ class ValidateAndInstallServerJob implements ShouldQueue
 
     public $timeout = 600; // 10 minutes
 
-    public int $maxTries = 3;
+    public int $tries = 3;
 
     public function __construct(
         public Server $server,
@@ -75,9 +75,9 @@ class ValidateAndInstallServerJob implements ShouldQueue
             // Check and install prerequisites
             $validationResult = $this->server->validatePrerequisites();
             if (! $validationResult['success']) {
-                if ($this->numberOfTries >= $this->maxTries) {
+                if ($this->numberOfTries >= $this->tries) {
                     $missingCommands = implode(', ', $validationResult['missing']);
-                    $errorMessage = "Prerequisites ({$missingCommands}) could not be installed after {$this->maxTries} attempts. Please install them manually before continuing.";
+                    $errorMessage = "Prerequisites ({$missingCommands}) could not be installed after {$this->tries} attempts. Please install them manually before continuing.";
                     $this->server->update([
                         'validation_logs' => $errorMessage,
                         'is_validating' => false,
@@ -114,8 +114,8 @@ class ValidateAndInstallServerJob implements ShouldQueue
 
             if (! $dockerInstalled || ! $dockerComposeInstalled) {
                 // Try to install Docker
-                if ($this->numberOfTries >= $this->maxTries) {
-                    $errorMessage = 'Docker Engine could not be installed after '.$this->maxTries.' attempts. Please install Docker manually before continuing: <a target="_blank" class="underline" href="https://docs.docker.com/engine/install/#server">documentation</a>.';
+                if ($this->numberOfTries >= $this->tries) {
+                    $errorMessage = 'Docker Engine could not be installed after '.$this->tries.' attempts. Please install Docker manually before continuing: <a target="_blank" class="underline" href="https://docs.docker.com/engine/install/#server">documentation</a>.';
                     $this->server->update([
                         'validation_logs' => $errorMessage,
                         'is_validating' => false,
@@ -195,6 +195,24 @@ class ValidateAndInstallServerJob implements ShouldQueue
             $this->server->update([
                 'validation_logs' => 'An error occurred during validation: '.$e->getMessage(),
                 'is_validating' => false,
+            ]);
+        }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ValidateAndInstallServerJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
+
+        try {
+            $this->server->update(['is_validating' => false]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to reset is_validating flag after server validation failure', [
+                'server_id' => $this->server->id,
+                'error' => $e->getMessage(),
             ]);
         }
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DatabaseMetric;
 use App\Services\DatabaseMetrics\ClickhouseMetricsService;
 use App\Services\DatabaseMetrics\DatabaseResolver;
+use App\Services\DatabaseMetrics\InputValidator;
 use App\Services\DatabaseMetrics\MongoMetricsService;
 use App\Services\DatabaseMetrics\MysqlMetricsService;
 use App\Services\DatabaseMetrics\PostgresMetricsService;
@@ -74,6 +75,17 @@ class DatabaseMetricsController extends Controller
         return $this->databaseResolver->findByUuid($uuid);
     }
 
+    /**
+     * Authorize the current user against a database policy ability.
+     */
+    private function authorizeDatabase(string $uuid, string $ability): void
+    {
+        [$database] = $this->databaseResolver->findByUuid($uuid);
+        if ($database) {
+            $this->authorize($ability, $database);
+        }
+    }
+
     public function getExtensions(string $uuid): JsonResponse
     {
         return $this->withDatabase($uuid, fn ($db, $server) => $this->availableResponse([
@@ -97,7 +109,7 @@ class DatabaseMetricsController extends Controller
     {
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
             $lines = min(max((int) $request->input('lines', 100), 10), 1000);
-            $containerName = $db->uuid;
+            $containerName = escapeshellarg($db->uuid);
 
             $checkCommand = "docker inspect --format='{{.State.Status}}' {$containerName} 2>&1";
             $containerStatus = trim(instant_remote_process([$checkCommand], $server, false) ?? '');
@@ -143,6 +155,8 @@ class DatabaseMetricsController extends Controller
 
     public function executeQuery(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['query' => 'required|string|max:10000']);
         $query = trim($request->input('query'));
 
@@ -227,7 +241,7 @@ class DatabaseMetricsController extends Controller
     {
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
             $pattern = $request->input('pattern', '*');
-            if (! preg_match('/^[a-zA-Z0-9_:.*?\[\]-]+$/', $pattern)) {
+            if (! InputValidator::isValidRedisPattern($pattern)) {
                 return response()->json(['available' => false, 'error' => 'Invalid pattern format']);
             }
 
@@ -246,6 +260,8 @@ class DatabaseMetricsController extends Controller
 
     public function redisFlush(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $flushType = $request->input('type', 'db');
         if (! in_array($flushType, ['db', 'all'])) {
             return $this->errorResponse('Invalid flush type');
@@ -262,9 +278,14 @@ class DatabaseMetricsController extends Controller
 
     public function postgresMaintenace(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $operation = $request->input('operation', 'vacuum');
-        if (! in_array($operation, ['vacuum', 'analyze'])) {
-            return $this->errorResponse('Invalid operation');
+        // Validate against centralized whitelist (defense-in-depth)
+        try {
+            InputValidator::validateMaintenanceOperation($operation);
+        } catch (\InvalidArgumentException) {
+            return $this->errorResponse('Invalid operation. Allowed: vacuum, analyze');
         }
 
         return $this->withDatabase($uuid, function ($db, $server) use ($operation) {
@@ -299,8 +320,10 @@ class DatabaseMetricsController extends Controller
 
     public function toggleExtension(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'update');
+
         $extensionName = $request->input('extension');
-        if (! $extensionName || ! preg_match('/^[a-z_][a-z0-9_]*$/i', $extensionName)) {
+        if (! $extensionName || ! InputValidator::isValidExtensionName($extensionName)) {
             return $this->errorResponse('Invalid extension name');
         }
 
@@ -322,6 +345,8 @@ class DatabaseMetricsController extends Controller
 
     public function killConnection(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['pid' => 'required|integer']);
         $pid = (int) $request->input('pid');
 
@@ -340,6 +365,8 @@ class DatabaseMetricsController extends Controller
 
     public function createUser(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate([
             'username' => ['required', 'string', 'max:63', 'regex:/^[a-zA-Z_][a-zA-Z0-9_]*$/'],
             'password' => 'required|string|min:8',
@@ -354,6 +381,8 @@ class DatabaseMetricsController extends Controller
 
     public function deleteUser(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['username' => 'required|string']);
         $username = $request->input('username');
 
@@ -378,6 +407,8 @@ class DatabaseMetricsController extends Controller
 
     public function createMongoIndex(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'update');
+
         $request->validate(['collection' => 'required|string|max:255', 'fields' => 'required|string', 'unique' => 'boolean']);
 
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
@@ -405,6 +436,8 @@ class DatabaseMetricsController extends Controller
 
     public function deleteRedisKey(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate(['key' => 'required|string|max:1024']);
 
         return $this->withDatabase($uuid, fn ($db, $server) => response()->json(
@@ -423,6 +456,8 @@ class DatabaseMetricsController extends Controller
 
     public function setRedisKeyValue(Request $request, string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         $request->validate([
             'key' => 'required|string|max:1024',
             'type' => 'required|string|in:string,list,set,zset,hash',
@@ -456,7 +491,7 @@ class DatabaseMetricsController extends Controller
             'region' => 'required|string',
             'access_key' => 'required|string',
             'secret_key' => 'required|string',
-            'endpoint' => 'nullable|string',
+            'endpoint' => 'nullable|url',
         ]);
 
         try {
@@ -469,6 +504,20 @@ class DatabaseMetricsController extends Controller
             ];
 
             if ($endpoint = $request->input('endpoint')) {
+                // SSRF protection: block private/reserved/link-local IP ranges
+                $parsed = parse_url($endpoint);
+                $host = $parsed['host'] ?? '';
+                $resolvedIp = filter_var($host, FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
+
+                if (filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                    return $this->errorResponse('Invalid endpoint: private or reserved addresses are not allowed');
+                }
+
+                // Block link-local (169.254.x.x) and shared address space (100.64.0.0/10)
+                if (str_starts_with($resolvedIp, '169.254.') || (ip2long($resolvedIp) >= ip2long('100.64.0.0') && ip2long($resolvedIp) <= ip2long('100.127.255.255'))) {
+                    return $this->errorResponse('Invalid endpoint: link-local and shared addresses are not allowed');
+                }
+
                 $config['endpoint'] = $endpoint;
                 $config['use_path_style_endpoint'] = true;
             }
@@ -483,6 +532,8 @@ class DatabaseMetricsController extends Controller
 
     public function regeneratePassword(string $uuid): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
         return $this->withDatabase($uuid, function ($db, $server, $type) {
             $passwordField = match ($type) {
                 'postgresql' => 'postgres_password',
@@ -503,14 +554,27 @@ class DatabaseMetricsController extends Controller
             $db->{$passwordField} = \Illuminate\Support\Str::password(32);
             $db->save();
 
-            instant_remote_process(["docker restart {$db->uuid} 2>&1"], $server, false);
+            $safeUuid = escapeshellarg($db->uuid);
+            instant_remote_process(["docker restart {$safeUuid} 2>&1"], $server, false);
 
             return $this->successResponse(message: 'Password regenerated and database restarting. Services using this database will need redeployment.');
         }, errorPrefix: 'Failed to regenerate password');
     }
 
+    /**
+     * Validate table/collection name to prevent SQL/NoSQL injection.
+     */
+    private function validateTableName(string $tableName): bool
+    {
+        return InputValidator::isValidTableName($tableName);
+    }
+
     public function getTableColumns(string $uuid, string $tableName): JsonResponse
     {
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         return $this->withDatabase($uuid, fn ($db, $server, $type) => $this->successResponse([
             'columns' => match ($type) {
                 'postgresql' => $this->postgresService->getColumns($server, $db, $tableName),
@@ -523,12 +587,21 @@ class DatabaseMetricsController extends Controller
 
     public function getTableData(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(100, max(10, (int) $request->input('per_page', 50)));
         $search = $request->input('search', '') ?? '';
         $orderBy = $request->input('order_by', '') ?? '';
         $orderDir = $request->input('order_dir', 'asc') === 'desc' ? 'desc' : 'asc';
-        $filters = $request->input('filters', '') ?? '';
+
+        // Sanitize search: strip SQL/NoSQL special chars via centralized validator
+        $search = InputValidator::sanitizeSearch($search);
+
+        // Remove raw $filters entirely — it was passed directly into SQL, creating injection risk
+        $filters = '';
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($tableName, $page, $perPage, $search, $orderBy, $orderDir, $filters) {
             $result = match ($type) {
@@ -553,6 +626,12 @@ class DatabaseMetricsController extends Controller
 
     public function updateTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $request->validate(['primary_key' => 'required|array', 'updates' => 'required|array']);
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($request, $tableName) {
@@ -569,6 +648,12 @@ class DatabaseMetricsController extends Controller
 
     public function deleteTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $request->validate(['primary_key' => 'required|array']);
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($request, $tableName) {
@@ -585,6 +670,12 @@ class DatabaseMetricsController extends Controller
 
     public function createTableRow(Request $request, string $uuid, string $tableName): JsonResponse
     {
+        $this->authorizeDatabase($uuid, 'manage');
+
+        if (! $this->validateTableName($tableName)) {
+            return $this->errorResponse('Invalid table name.', 400);
+        }
+
         $request->validate(['data' => 'required|array']);
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($request, $tableName) {

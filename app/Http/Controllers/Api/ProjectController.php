@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Project\CreateEnvironmentRequest;
+use App\Http\Requests\Api\Project\StoreProjectRequest;
+use App\Http\Requests\Api\Project\UpdateProjectRequest;
 use App\Models\Environment;
 use App\Models\Project;
 use App\Services\Authorization\ProjectAuthorizationService;
-use App\Support\ValidationPatterns;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 
 class ProjectController extends Controller
@@ -55,7 +56,7 @@ class ProjectController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $projects = Project::whereTeamId($teamId)->select('id', 'name', 'description', 'uuid')->get();
+        $projects = Project::whereTeamId($teamId)->select('id', 'name', 'description', 'uuid')->limit(500)->get();
 
         return response()->json(serializeApiResponse($projects),
         );
@@ -246,10 +247,8 @@ class ProjectController extends Controller
             ),
         ]
     )]
-    public function create_project(Request $request)
+    public function create_project(StoreProjectRequest $request)
     {
-        $allowedFields = ['name', 'description'];
-
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
@@ -259,29 +258,12 @@ class ProjectController extends Controller
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
         }
-        $validator = Validator::make($request->all(), [
-            'name' => ValidationPatterns::nameRules(),
-            'description' => ValidationPatterns::descriptionRules(),
-        ], ValidationPatterns::combinedMessages());
 
-        $extraFields = array_diff(array_keys($request->all()), $allowedFields);
-        if ($validator->fails() || ! empty($extraFields)) {
-            $errors = $validator->errors();
-            if (! empty($extraFields)) {
-                foreach ($extraFields as $field) {
-                    $errors->add($field, 'This field is not allowed.');
-                }
-            }
-
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $errors,
-            ], 422);
-        }
+        $validated = $request->validated();
 
         $project = Project::create([
-            'name' => $request->name,
-            'description' => $request->description,
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
             'team_id' => $teamId,
         ]);
 
@@ -360,10 +342,8 @@ class ProjectController extends Controller
             ),
         ]
     )]
-    public function update_project(Request $request)
+    public function update_project(UpdateProjectRequest $request)
     {
-        $allowedFields = ['name', 'description'];
-
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
@@ -373,25 +353,7 @@ class ProjectController extends Controller
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
         }
-        $validator = Validator::make($request->all(), [
-            'name' => ValidationPatterns::nameRules(required: false),
-            'description' => ValidationPatterns::descriptionRules(),
-        ], ValidationPatterns::combinedMessages());
 
-        $extraFields = array_diff(array_keys($request->all()), $allowedFields);
-        if ($validator->fails() || ! empty($extraFields)) {
-            $errors = $validator->errors();
-            if (! empty($extraFields)) {
-                foreach ($extraFields as $field) {
-                    $errors->add($field, 'This field is not allowed.');
-                }
-            }
-
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $errors,
-            ], 422);
-        }
         $uuid = $request->uuid;
         if (! $uuid) {
             return response()->json(['message' => 'UUID is required.'], 422);
@@ -402,7 +364,7 @@ class ProjectController extends Controller
             return response()->json(['message' => 'Project not found.'], 404);
         }
 
-        $project->update($request->only($allowedFields));
+        $project->update($request->only(['name', 'description']));
 
         return response()->json([
             'uuid' => $project->uuid,
@@ -618,10 +580,8 @@ class ProjectController extends Controller
             ),
         ]
     )]
-    public function create_environment(Request $request)
+    public function create_environment(CreateEnvironmentRequest $request)
     {
-        $allowedFields = ['name'];
-
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
@@ -630,24 +590,6 @@ class ProjectController extends Controller
         $return = validateIncomingRequest($request);
         if ($return instanceof \Illuminate\Http\JsonResponse) {
             return $return;
-        }
-        $validator = Validator::make($request->all(), [
-            'name' => ValidationPatterns::nameRules(),
-        ], ValidationPatterns::nameMessages());
-
-        $extraFields = array_diff(array_keys($request->all()), $allowedFields);
-        if ($validator->fails() || ! empty($extraFields)) {
-            $errors = $validator->errors();
-            if (! empty($extraFields)) {
-                foreach ($extraFields as $field) {
-                    $errors->add($field, 'This field is not allowed.');
-                }
-            }
-
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $errors,
-            ], 422);
         }
 
         if (! $request->uuid) {

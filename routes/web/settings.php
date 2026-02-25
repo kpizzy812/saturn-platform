@@ -521,6 +521,10 @@ Route::delete('/settings/security/sessions/all', function () {
 })->name('settings.security.sessions.revoke-all');
 
 Route::post('/settings/security/ip-allowlist', function (Request $request) {
+    if (! isInstanceAdmin()) {
+        abort(403, 'Only instance administrators can manage the IP allowlist.');
+    }
+
     $request->validate([
         'ip_address' => 'required|ip',
         'description' => 'nullable|string|max:255',
@@ -549,6 +553,10 @@ Route::post('/settings/security/ip-allowlist', function (Request $request) {
 })->name('settings.security.ip-allowlist.store');
 
 Route::delete('/settings/security/ip-allowlist/{id}', function (string $id) {
+    if (! isInstanceAdmin()) {
+        abort(403, 'Only instance administrators can manage the IP allowlist.');
+    }
+
     $settings = \App\Models\InstanceSettings::get();
     $allowedIps = $settings->allowed_ips ? json_decode($settings->allowed_ips, true) : [];
 
@@ -1147,19 +1155,20 @@ Route::get('/settings/team/archives/{id}', function (string $id) {
         'email' => $m->email,
     ]);
 
-    // Filter top_resources to only existing ones for transfer UI
-    $memberResources = [];
-    $topResources = $archive->contribution_summary['top_resources'] ?? [];
-    foreach ($topResources as $resource) {
-        try {
-            $type = $resource['full_type'] ?? null;
-            if ($type && class_exists($type) && $type::find($resource['id'])) {
-                $memberResources[] = $resource;
-            }
-        } catch (\Exception $e) {
-            // Skip non-existing resources
-        }
-    }
+    // Get full resource data via action
+    $memberResources = app(\App\Actions\Team\GetArchiveMemberResourcesAction::class)
+        ->execute($team->id, $archive->user_id);
+
+    // Environments for move dropdown (grouped by project)
+    $environments = \App\Models\Environment::ownedByCurrentTeam()
+        ->with('project')
+        ->get()
+        ->map(fn ($env) => [
+            'id' => $env->id,
+            'name' => $env->name,
+            'project_name' => $env->project?->name ?? 'Unknown',
+            'project_id' => $env->project?->id,
+        ]);
 
     return Inertia::render('Settings/Team/ArchiveDetail', [
         'archive' => [
@@ -1180,6 +1189,7 @@ Route::get('/settings/team/archives/{id}', function (string $id) {
         'transfers' => $transfers,
         'teamMembers' => $teamMembers,
         'memberResources' => $memberResources,
+        'environments' => $environments,
     ]);
 })->name('settings.team.archive.detail');
 
@@ -1353,7 +1363,7 @@ Route::post('/settings/team/archives/{id}/transfer', function (string $id, Reque
             'to_team_id' => $team->id,
             'from_user_id' => $archive->user_id,
             'to_user_id' => $transfer['to_user_id'],
-            'initiated_by' => $user->id,
+            'initiated_by' => auth()->id(),
             'reason' => "Post-kick transfer for {$transfer['resource_name']}",
             'resource_snapshot' => [
                 'name' => $transfer['resource_name'],
@@ -1384,6 +1394,72 @@ Route::post('/settings/team/archives/{id}/transfer', function (string $id, Reque
     ]);
 })->name('settings.team.archive.transfer');
 
+// Move resources to different environment
+Route::post('/settings/team/archives/{id}/resources/move', function (string $id, Request $request) {
+    $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
+
+    $request->validate([
+        'resources' => 'required|array|min:1|max:50',
+        'resources.*.resource_type' => 'required|string',
+        'resources.*.resource_id' => 'required|integer|min:1',
+        'target_environment_id' => 'required|integer|min:1',
+    ]);
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+    $action = app(\App\Actions\Team\GetArchiveMemberResourcesAction::class);
+    $moved = $action->moveResources($team->id, $request->input('resources'), $request->input('target_environment_id'));
+
+    $targetEnv = \App\Models\Environment::find($request->input('target_environment_id'));
+
+    \App\Models\AuditLog::log(
+        'archive_resources_moved',
+        $archive,
+        "Moved {$moved} resource(s) to environment ".($targetEnv?->name ?? 'unknown'),
+        [
+            'archive_id' => $archive->id,
+            'target_environment_id' => $request->input('target_environment_id'),
+            'moved_count' => $moved,
+        ]
+    );
+
+    return response()->json(['success' => true, 'moved' => $moved]);
+})->middleware('throttle:30,1')->name('settings.team.archive.resources.move');
+
+// Delete resources from archive
+Route::post('/settings/team/archives/{id}/resources/delete', function (string $id, Request $request) {
+    $team = currentTeam();
+    $permService = app(\App\Services\Authorization\PermissionService::class);
+    if (! $permService->userHasPermission(auth()->user(), 'team.archives')) {
+        abort(403);
+    }
+
+    $request->validate([
+        'resources' => 'required|array|min:1|max:50',
+        'resources.*.resource_type' => 'required|string',
+        'resources.*.resource_id' => 'required|integer|min:1',
+    ]);
+
+    $archive = \App\Models\MemberArchive::forTeam($team->id)->findOrFail($id);
+    $action = app(\App\Actions\Team\GetArchiveMemberResourcesAction::class);
+    $deleted = $action->deleteResources($team->id, $request->input('resources'));
+
+    \App\Models\AuditLog::log(
+        'archive_resources_deleted',
+        $archive,
+        "Queued deletion of {$deleted} resource(s) from archived member {$archive->member_name}",
+        [
+            'archive_id' => $archive->id,
+            'deleted_count' => $deleted,
+        ]
+    );
+
+    return response()->json(['success' => true, 'deleted' => $deleted]);
+})->middleware('throttle:10,1')->name('settings.team.archive.resources.delete');
+
 // Archive delete (soft delete — data preserved for audit)
 Route::delete('/settings/team/archives/{id}', function (string $id) {
     $team = currentTeam();
@@ -1410,10 +1486,83 @@ Route::delete('/settings/team/archives/{id}', function (string $id) {
     return redirect('/settings/team/archives')->with('success', 'Archive deleted successfully.');
 })->name('settings.team.archive.delete');
 
+// Get data needed for enhanced invite modal (projects, permission sets, permissions, environments)
+Route::get('/settings/team/invite/data', function () {
+    $team = currentTeam();
+    $currentUser = auth()->user();
+
+    if (! $currentUser->isAdmin()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $projects = $team->projects()->select('id', 'name')->orderBy('name')->get()
+        ->map(fn ($p) => ['id' => $p->id, 'name' => $p->name]);
+
+    $permissionSets = \App\Models\PermissionSet::forTeam($team->id)
+        ->withCount('permissions')
+        ->orderBy('is_system', 'desc')
+        ->orderBy('name')
+        ->get()
+        ->map(fn ($set) => [
+            'id' => $set->id,
+            'name' => $set->name,
+            'slug' => $set->slug,
+            'description' => $set->description,
+            'is_system' => $set->is_system,
+            'color' => $set->color,
+            'icon' => $set->icon,
+            'permissions_count' => $set->permissions_count,
+        ]);
+
+    $allPermissions = \App\Models\Permission::orderBy('sort_order')
+        ->get()
+        ->groupBy('category')
+        ->map(fn ($group) => $group->map(fn ($p) => [
+            'id' => $p->id,
+            'key' => $p->key,
+            'name' => $p->name,
+            'description' => $p->description,
+            'resource' => $p->resource,
+            'action' => $p->action,
+            'is_sensitive' => $p->is_sensitive,
+        ])->values()->all());
+
+    $environments = \App\Models\Environment::whereHas('project', function ($query) use ($team) {
+        $query->where('team_id', $team->id);
+    })
+        ->select('id', 'name')
+        ->distinct('name')
+        ->get()
+        ->map(fn ($e) => ['id' => $e->id, 'name' => $e->name]);
+
+    // Build role → permission IDs mapping from system permission sets
+    $rolePermissions = [];
+    foreach (['admin', 'developer', 'member', 'viewer'] as $roleSlug) {
+        $systemSet = \App\Models\PermissionSet::getSystemSetForTeam($team->id, $roleSlug);
+        $rolePermissions[$roleSlug] = $systemSet
+            ? $systemSet->permissions()->pluck('permissions.id')->toArray()
+            : [];
+    }
+
+    return response()->json([
+        'projects' => $projects,
+        'permissionSets' => $permissionSets,
+        'allPermissions' => $allPermissions,
+        'environments' => $environments,
+        'rolePermissions' => $rolePermissions,
+    ]);
+})->name('settings.team.invite.data');
+
 Route::post('/settings/team/invite', function (Request $request) {
     $request->validate([
         'email' => 'required|email',
         'role' => 'required|string|in:owner,admin,developer,member,viewer',
+        'allowed_projects' => 'nullable|array',
+        'allowed_projects.*' => 'integer',
+        'permission_set_id' => 'nullable|integer|exists:permission_sets,id',
+        'custom_permissions' => 'nullable|array',
+        'custom_permissions.*.permission_id' => 'required_with:custom_permissions|integer|exists:permissions,id',
+        'custom_permissions.*.environment_restrictions' => 'nullable|array',
     ]);
 
     $email = strtolower($request->email);
@@ -1434,6 +1583,16 @@ Route::post('/settings/team/invite', function (Request $request) {
         return redirect()->back()->with('error', 'An invitation has already been sent to this email');
     }
 
+    // Validate allowed_projects belong to this team
+    if ($request->has('allowed_projects') && is_array($request->allowed_projects)) {
+        $teamProjectIds = $team->projects()->pluck('id')->all();
+        foreach ($request->allowed_projects as $projectId) {
+            if (! in_array((int) $projectId, $teamProjectIds, true)) {
+                return redirect()->back()->with('error', 'Invalid project selected');
+            }
+        }
+    }
+
     // Create the invitation
     $uuid = (string) \Illuminate\Support\Str::uuid();
     $link = url("/invitations/{$uuid}");
@@ -1445,6 +1604,10 @@ Route::post('/settings/team/invite', function (Request $request) {
         'role' => $role,
         'link' => $link,
         'via' => 'link',
+        'invited_by' => auth()->id(),
+        'allowed_projects' => $request->allowed_projects,
+        'permission_set_id' => $request->permission_set_id,
+        'custom_permissions' => $request->custom_permissions,
     ]);
 
     // Try to send email notification if email settings are configured
@@ -1654,7 +1817,7 @@ Route::post('/settings/notifications/discord', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->discordNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Discord notification settings saved successfully');
 })->name('settings.notifications.discord.update');
@@ -1670,7 +1833,7 @@ Route::post('/settings/notifications/slack', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->slackNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Slack notification settings saved successfully');
 })->name('settings.notifications.slack.update');
@@ -1686,7 +1849,7 @@ Route::post('/settings/notifications/telegram', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->telegramNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Telegram notification settings saved successfully');
 })->name('settings.notifications.telegram.update');
@@ -1702,7 +1865,7 @@ Route::post('/settings/notifications/email', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->emailNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Email notification settings saved successfully');
 })->name('settings.notifications.email.update');
@@ -1718,7 +1881,7 @@ Route::post('/settings/notifications/webhook', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->webhookNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Webhook notification settings saved successfully');
 })->name('settings.notifications.webhook.update');
@@ -1734,7 +1897,7 @@ Route::post('/settings/notifications/pushover', function (Request $request) {
     $team = auth()->user()->currentTeam();
     $settings = $team->pushoverNotificationSettings;
 
-    $settings->update($request->all());
+    $settings->update($request->only(array_diff($settings->getFillable(), ['team_id'])));
 
     return redirect()->back()->with('success', 'Pushover notification settings saved successfully');
 })->name('settings.notifications.pushover.update');

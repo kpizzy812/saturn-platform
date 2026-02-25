@@ -174,7 +174,7 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldBeUnique, ShouldQu
                 }
             }
         } catch (Throwable $e) {
-            ray('Failed to send success notification', $e->getMessage());
+            Log::warning('Failed to send notification', ['error' => $e->getMessage()]);
         }
     }
 
@@ -189,7 +189,7 @@ class ExecuteMigrationJob implements ShouldBeEncrypted, ShouldBeUnique, ShouldQu
                 $requester->notify(new MigrationFailed($this->migration, $error));
             }
         } catch (Throwable $e) {
-            ray('Failed to send failure notification', $e->getMessage());
+            Log::warning('Failed to send notification', ['error' => $e->getMessage()]);
         }
     }
 

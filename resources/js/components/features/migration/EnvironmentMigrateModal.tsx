@@ -12,6 +12,7 @@ import type {
     BulkCheckResult, BulkCheckResourceResult, MigrationMode,
 } from '@/types';
 import axios from 'axios';
+import { PromotionChainIndicator } from './PromotionChainIndicator';
 
 interface EnvironmentMigrateModalProps {
     open: boolean;
@@ -101,8 +102,8 @@ export function EnvironmentMigrateModal({
     const isTargetProduction = React.useMemo(() => {
         if (!selectedEnvironmentId || !targets?.target_environments) return false;
         const targetEnv = targets.target_environments.find(
-            (e: any) => e.id === parseInt(selectedEnvironmentId, 10)
-        ) as any;
+            (e) => e.id === parseInt(selectedEnvironmentId, 10)
+        );
         return targetEnv?.type === 'production';
     }, [selectedEnvironmentId, targets]);
 
@@ -515,7 +516,7 @@ export function EnvironmentMigrateModal({
                             label="Target Environment"
                             value={selectedEnvironmentId}
                             onChange={(e) => setSelectedEnvironmentId(e.target.value)}
-                            options={(targets.target_environments as any).map((env: { id: number; name: string; type: string }) => ({
+                            options={targets.target_environments.map((env) => ({
                                 value: env.id.toString(),
                                 label: `${env.name} (${env.type})`,
                             }))}
@@ -524,6 +525,35 @@ export function EnvironmentMigrateModal({
                         <Alert variant="warning">
                             No target environments available for migration.
                         </Alert>
+                    )}
+
+                    {/* Promotion chain indicator */}
+                    {environment && selectedEnvironmentId && targets?.target_environments && (
+                        <PromotionChainIndicator
+                            sourceEnvironment={{
+                                name: environment.name,
+                                type: (environment as any).type || environment.name.toLowerCase(),
+                            }}
+                            targetEnvironment={(() => {
+                                const t = targets.target_environments.find(
+                                    (e) => e.id === parseInt(selectedEnvironmentId, 10)
+                                );
+                                return {
+                                    name: t?.name || '',
+                                    type: t?.type || '',
+                                };
+                            })()}
+                            allEnvironments={[
+                                {
+                                    name: environment.name,
+                                    type: (environment as any).type || environment.name.toLowerCase(),
+                                },
+                                ...targets.target_environments.map((e) => ({
+                                    name: e.name,
+                                    type: e.type || e.name.toLowerCase(),
+                                })),
+                            ]}
+                        />
                     )}
 
                     {/* Target server */}

@@ -4,15 +4,22 @@ namespace App\Policies;
 
 use App\Models\CloudInitScript;
 use App\Models\User;
+use App\Services\Authorization\ResourceAuthorizationService;
 
 class CloudInitScriptPolicy
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -20,7 +27,7 @@ class CloudInitScriptPolicy
      */
     public function view(User $user, CloudInitScript $cloudInitScript): bool
     {
-        return $user->isAdmin();
+        return $user->teams->contains('id', $cloudInitScript->team_id);
     }
 
     /**
@@ -28,7 +35,9 @@ class CloudInitScriptPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        $team = currentTeam();
+
+        return $team ? $this->authService->canManageIntegrations($user, $team->id) : false;
     }
 
     /**
@@ -36,7 +45,11 @@ class CloudInitScriptPolicy
      */
     public function update(User $user, CloudInitScript $cloudInitScript): bool
     {
-        return $user->isAdmin();
+        if (! $user->teams->contains('id', $cloudInitScript->team_id)) {
+            return false;
+        }
+
+        return $this->authService->canManageIntegrations($user, $cloudInitScript->team_id);
     }
 
     /**
@@ -44,7 +57,11 @@ class CloudInitScriptPolicy
      */
     public function delete(User $user, CloudInitScript $cloudInitScript): bool
     {
-        return $user->isAdmin();
+        if (! $user->teams->contains('id', $cloudInitScript->team_id)) {
+            return false;
+        }
+
+        return $this->authService->canManageIntegrations($user, $cloudInitScript->team_id);
     }
 
     /**
@@ -52,7 +69,7 @@ class CloudInitScriptPolicy
      */
     public function restore(User $user, CloudInitScript $cloudInitScript): bool
     {
-        return $user->isAdmin();
+        return false;
     }
 
     /**
@@ -60,6 +77,6 @@ class CloudInitScriptPolicy
      */
     public function forceDelete(User $user, CloudInitScript $cloudInitScript): bool
     {
-        return $user->isAdmin();
+        return false;
     }
 }

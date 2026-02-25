@@ -96,7 +96,17 @@ class Handler extends ExceptionHandler
             if ($e instanceof RuntimeException) {
                 return;
             }
-            $this->settings = instanceSettings();
+            // Skip DB-dependent reporting when no database is configured
+            // (e.g. during Docker build). Using config() instead of a DB query
+            // avoids nested fatal errors in PHP's shutdown handler.
+            if (! config('database.connections.pgsql.host')) {
+                return;
+            }
+            try {
+                $this->settings = instanceSettings();
+            } catch (\Throwable) {
+                return;
+            }
             if ($this->settings->do_not_track) {
                 return;
             }

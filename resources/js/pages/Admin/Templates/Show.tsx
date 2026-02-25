@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -126,7 +127,7 @@ export default function AdminTemplatesShow({ template: initialTemplate, categori
                 is_official: isOfficial,
                 is_public: isPublic,
                 tags,
-                config: config as any,
+                config: config as unknown as RouterPayload,
             },
             {
                 onSuccess: () => {

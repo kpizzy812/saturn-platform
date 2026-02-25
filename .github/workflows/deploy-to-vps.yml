@@ -99,12 +99,10 @@ jobs:
           echo "Domain:      ${{ steps.env.outputs.domain }}"
 
   # =============================================================================
-  # Job 2: Run tests and static analysis (temporarily disabled)
+  # Job 2: Run tests and static analysis
   # =============================================================================
   test:
-    if: false
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -126,9 +124,6 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
-      - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
       - name: Create CI .env
         run: |
           php -r "file_put_contents('.env', implode(\"\n\", [
@@ -146,6 +141,9 @@ jobs:
             'PUSHER_SCHEME=http',
           ]));"
 
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
       - name: Run Pint (code style)
         run: ./vendor/bin/pint --test
 
@@ -153,7 +151,7 @@ jobs:
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
   # =============================================================================
-  # Job 3: Build and push Docker image
+  # Job 3: Build and push Docker image (runs parallel with test)
   # =============================================================================
   build:
     needs: [prepare]
@@ -164,6 +162,18 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -200,11 +210,11 @@ jobs:
             CLOUDFLARED_VERSION=2025.7.0
 
   # =============================================================================
-  # Job 4: Deploy to VPS
+  # Job 4: Deploy to VPS (requires both test + build to succeed)
   # =============================================================================
   deploy:
-    needs: [prepare, build]
-    if: always() && (needs.build.result == 'success' || inputs.skip_build)
+    needs: [prepare, test, build]
+    if: always() && needs.test.result == 'success' && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
     environment: ${{ needs.prepare.outputs.environment }}
     steps:

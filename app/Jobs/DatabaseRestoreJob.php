@@ -28,6 +28,8 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
 
     public $tries = 3;
 
+    public $backoff = [30, 60, 120];
+
     public $maxExceptions = 2;
 
     public $timeout = 3600;

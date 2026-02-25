@@ -9,10 +9,12 @@ import type { Application } from '@/types';
 interface Props {
     application: Application;
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
-export default function ApplicationLogs({ application, projectUuid, environmentUuid }: Props) {
+export default function ApplicationLogs({ application, projectUuid, projectName }: Props) {
     const [searchQuery, setSearchQuery] = React.useState('');
     const [filterLevel, setFilterLevel] = React.useState<'info' | 'error' | 'warning' | 'debug' | 'all'>('all');
     const [selectedContainer, setSelectedContainer] = React.useState<string | undefined>(undefined);
@@ -58,8 +60,7 @@ export default function ApplicationLogs({ application, projectUuid, environmentU
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Logs' },
     ];

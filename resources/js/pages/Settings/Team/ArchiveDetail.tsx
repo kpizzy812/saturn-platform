@@ -4,11 +4,12 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Textarea } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider } from '@/components/ui/Dropdown';
 import { useConfirmation } from '@/components/ui/ConfirmationModal';
 import { useToast } from '@/components/ui/Toast';
 import { Link, router } from '@inertiajs/react';
+import ArchiveResourceManager from './ArchiveResourceManager';
+import type { FullResource, EnvironmentOption } from './ArchiveResourceManager';
 import {
     ArrowLeft,
     Mail,
@@ -27,7 +28,6 @@ import {
     MoreVertical,
     Pencil,
     StickyNote,
-    Send,
 } from 'lucide-react';
 
 interface ContributionSummary {
@@ -68,14 +68,6 @@ interface TeamMember {
     email: string;
 }
 
-interface MemberResource {
-    type: string;
-    full_type: string;
-    id: number;
-    name: string;
-    action_count: number;
-}
-
 interface ArchiveData {
     id: number;
     uuid: string;
@@ -96,7 +88,8 @@ interface Props {
     archive: ArchiveData;
     transfers: Transfer[];
     teamMembers: TeamMember[];
-    memberResources: MemberResource[];
+    memberResources: FullResource[];
+    environments: EnvironmentOption[];
 }
 
 const getInitials = (name: string) =>
@@ -107,7 +100,7 @@ const getInitials = (name: string) =>
         .toUpperCase()
         .slice(0, 2);
 
-export default function ArchiveDetail({ archive, transfers, teamMembers, memberResources }: Props) {
+export default function ArchiveDetail({ archive, transfers, memberResources, environments }: Props) {
     const contributions = archive.contribution_summary;
     const access = archive.access_snapshot;
     const { addToast } = useToast();
@@ -116,10 +109,6 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
     const [isEditingNotes, setIsEditingNotes] = useState(false);
     const [notesValue, setNotesValue] = useState(archive.notes ?? '');
     const [isSavingNotes, setIsSavingNotes] = useState(false);
-
-    // Transfer state
-    const [transferAssignments, setTransferAssignments] = useState<Record<string, number>>({});
-    const [isTransferring, setIsTransferring] = useState(false);
 
     const [_isDeleting, setIsDeleting] = useState(false);
 
@@ -186,102 +175,6 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
             },
         );
     };
-
-    const getSelectedTransfers = () =>
-        Object.entries(transferAssignments)
-            .filter(([, userId]) => userId > 0)
-            .map(([resourceKey, toUserId]) => {
-                const resource = memberResources.find((r) => `${r.full_type}:${r.id}` === resourceKey);
-                if (!resource) return null;
-                const targetMember = teamMembers.find((m) => m.id === toUserId);
-                return {
-                    resource_type: resource.full_type,
-                    resource_id: resource.id,
-                    resource_name: resource.name,
-                    resource_type_short: resource.type,
-                    to_user_id: toUserId,
-                    to_user_name: targetMember?.name ?? 'Unknown',
-                };
-            })
-            .filter(Boolean) as Array<{
-            resource_type: string;
-            resource_id: number;
-            resource_name: string;
-            resource_type_short: string;
-            to_user_id: number;
-            to_user_name: string;
-        }>;
-
-    const executeTransfer = async (
-        selectedTransfers: Array<{
-            resource_type: string;
-            resource_id: number;
-            resource_name: string;
-            to_user_id: number;
-        }>,
-    ) => {
-        setIsTransferring(true);
-        try {
-            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
-            const response = await fetch(`/settings/team/archives/${archive.id}/transfer`, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                credentials: 'include',
-                body: JSON.stringify({ transfers: selectedTransfers }),
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                addToast('success', `Transferred ${data.transferred} resource(s)`);
-                setTransferAssignments({});
-                router.reload();
-            } else {
-                addToast('error', 'Failed to transfer resources');
-            }
-        } catch {
-            addToast('error', 'Failed to transfer resources');
-        } finally {
-            setIsTransferring(false);
-        }
-    };
-
-    const { open: openTransferConfirm, ConfirmationDialog: TransferDialog } = useConfirmation({
-        title: 'Confirm Resource Transfer',
-        description: (() => {
-            const selected = getSelectedTransfers();
-            if (selected.length === 0) return 'No resources selected for transfer.';
-            const lines = selected.map(
-                (t) => `${t.resource_type_short} "${t.resource_name}" → ${t.to_user_name}`,
-            );
-            return `Transfer ${selected.length} resource(s)?\n\n${lines.join('\n')}`;
-        })(),
-        confirmText: 'Transfer',
-        cancelText: 'Cancel',
-        variant: 'default',
-        onConfirm: async () => {
-            const selected = getSelectedTransfers();
-            if (selected.length === 0) {
-                addToast('warning', 'No resources selected for transfer');
-                return;
-            }
-            await executeTransfer(selected);
-        },
-    });
-
-    const handleTransfer = () => {
-        const selected = getSelectedTransfers();
-        if (selected.length === 0) {
-            addToast('warning', 'No resources selected for transfer');
-            return;
-        }
-        openTransferConfirm();
-    };
-
-    const hasTransferSelections = Object.values(transferAssignments).some((v) => v > 0);
 
     return (
         <SettingsLayout activeSection="team">
@@ -587,65 +480,12 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
                     </CardContent>
                 </Card>
 
-                {/* Post-kick Resource Transfer */}
-                {memberResources.length > 0 && teamMembers.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Transfer Resources</CardTitle>
-                            <CardDescription>
-                                Reassign remaining resources from {archive.member_name} to current team members
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {memberResources.map((resource) => {
-                                    const resourceKey = `${resource.full_type}:${resource.id}`;
-                                    return (
-                                        <div
-                                            key={resourceKey}
-                                            className="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
-                                        >
-                                            <div className="flex min-w-0 flex-1 items-center gap-2">
-                                                <Badge variant="default">{resource.type}</Badge>
-                                                <span className="truncate text-sm text-foreground">
-                                                    {resource.name}
-                                                </span>
-                                            </div>
-                                            <Select
-                                                className="w-48"
-                                                value={String(transferAssignments[resourceKey] ?? '')}
-                                                onChange={(e) =>
-                                                    setTransferAssignments((prev) => ({
-                                                        ...prev,
-                                                        [resourceKey]: Number(e.target.value),
-                                                    }))
-                                                }
-                                                options={[
-                                                    { value: '', label: 'Select member...' },
-                                                    ...teamMembers.map((m) => ({
-                                                        value: String(m.id),
-                                                        label: m.name,
-                                                    })),
-                                                ]}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="mt-4">
-                                <Button
-                                    onClick={handleTransfer}
-                                    loading={isTransferring}
-                                    disabled={!hasTransferSelections}
-                                    size="sm"
-                                >
-                                    <Send className="mr-1.5 h-3.5 w-3.5" />
-                                    Transfer Selected
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                {/* Resource Manager */}
+                <ArchiveResourceManager
+                    archiveId={archive.id}
+                    resources={memberResources}
+                    environments={environments}
+                />
 
                 {/* Access Snapshot */}
                 {access && (
@@ -688,7 +528,6 @@ export default function ArchiveDetail({ archive, transfers, teamMembers, memberR
             </div>
 
             <DeleteDialog />
-            <TransferDialog />
         </SettingsLayout>
     );
 }

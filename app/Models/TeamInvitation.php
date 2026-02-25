@@ -22,7 +22,18 @@ class TeamInvitation extends Model
         'link',
         'via',
         'invited_by',
+        'allowed_projects',
+        'permission_set_id',
+        'custom_permissions',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'allowed_projects' => 'array',
+            'custom_permissions' => 'array',
+        ];
+    }
 
     public function getActivitylogOptions(): LogOptions
     {

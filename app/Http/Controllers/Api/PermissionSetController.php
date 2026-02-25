@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\PermissionSet\AssignPermissionSetUserRequest;
+use App\Http\Requests\Api\PermissionSet\StorePermissionSetRequest;
+use App\Http\Requests\Api\PermissionSet\SyncPermissionsRequest;
+use App\Http\Requests\Api\PermissionSet\UpdatePermissionSetRequest;
 use App\Models\Permission;
 use App\Models\PermissionSet;
 use App\Models\User;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use OpenApi\Attributes as OA;
 
 class PermissionSetController extends Controller
@@ -182,7 +184,7 @@ class PermissionSetController extends Controller
             new OA\Response(response: 422, description: 'Validation error.'),
         ]
     )]
-    public function store(Request $request): JsonResponse
+    public function store(StorePermissionSetRequest $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -194,16 +196,7 @@ class PermissionSetController extends Controller
             return response()->json(['message' => 'Unauthorized. You do not have permission to manage permission sets.'], 403);
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'description' => ['nullable', 'string', 'max:500'],
-            'color' => ['nullable', 'string', 'max:50'],
-            'icon' => ['nullable', 'string', 'max:50'],
-            'parent_id' => ['nullable', 'integer', Rule::exists('permission_sets', 'id')->where('scope_type', 'team')->where('scope_id', $teamId)],
-            'permissions' => ['array'],
-            'permissions.*.permission_id' => ['required_with:permissions', 'integer', 'exists:permissions,id'],
-            'permissions.*.environment_restrictions' => ['nullable', 'array'],
-        ]);
+        $validated = $request->validated();
 
         $slug = Str::slug($validated['name']);
 
@@ -266,7 +259,7 @@ class PermissionSetController extends Controller
             new OA\Response(response: 404, ref: '#/components/responses/404'),
         ]
     )]
-    public function update(Request $request, int $id): JsonResponse
+    public function update(UpdatePermissionSetRequest $request, int $id): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -284,19 +277,7 @@ class PermissionSetController extends Controller
             return response()->json(['message' => 'Permission set not found.'], 404);
         }
 
-        // System permission sets can only have their description, color, and icon updated
-        $rules = [
-            'description' => ['nullable', 'string', 'max:500'],
-            'color' => ['nullable', 'string', 'max:50'],
-            'icon' => ['nullable', 'string', 'max:50'],
-        ];
-
-        if (! $permissionSet->is_system) {
-            $rules['name'] = ['string', 'max:100'];
-            $rules['parent_id'] = ['nullable', 'integer', Rule::exists('permission_sets', 'id')->where('scope_type', 'team')->where('scope_id', $teamId)];
-        }
-
-        $validated = $request->validate($rules);
+        $validated = $request->validated();
 
         // Update only non-system fields
         $updateData = array_filter([
@@ -425,7 +406,7 @@ class PermissionSetController extends Controller
             new OA\Response(response: 404, ref: '#/components/responses/404'),
         ]
     )]
-    public function syncPermissions(Request $request, int $id): JsonResponse
+    public function syncPermissions(SyncPermissionsRequest $request, int $id): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -445,11 +426,7 @@ class PermissionSetController extends Controller
 
         // System permission sets permissions can still be modified (for admin customization)
 
-        $validated = $request->validate([
-            'permissions' => ['required', 'array'],
-            'permissions.*.permission_id' => ['required', 'integer', 'exists:permissions,id'],
-            'permissions.*.environment_restrictions' => ['nullable', 'array'],
-        ]);
+        $validated = $request->validated();
 
         $permissionSet->syncPermissionsWithRestrictions($validated['permissions']);
 
@@ -496,7 +473,7 @@ class PermissionSetController extends Controller
             new OA\Response(response: 404, ref: '#/components/responses/404'),
         ]
     )]
-    public function assignUser(Request $request, int $id): JsonResponse
+    public function assignUser(AssignPermissionSetUserRequest $request, int $id): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -514,10 +491,7 @@ class PermissionSetController extends Controller
             return response()->json(['message' => 'Permission set not found.'], 404);
         }
 
-        $validated = $request->validate([
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-            'environment_overrides' => ['nullable', 'array'],
-        ]);
+        $validated = $request->validated();
 
         $user = User::find($validated['user_id']);
 

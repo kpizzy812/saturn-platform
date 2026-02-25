@@ -168,7 +168,6 @@ class CommandExecutorAnalyzeTest extends TestCase
         // Use reflection to test private method
         $reflection = new \ReflectionClass($this->executor);
         $method = $reflection->getMethod('parsePeriodToDays');
-        $method->setAccessible(true);
 
         foreach ($periods as $period => $expectedDays) {
             $result = $method->invoke($this->executor, $period);
@@ -193,7 +192,6 @@ class CommandExecutorAnalyzeTest extends TestCase
 
         $reflection = new \ReflectionClass($this->executor);
         $method = $reflection->getMethod('determineHealthStatus');
-        $method->setAccessible(true);
 
         foreach ($statuses as $status => $expectedHealth) {
             $result = $method->invoke($this->executor, $status);

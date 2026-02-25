@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Stringable;
 use League\Flysystem\UnableToCreateDirectory;
@@ -1148,8 +1149,10 @@ $schema://$host {
         if ($isFunctional === false) {
             try {
                 Storage::disk('ssh-mux')->delete($this->muxFilename());
-            } catch (UnableToCreateDirectory) {
-                // Directory doesn't exist yet, nothing to delete
+            } catch (UnableToCreateDirectory $e) {
+                Log::debug('SSH mux directory does not exist yet, skipping cleanup', [
+                    'server_id' => $this->id,
+                ]);
             }
         }
 
@@ -1564,7 +1567,7 @@ $schema://$host {
     public function generateCaCertificate()
     {
         try {
-            ray('Generating CA certificate for server', $this->id);
+            Log::debug('Generating CA certificate for server', ['server_id' => $this->id]);
             SslHelper::generateSslCertificate(
                 commonName: 'Saturn Platform CA Certificate',
                 serverId: $this->id,
@@ -1572,7 +1575,7 @@ $schema://$host {
                 validityDays: 10 * 365
             );
             $caCertificate = $this->sslCertificates()->where('is_ca_certificate', true)->first();
-            ray('CA certificate generated', $caCertificate);
+            Log::debug('CA certificate generated', ['certificate_id' => $caCertificate?->id]);
             if ($caCertificate) {
                 $certificateContent = $caCertificate->ssl_certificate;
                 $caCertPath = config('constants.saturn.base_config_path').'/ssl/';

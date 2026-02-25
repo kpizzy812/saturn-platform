@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Api\AlertsController;
 use App\Http\Controllers\Api\ApplicationActionsController;
 use App\Http\Controllers\Api\ApplicationCreateController;
 use App\Http\Controllers\Api\ApplicationDeploymentsController;
 use App\Http\Controllers\Api\ApplicationEnvsController;
 use App\Http\Controllers\Api\ApplicationsController;
+use App\Http\Controllers\Api\CliAuthController;
 use App\Http\Controllers\Api\CloudProviderTokensController;
 use App\Http\Controllers\Api\CodeReviewController;
 use App\Http\Controllers\Api\DatabaseActionsController;
@@ -40,14 +42,24 @@ use App\Jobs\PushServerUpdateJob;
 use App\Models\Server;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/health', [OtherController::class, 'healthcheck']);
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/health', [OtherController::class, 'healthcheck']);
+    Route::get('/healthcheck', [OtherController::class, 'healthcheck']);
+});
 Route::group([
     'prefix' => 'v1',
+    'middleware' => 'throttle:60,1',
 ], function () {
     Route::get('/health', [OtherController::class, 'healthcheck']);
 });
 
-Route::post('/feedback', [OtherController::class, 'feedback']);
+Route::post('/feedback', [OtherController::class, 'feedback'])->middleware('throttle:5,1');
+
+// CLI Device Auth Flow (public, no auth required)
+Route::prefix('v1/cli/auth')->middleware('throttle:10,1')->group(function () {
+    Route::post('/init', [CliAuthController::class, 'init']);
+    Route::get('/check', [CliAuthController::class, 'check']);
+});
 
 Route::group([
     'middleware' => ['auth:sanctum', 'api.ability:write'],
@@ -101,6 +113,13 @@ Route::group([
     Route::put('/notification-channels/telegram', [NotificationChannelsController::class, 'updateTelegram'])->middleware(['api.ability:write']);
     Route::put('/notification-channels/webhook', [NotificationChannelsController::class, 'updateWebhook'])->middleware(['api.ability:write']);
     Route::put('/notification-channels/pushover', [NotificationChannelsController::class, 'updatePushover'])->middleware(['api.ability:write']);
+
+    // Alerts
+    Route::get('/alerts', [AlertsController::class, 'index'])->middleware(['api.ability:read']);
+    Route::post('/alerts', [AlertsController::class, 'store'])->middleware(['api.ability:write']);
+    Route::get('/alerts/{uuid}', [AlertsController::class, 'show'])->middleware(['api.ability:read']);
+    Route::put('/alerts/{uuid}', [AlertsController::class, 'update'])->middleware(['api.ability:write']);
+    Route::delete('/alerts/{uuid}', [AlertsController::class, 'destroy'])->middleware(['api.ability:write']);
 
     // Deployment Approvals
     Route::get('/deployment-approvals', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'index'])->middleware(['api.ability:read']);
@@ -290,7 +309,7 @@ Route::group([
     Route::get('/servers/{uuid}/validate', [ServersController::class, 'validate_server'])->middleware(['api.ability:read']);
     Route::get('/servers/{uuid}/sentinel/metrics', [SentinelMetricsController::class, 'metrics'])->middleware(['api.ability:read']);
 
-    Route::post('/servers', [ServersController::class, 'create_server'])->middleware(['api.ability:read', 'throttle:api-write']);
+    Route::post('/servers', [ServersController::class, 'create_server'])->middleware(['api.ability:write', 'throttle:api-write']);
     Route::patch('/servers/{uuid}', [ServersController::class, 'update_server'])->middleware(['api.ability:write', 'throttle:api-write']);
     Route::delete('/servers/{uuid}', [ServersController::class, 'delete_server'])->middleware(['api.ability:write', 'throttle:api-write']);
     Route::post('/servers/{uuid}/reboot', [ServersController::class, 'reboot_server'])->middleware(['api.ability:write', 'throttle:api-write']);
@@ -389,23 +408,27 @@ Route::group([
             return response()->json(['message' => 'Server not found for database.'], 400);
         }
 
-        // Check if database is running
-        $containerName = $database->uuid;
-        $status = getContainerStatus($server, $containerName);
+        try {
+            // Check if database is running
+            $containerName = $database->uuid;
+            $status = getContainerStatus($server, $containerName);
 
-        if ($status !== 'running') {
-            return response()->json(['message' => 'Database is not running.'], 400);
+            if ($status !== 'running') {
+                return response()->json(['message' => 'Database is not running.'], 400);
+            }
+
+            $lines = min((int) ($request->query('lines', 100) ?: 100), 10000);
+            $logs = getContainerLogs($server, $containerName, $lines);
+
+            return response()->json([
+                'database_uuid' => $database->uuid,
+                'container_name' => $containerName,
+                'status' => $status,
+                'logs' => $logs,
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to connect to server: '.$e->getMessage()], 500);
         }
-
-        $lines = $request->query('lines', 100) ?: 100;
-        $logs = getContainerLogs($server, $containerName, (int) $lines);
-
-        return response()->json([
-            'database_uuid' => $database->uuid,
-            'container_name' => $containerName,
-            'status' => $status,
-            'logs' => $logs,
-        ]);
     })->middleware(['api.ability:read', 'throttle:60,1']);
 
     // Database action routes
@@ -469,64 +492,68 @@ Route::group([
             return response()->json(['message' => 'Server not found for service.'], 400);
         }
 
-        $lines = $request->query('lines', 100) ?: 100;
+        $lines = min((int) ($request->query('lines', 100) ?: 100), 10000);
         $containerName = $request->query('container');
         $logs = [];
 
-        // Get all applications and databases in this service
-        $applications = $service->applications()->get();
-        $databases = $service->databases()->get();
+        try {
+            // Get all applications and databases in this service
+            $applications = $service->applications()->get();
+            $databases = $service->databases()->get();
 
-        foreach ($applications as $app) {
-            $appContainerName = $app->name.'-'.$service->uuid;
+            foreach ($applications as $app) {
+                $appContainerName = $app->name.'-'.$service->uuid;
 
-            // If specific container requested, skip others
-            if ($containerName && $appContainerName !== $containerName) {
-                continue;
+                // If specific container requested, skip others
+                if ($containerName && $appContainerName !== $containerName) {
+                    continue;
+                }
+
+                $status = getContainerStatus($server, $appContainerName);
+                if ($status === 'running') {
+                    $logs[$appContainerName] = [
+                        'type' => 'application',
+                        'name' => $app->name,
+                        'status' => $status,
+                        'logs' => getContainerLogs($server, $appContainerName, (int) $lines),
+                    ];
+                } else {
+                    $logs[$appContainerName] = [
+                        'type' => 'application',
+                        'name' => $app->name,
+                        'status' => $status,
+                        'logs' => null,
+                    ];
+                }
             }
 
-            $status = getContainerStatus($server, $appContainerName);
-            if ($status === 'running') {
-                $logs[$appContainerName] = [
-                    'type' => 'application',
-                    'name' => $app->name,
-                    'status' => $status,
-                    'logs' => getContainerLogs($server, $appContainerName, (int) $lines),
-                ];
-            } else {
-                $logs[$appContainerName] = [
-                    'type' => 'application',
-                    'name' => $app->name,
-                    'status' => $status,
-                    'logs' => null,
-                ];
-            }
-        }
+            foreach ($databases as $db) {
+                $dbContainerName = $db->name.'-'.$service->uuid;
 
-        foreach ($databases as $db) {
-            $dbContainerName = $db->name.'-'.$service->uuid;
+                // If specific container requested, skip others
+                if ($containerName && $dbContainerName !== $containerName) {
+                    continue;
+                }
 
-            // If specific container requested, skip others
-            if ($containerName && $dbContainerName !== $containerName) {
-                continue;
+                $status = getContainerStatus($server, $dbContainerName);
+                if ($status === 'running') {
+                    $logs[$dbContainerName] = [
+                        'type' => 'database',
+                        'name' => $db->name,
+                        'status' => $status,
+                        'logs' => getContainerLogs($server, $dbContainerName, (int) $lines),
+                    ];
+                } else {
+                    $logs[$dbContainerName] = [
+                        'type' => 'database',
+                        'name' => $db->name,
+                        'status' => $status,
+                        'logs' => null,
+                    ];
+                }
             }
-
-            $status = getContainerStatus($server, $dbContainerName);
-            if ($status === 'running') {
-                $logs[$dbContainerName] = [
-                    'type' => 'database',
-                    'name' => $db->name,
-                    'status' => $status,
-                    'logs' => getContainerLogs($server, $dbContainerName, (int) $lines),
-                ];
-            } else {
-                $logs[$dbContainerName] = [
-                    'type' => 'database',
-                    'name' => $db->name,
-                    'status' => $status,
-                    'logs' => null,
-                ];
-            }
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to connect to server: '.$e->getMessage()], 500);
         }
 
         return response()->json([

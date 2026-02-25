@@ -63,6 +63,9 @@ COPY public ./public
 # Copy all remaining application files
 COPY . .
 
+# Clear cached service providers (may reference dev-only packages like laravel-ray)
+RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+
 # Complete composer install
 RUN composer dump-autoload --optimize
 

@@ -38,6 +38,27 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
         $configRepository->disableSshMux();
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerConnectionCheckJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
+
+        try {
+            $this->server->settings->update([
+                'is_reachable' => false,
+                'is_usable' => false,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to update server settings after connection check failure', [
+                'server_id' => $this->server->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function handle()
     {
         $startTime = microtime(true);
@@ -143,6 +164,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
             $diskUsage = null;
             $cpuUsage = null;
             $memoryUsage = null;
+            $memoryTotalBytes = null;
             $uptimeSeconds = null;
             $containerCounts = null;
 
@@ -154,7 +176,10 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                         $diskUsage = (float) $diskUsageStr;
                     }
                 } catch (\Throwable $e) {
-                    // Ignore disk usage errors
+                    Log::debug('Failed to collect disk usage metrics', [
+                        'server_id' => $this->server->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
 
                 // Try to get CPU and memory usage + uptime
@@ -180,6 +205,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                             $memAvailable = (float) ($memParts[6] ?? 0);
                             if ($memTotal > 0) {
                                 $memoryUsage = round((1 - $memAvailable / $memTotal) * 100, 1);
+                                $memoryTotalBytes = (int) $memTotal;
                             }
                         }
                         // Parse uptime
@@ -188,7 +214,10 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                         }
                     }
                 } catch (\Throwable $e) {
-                    // Ignore metric collection errors
+                    Log::debug('Failed to collect CPU/memory metrics', [
+                        'server_id' => $this->server->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
 
                 // Try to get container counts
@@ -204,7 +233,10 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                         ];
                     }
                 } catch (\Throwable $e) {
-                    // Ignore container count errors
+                    Log::debug('Failed to collect container count metrics', [
+                        'server_id' => $this->server->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 
@@ -221,6 +253,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                 'disk_usage_percent' => $diskUsage,
                 'cpu_usage_percent' => $cpuUsage,
                 'memory_usage_percent' => $memoryUsage,
+                'memory_total_bytes' => $memoryTotalBytes,
                 'uptime_seconds' => $uptimeSeconds,
                 'error_message' => $errorMessage,
                 'docker_version' => $dockerVersion,
@@ -254,7 +287,7 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
             $this->server->update(['hetzner_server_status' => $status]);
             $this->server->hetzner_server_status = $status;
             if ($status === 'off') {
-                ray('Server is powered off, marking as unreachable');
+                Log::info('Server is powered off, marking as unreachable', ['server_id' => $this->server->id]);
                 throw new \Exception('Server is powered off');
             }
         }

@@ -6,7 +6,7 @@
 set -e  # Exit on error
 
 # Configuration
-REPO="saturn-platform/saturn-cli"
+REPO="kpizzy812/saturn-cli"
 BINARY_NAME="saturn"
 GLOBAL_INSTALL_DIR="/usr/local/bin"
 USER_INSTALL_DIR="$HOME/.local/bin"

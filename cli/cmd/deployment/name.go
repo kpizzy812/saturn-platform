@@ -67,13 +67,21 @@ func NewNameCommand() *cobra.Command {
 						DeploymentUUID: dep.DeploymentUUID,
 					}
 				}
-				return formatter.Format(displays)
+				if err := formatter.Format(displays); err != nil {
+					return err
+				}
+			} else {
+				if err := formatter.Format(result); err != nil {
+					return err
+				}
 			}
 
-			return formatter.Format(result)
+			// Handle --wait flag
+			return HandleWait(cmd, deploySvc, CollectDeploymentUUIDs(result))
 		},
 	}
 
 	cmd.Flags().Bool("force", false, "Force deployment")
+	AddWaitFlags(cmd)
 	return cmd
 }

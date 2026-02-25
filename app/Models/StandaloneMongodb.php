@@ -66,6 +66,7 @@ class StandaloneMongodb extends BaseModel
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
     protected $casts = [
+        'mongo_initdb_root_password' => 'encrypted',
         'restart_count' => 'integer',
         'last_restart_at' => 'datetime',
         'last_restart_type' => 'string',
@@ -281,22 +282,6 @@ class StandaloneMongodb extends BaseModel
         }
 
         return null;
-    }
-
-    public function mongoInitdbRootPassword(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                try {
-                    return decrypt($value);
-                } catch (\Throwable $th) {
-                    $this->mongo_initdb_root_password = encrypt($value);
-                    $this->save();
-
-                    return $value;
-                }
-            }
-        );
     }
 
     public function portsMappings(): Attribute

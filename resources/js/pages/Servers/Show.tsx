@@ -8,12 +8,14 @@ import {
 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface Props {
     server: ServerType;
 }
 
 export default function ServerShow({ server }: Props) {
+    const { can } = usePermissions();
     const isOnline = server.is_reachable && server.is_usable;
 
     const tabs = [
@@ -35,7 +37,7 @@ export default function ServerShow({ server }: Props) {
         },
         {
             label: 'Settings',
-            content: <SettingsTab server={server} />,
+            content: <SettingsTab server={server} can={can} />,
         },
     ];
 
@@ -78,14 +80,16 @@ export default function ServerShow({ server }: Props) {
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Validate
                     </Button>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => router.visit(`/servers/${server.uuid}/terminal`)}
-                    >
-                        <Terminal className="mr-2 h-4 w-4" />
-                        Terminal
-                    </Button>
+                    {can('applications.terminal') && (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => router.visit(`/servers/${server.uuid}/terminal`)}
+                        >
+                            <Terminal className="mr-2 h-4 w-4" />
+                            Terminal
+                        </Button>
+                    )}
                     <Link href={`/servers/${server.uuid}/settings`}>
                         <Button variant="ghost" size="icon">
                             <Settings className="h-4 w-4" />
@@ -393,7 +397,7 @@ function ProxyTab({ server }: { server: ServerType }) {
     );
 }
 
-function SettingsTab({ server }: { server: ServerType }) {
+function SettingsTab({ server, can }: { server: ServerType; can: (permission: string) => boolean }) {
     const confirm = useConfirm();
 
     const settingsSections = [
@@ -445,38 +449,40 @@ function SettingsTab({ server }: { server: ServerType }) {
             </div>
 
             {/* Danger Zone */}
-            <Card className="border-danger/50">
-                <CardHeader>
-                    <CardTitle className="text-danger">Danger Zone</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-medium text-foreground">Delete this server</h4>
-                            <p className="mt-1 text-sm text-foreground-muted">
-                                Once you delete a server, there is no going back. Please be certain.
-                            </p>
+            {can('servers.delete') && (
+                <Card className="border-danger/50">
+                    <CardHeader>
+                        <CardTitle className="text-danger">Danger Zone</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="font-medium text-foreground">Delete this server</h4>
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    Once you delete a server, there is no going back. Please be certain.
+                                </p>
+                            </div>
+                            <Button
+                                variant="danger"
+                                onClick={async () => {
+                                    const confirmed = await confirm({
+                                        title: 'Delete Server',
+                                        description: `Are you sure you want to delete "${server.name}"? This action cannot be undone.`,
+                                        confirmText: 'Delete',
+                                        variant: 'danger',
+                                    });
+                                    if (confirmed) {
+                                        router.delete(`/servers/${server.uuid}`);
+                                    }
+                                }}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Server
+                            </Button>
                         </div>
-                        <Button
-                            variant="danger"
-                            onClick={async () => {
-                                const confirmed = await confirm({
-                                    title: 'Delete Server',
-                                    description: `Are you sure you want to delete "${server.name}"? This action cannot be undone.`,
-                                    confirmText: 'Delete',
-                                    variant: 'danger',
-                                });
-                                if (confirmed) {
-                                    router.delete(`/servers/${server.uuid}`);
-                                }
-                            }}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Server
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

@@ -22,6 +22,7 @@ import {
     Ban,
     ArrowLeft,
     MoreVertical,
+    Bug,
 } from 'lucide-react';
 import { getEcho } from '@/lib/echo';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ interface LogEntry {
     type: 'stdout' | 'stderr';
     timestamp: string | null;
     order: number;
+    hidden?: boolean;
 }
 
 interface DeploymentData {
@@ -79,6 +81,9 @@ export default function DeploymentDetails({
     const [deployment, setDeployment] = React.useState(initialDeployment);
     const [logs, setLogs] = React.useState<LogEntry[]>(initialLogs);
     const [isConnected, setIsConnected] = React.useState(false);
+    const [showDebugLogs, setShowDebugLogs] = React.useState(() => {
+        try { return localStorage.getItem('saturn-show-debug-logs') === 'true'; } catch { return false; }
+    });
 
     const isInProgress = deployment.status === 'in_progress' || deployment.status === 'queued';
 
@@ -135,15 +140,27 @@ export default function DeploymentDetails({
         setLogs(initialLogs);
     }, [initialDeployment, initialLogs]);
 
+    const toggleDebugLogs = React.useCallback(() => {
+        setShowDebugLogs(prev => {
+            const next = !prev;
+            try { localStorage.setItem('saturn-show-debug-logs', String(next)); } catch {}
+            return next;
+        });
+    }, []);
+
+    const hasDebugLogs = React.useMemo(() => logs.some(l => l.hidden), [logs]);
+
     // Transform logs to LogLine format for LogsContainer
     const transformedLogs: LogLine[] = React.useMemo(() => {
-        return logs.map((log, index) => ({
-            id: `${log.order}-${index}`,
-            content: log.output,
-            timestamp: log.timestamp || undefined,
-            level: log.type === 'stderr' ? 'stderr' : 'stdout',
-        }));
-    }, [logs]);
+        return logs
+            .filter(log => showDebugLogs || !log.hidden)
+            .map((log, index) => ({
+                id: `${log.order}-${index}`,
+                content: log.output,
+                timestamp: log.timestamp || undefined,
+                level: log.hidden ? 'debug' : log.type === 'stderr' ? 'stderr' : 'stdout',
+            }));
+    }, [logs, showDebugLogs]);
 
     // Parse deployment stages for pipeline graph
     const deploymentStages = React.useMemo(() => {
@@ -375,6 +392,22 @@ export default function DeploymentDetails({
 
                         {/* Logs Card */}
                         <Card className="overflow-hidden">
+                            {hasDebugLogs && (
+                                <div className="flex items-center justify-end px-4 pt-3">
+                                    <button
+                                        onClick={toggleDebugLogs}
+                                        className={cn(
+                                            'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors',
+                                            showDebugLogs
+                                                ? 'bg-primary/10 text-primary border border-primary/20'
+                                                : 'bg-background-secondary text-foreground-muted hover:text-foreground border border-border'
+                                        )}
+                                    >
+                                        <Bug className="h-3.5 w-3.5" />
+                                        Debug Logs
+                                    </button>
+                                </div>
+                            )}
                             <LogsContainer
                                 logs={transformedLogs}
                                 storageKey={`deployment-${deployment.deployment_uuid}`}

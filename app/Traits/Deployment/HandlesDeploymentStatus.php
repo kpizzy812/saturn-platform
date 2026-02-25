@@ -10,6 +10,7 @@ use App\Models\ApplicationRollbackEvent;
 use App\Notifications\Application\DeploymentFailed;
 use App\Notifications\Application\DeploymentSuccess;
 use App\Services\MasterProxyConfigService;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Trait for deployment status management operations.
@@ -120,7 +121,7 @@ trait HandlesDeploymentStatus
                 app(MasterProxyConfigService::class)->syncRemoteRoute($this->application);
             }
         } catch (\Throwable $e) {
-            ray('Failed to sync master proxy route', ['error' => $e->getMessage()]);
+            Log::warning('Failed to sync master proxy route', ['error' => $e->getMessage()]);
         }
 
         $this->sendDeploymentNotification(DeploymentSuccess::class);

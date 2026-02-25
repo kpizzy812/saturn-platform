@@ -75,4 +75,13 @@ class CleanupHelperContainersJob implements ShouldBeEncrypted, ShouldBeUnique, S
             send_internal_notification('CleanupHelperContainersJob failed with error: '.$e->getMessage());
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CleanupHelperContainersJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

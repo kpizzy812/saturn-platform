@@ -116,6 +116,15 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('DeleteResourceJob permanently failed', [
+            'resource_type' => get_class($this->resource),
+            'resource_id' => $this->resource->id,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     private function deleteApplicationPreview()
     {
         $application = $this->resource->application;
@@ -160,7 +169,10 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
                 }
 
             } catch (\Throwable $e) {
-                // Silently handle errors during deployment cancellation
+                Log::warning('Failed to cancel active deployment during resource deletion', [
+                    'deployment_uuid' => $activeDeployment->deployment_uuid ?? null,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

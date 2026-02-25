@@ -61,11 +61,9 @@ it('filters out null environment variables from nixpacks build command', functio
 
     // Set private properties
     $applicationProperty = $reflection->getProperty('application');
-    $applicationProperty->setAccessible(true);
     $applicationProperty->setValue($job, $mockApplication);
 
     $pullRequestProperty = $reflection->getProperty('pull_request_id');
-    $pullRequestProperty->setAccessible(true);
     $pullRequestProperty->setValue($job, 0);
 
     // Mock generate_saturn_env_variables to return some values including null
@@ -79,12 +77,10 @@ it('filters out null environment variables from nixpacks build command', functio
 
     // Call the private method
     $method = $reflection->getMethod('generate_nixpacks_env_variables');
-    $method->setAccessible(true);
     $method->invoke($job);
 
     // Get the generated env_nixpacks_args
     $envArgsProperty = $reflection->getProperty('env_nixpacks_args');
-    $envArgsProperty->setAccessible(true);
     $envArgs = $envArgsProperty->getValue($job);
 
     // Verify that only valid environment variables are included
@@ -140,11 +136,9 @@ it('filters out null environment variables from nixpacks preview deployments', f
 
     // Set private properties
     $applicationProperty = $reflection->getProperty('application');
-    $applicationProperty->setAccessible(true);
     $applicationProperty->setValue($job, $mockApplication);
 
     $pullRequestProperty = $reflection->getProperty('pull_request_id');
-    $pullRequestProperty->setAccessible(true);
     $pullRequestProperty->setValue($job, 123);  // Non-zero for preview deployment
 
     // Mock generate_saturn_env_variables
@@ -155,12 +149,10 @@ it('filters out null environment variables from nixpacks preview deployments', f
 
     // Call the private method
     $method = $reflection->getMethod('generate_nixpacks_env_variables');
-    $method->setAccessible(true);
     $method->invoke($job);
 
     // Get the generated env_nixpacks_args
     $envArgsProperty = $reflection->getProperty('env_nixpacks_args');
-    $envArgsProperty->setAccessible(true);
     $envArgs = $envArgsProperty->getValue($job);
 
     // Verify that only valid environment variables are included
@@ -207,11 +199,9 @@ it('handles all environment variables being null or empty', function () {
 
     // Set private properties
     $applicationProperty = $reflection->getProperty('application');
-    $applicationProperty->setAccessible(true);
     $applicationProperty->setValue($job, $mockApplication);
 
     $pullRequestProperty = $reflection->getProperty('pull_request_id');
-    $pullRequestProperty->setAccessible(true);
     $pullRequestProperty->setValue($job, 0);
 
     // Mock generate_saturn_env_variables to return all null/empty values
@@ -223,12 +213,10 @@ it('handles all environment variables being null or empty', function () {
 
     // Call the private method
     $method = $reflection->getMethod('generate_nixpacks_env_variables');
-    $method->setAccessible(true);
     $method->invoke($job);
 
     // Get the generated env_nixpacks_args
     $envArgsProperty = $reflection->getProperty('env_nixpacks_args');
-    $envArgsProperty->setAccessible(true);
     $envArgs = $envArgsProperty->getValue($job);
 
     // Verify that the result is empty or contains no environment variables
@@ -271,11 +259,9 @@ it('preserves environment variables with zero values', function () {
 
     // Set private properties
     $applicationProperty = $reflection->getProperty('application');
-    $applicationProperty->setAccessible(true);
     $applicationProperty->setValue($job, $mockApplication);
 
     $pullRequestProperty = $reflection->getProperty('pull_request_id');
-    $pullRequestProperty->setAccessible(true);
     $pullRequestProperty->setValue($job, 0);
 
     // Mock generate_saturn_env_variables
@@ -284,12 +270,10 @@ it('preserves environment variables with zero values', function () {
 
     // Call the private method
     $method = $reflection->getMethod('generate_nixpacks_env_variables');
-    $method->setAccessible(true);
     $method->invoke($job);
 
     // Get the generated env_nixpacks_args
     $envArgsProperty = $reflection->getProperty('env_nixpacks_args');
-    $envArgsProperty->setAccessible(true);
     $envArgs = $envArgsProperty->getValue($job);
 
     // Verify that zero and false string values are preserved

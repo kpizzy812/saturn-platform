@@ -20,6 +20,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Laravel\Horizon\Contracts\Silenced;
 
 class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silenced
@@ -37,6 +38,15 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
         return [(new WithoutOverlapping('collect-db-metrics-'.$this->server->uuid))->expireAfter(60)->dontRelease()];
     }
 
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CollectDatabaseMetricsJob permanently failed', [
+            'server_id' => $this->server->id,
+            'server_name' => $this->server->name,
+            'error' => $exception->getMessage(),
+        ]);
+    }
+
     public function handle(): void
     {
         if (! $this->server->isFunctional()) {
@@ -50,7 +60,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 $this->collectMetricsForDatabase($database);
             } catch (\Exception $e) {
                 // Log error but continue with other databases
-                ray('Failed to collect metrics for database: '.$database->uuid, $e->getMessage());
+                Log::warning('Failed to collect metrics for database: '.$database->uuid, ['error' => $e->getMessage()]);
             }
         }
     }
@@ -99,7 +109,8 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
     {
         try {
             // Use docker stats with --no-stream for instant snapshot
-            $command = "docker stats {$containerName} --no-stream --format '{{json .}}' 2>/dev/null || echo '{}'";
+            $safeContainerName = escapeshellarg($containerName);
+            $command = "docker stats {$safeContainerName} --no-stream --format '{{json .}}' 2>/dev/null || echo '{}'";
             $output = trim(instant_remote_process([$command], $this->server, false) ?? '{}');
 
             if (empty($output) || $output === '{}') {
@@ -198,9 +209,10 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
 
     protected function collectPostgresMetrics($database): array
     {
-        $containerName = $database->uuid;
-        $user = $database->postgres_user ?? 'postgres';
-        $dbName = $database->postgres_db ?? 'postgres';
+        $containerName = escapeshellarg($database->uuid);
+        $user = escapeshellarg($database->postgres_user ?? 'postgres');
+        $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
+        $dbNameRaw = $database->postgres_db ?? 'postgres';
 
         $metrics = [
             'activeConnections' => null,
@@ -218,8 +230,9 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 $metrics['activeConnections'] = (int) $activeConnections;
             }
 
-            // Database size
-            $sizeCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT pg_size_pretty(pg_database_size('{$dbName}'));\" 2>/dev/null || echo 'N/A'";
+            // Database size — SQL-escape the db name for use inside the query string
+            $escapedDbNameSql = str_replace("'", "''", $dbNameRaw);
+            $sizeCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT pg_size_pretty(pg_database_size('{$escapedDbNameSql}'));\" 2>/dev/null || echo 'N/A'";
             $databaseSize = trim(instant_remote_process([$sizeCommand], $this->server, false) ?? 'N/A');
             if ($databaseSize && $databaseSize !== 'N/A') {
                 $metrics['databaseSize'] = $databaseSize;
@@ -233,13 +246,17 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
             }
 
             // Transactions per second (approximate via xact_commit)
-            $tpsCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT sum(xact_commit + xact_rollback) FROM pg_stat_database WHERE datname = '{$dbName}';\" 2>/dev/null || echo 'N/A'";
+            $tpsCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -c \"SELECT sum(xact_commit + xact_rollback) FROM pg_stat_database WHERE datname = '{$escapedDbNameSql}';\" 2>/dev/null || echo 'N/A'";
             $totalTxn = trim(instant_remote_process([$tpsCommand], $this->server, false) ?? '');
             if (is_numeric($totalTxn)) {
                 $metrics['totalQueries'] = (int) $totalTxn;
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -247,8 +264,9 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
 
     protected function collectMysqlMetrics($database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->mysql_root_password ?? $database->mysql_password ?? '';
+        $escapedPassword = escapeshellarg($password);
 
         $metrics = [
             'activeConnections' => null,
@@ -260,34 +278,38 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
 
         try {
             // Active connections
-            $connCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW STATUS LIKE 'Threads_connected';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
+            $connCommand = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -e \"SHOW STATUS LIKE 'Threads_connected';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
             $connections = trim(instant_remote_process([$connCommand], $this->server, false) ?? '');
             if (is_numeric($connections)) {
                 $metrics['activeConnections'] = (int) $connections;
             }
 
             // Max connections
-            $maxConnCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW VARIABLES LIKE 'max_connections';\" 2>/dev/null | awk '{print \$2}' || echo '150'";
+            $maxConnCommand = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -e \"SHOW VARIABLES LIKE 'max_connections';\" 2>/dev/null | awk '{print \$2}' || echo '150'";
             $maxConnections = trim(instant_remote_process([$maxConnCommand], $this->server, false) ?? '150');
             if (is_numeric($maxConnections)) {
                 $metrics['maxConnections'] = (int) $maxConnections;
             }
 
             // Slow queries
-            $slowCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW STATUS LIKE 'Slow_queries';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
+            $slowCommand = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -e \"SHOW STATUS LIKE 'Slow_queries';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
             $slowQueries = trim(instant_remote_process([$slowCommand], $this->server, false) ?? '');
             if (is_numeric($slowQueries)) {
                 $metrics['slowQueries'] = (int) $slowQueries;
             }
 
             // Queries per second
-            $qpsCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -N -e \"SHOW STATUS LIKE 'Queries';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
+            $qpsCommand = "docker exec {$containerName} mysql -u root -p{$escapedPassword} -N -e \"SHOW STATUS LIKE 'Queries';\" 2>/dev/null | awk '{print \$2}' || echo 'N/A'";
             $totalQueries = trim(instant_remote_process([$qpsCommand], $this->server, false) ?? '');
             if (is_numeric($totalQueries)) {
                 $metrics['totalQueries'] = (int) $totalQueries;
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -295,7 +317,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
 
     protected function collectRedisMetrics($database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
 
         $metrics = [
@@ -306,7 +328,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
         ];
 
         try {
-            $authFlag = $password ? "-a '{$password}'" : '';
+            $authFlag = $password ? '-a '.escapeshellarg($password) : '';
 
             // Get Redis INFO
             $infoCommand = "docker exec {$containerName} redis-cli {$authFlag} INFO 2>/dev/null || echo ''";
@@ -338,7 +360,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 }
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -346,8 +372,8 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
 
     protected function collectMongoMetrics($database): array
     {
-        $containerName = $database->uuid;
-        $dbName = $database->mongo_initdb_database ?? 'admin';
+        $containerName = escapeshellarg($database->uuid);
+        $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
         $metrics = [
             'collections' => null,
@@ -357,7 +383,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
         ];
 
         try {
-            $statsCommand = "docker exec {$containerName} mongosh --quiet --eval \"JSON.stringify(db.stats())\" {$dbName} 2>/dev/null || echo '{}'";
+            $statsCommand = "docker exec {$containerName} mongosh --quiet --eval ".escapeshellarg('JSON.stringify(db.stats())')." {$dbName} 2>/dev/null || echo '{}'";
             $statsJson = trim(instant_remote_process([$statsCommand], $this->server, false) ?? '{}');
             $stats = json_decode($statsJson, true);
 
@@ -373,7 +399,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 }
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -381,7 +411,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
 
     protected function collectClickhouseMetrics($database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
 
         $metrics = [
@@ -392,7 +422,7 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
         ];
 
         try {
-            $authFlag = $password ? "--password '{$password}'" : '';
+            $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
             // Get total tables
             $tablesCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT count() FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA', 'information_schema')\" 2>/dev/null || echo 'N/A'";
@@ -408,7 +438,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 $metrics['queriesPerSec'] = (int) $queries;
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;

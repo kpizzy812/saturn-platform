@@ -44,6 +44,8 @@ import {
     Moon,
     Sun,
     ArrowLeft,
+    Globe,
+    UserPlus,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -87,6 +89,7 @@ const adminNavGroups: NavGroup[] = [
             { label: 'Users', href: '/admin/users', icon: <Users className="h-4 w-4" /> },
             { label: 'Teams', href: '/admin/teams', icon: <Users className="h-4 w-4" /> },
             { label: 'Invitations', href: '/admin/invitations', icon: <MailPlus className="h-4 w-4" /> },
+            { label: 'Platform Invites', href: '/admin/platform-invites', icon: <UserPlus className="h-4 w-4" /> },
             { label: 'Login History', href: '/admin/login-history', icon: <History className="h-4 w-4" /> },
         ],
     },
@@ -130,6 +133,7 @@ const adminNavGroups: NavGroup[] = [
             { label: 'Docker Cleanups', href: '/admin/docker-cleanups', icon: <Container className="h-4 w-4" /> },
             { label: 'SSL Certificates', href: '/admin/ssl-certificates', icon: <Lock className="h-4 w-4" /> },
             { label: 'Transfers', href: '/admin/transfers', icon: <ArrowRightLeft className="h-4 w-4" /> },
+            { label: 'Status Page', href: '/admin/status-page', icon: <Globe className="h-4 w-4" /> },
         ],
     },
 ];
@@ -219,8 +223,8 @@ function NavGroupSection({
 
 function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; onMobileClose: () => void }) {
     const { url, props } = usePage();
-    const user = (props as any).auth as { name?: string; email?: string; avatar?: string | null; is_root_user?: boolean } | undefined;
-    const systemNotifications = (props as any).systemNotifications as { unreadCount: number } | undefined;
+    const user = props.auth;
+    const systemNotifications = props.systemNotifications;
 
     // Initialize expanded groups: all expanded by default, or use stored state
     const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {

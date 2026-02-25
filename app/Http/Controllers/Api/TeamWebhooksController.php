@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\TeamWebhook\StoreTeamWebhookRequest;
+use App\Http\Requests\Api\TeamWebhook\UpdateTeamWebhookRequest;
 use App\Jobs\SendTeamWebhookJob;
 use App\Models\TeamWebhook;
 use App\Models\WebhookDelivery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 
 class TeamWebhooksController extends Controller
@@ -124,32 +125,20 @@ class TeamWebhooksController extends Controller
             ),
         ]
     )]
-    public function store(Request $request): JsonResponse
+    public function store(StoreTeamWebhookRequest $request): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'url' => 'required|url|max:2048',
-            'events' => 'required|array|min:1',
-            'events.*' => 'string|in:'.implode(',', array_column(TeamWebhook::availableEvents(), 'value')),
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
+        $validated = $request->validated();
 
         $webhook = TeamWebhook::create([
             'team_id' => $teamId,
-            'name' => $request->input('name'),
-            'url' => $request->input('url'),
-            'events' => $request->input('events'),
+            'name' => $validated['name'],
+            'url' => $validated['url'],
+            'events' => $validated['events'],
             'enabled' => true,
         ]);
 
@@ -264,7 +253,7 @@ class TeamWebhooksController extends Controller
             ),
         ]
     )]
-    public function update(Request $request, string $uuid): JsonResponse
+    public function update(UpdateTeamWebhookRequest $request, string $uuid): JsonResponse
     {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -279,22 +268,7 @@ class TeamWebhooksController extends Controller
             return response()->json(['message' => 'Webhook not found.'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|string|max:255',
-            'url' => 'sometimes|url|max:2048',
-            'events' => 'sometimes|array|min:1',
-            'events.*' => 'string|in:'.implode(',', array_column(TeamWebhook::availableEvents(), 'value')),
-            'enabled' => 'sometimes|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
-
-        $webhook->update($request->only(['name', 'url', 'events', 'enabled']));
+        $webhook->update($request->validated());
 
         return response()->json([
             'message' => 'Webhook updated successfully.',
