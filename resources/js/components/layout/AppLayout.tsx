@@ -26,7 +26,7 @@ function Breadcrumbs({ items }: { items: Breadcrumb[] }) {
     }
 
     return (
-        <nav className="border-b border-border bg-background px-4 py-3">
+        <nav className="border-b border-primary/[0.08] bg-primary/[0.03] backdrop-blur-xl px-4 py-3">
             <ol className="flex items-center gap-2 text-sm">
                 {items.map((breadcrumb, index) => {
                     const isLast = index === items.length - 1;

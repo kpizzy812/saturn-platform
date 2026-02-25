@@ -31,19 +31,7 @@ RUN --mount=type=cache,target=/tmp/cache \
 USER www-data
 
 # =================================================================
-# Stage 2: Frontend assets compilation
-# =================================================================
-FROM node:24-alpine AS static-assets
-
-WORKDIR /app
-COPY package*.json vite.config.ts postcss.config.cjs tsconfig*.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci
-COPY . .
-RUN npm run build
-
-# =================================================================
-# Stage 3: Get MinIO client
+# Stage 2: Get MinIO client
 # =================================================================
 FROM minio/mc:${MINIO_VERSION} AS minio-client
 
@@ -100,9 +88,8 @@ COPY --chmod=755 docker/production/entrypoint.d/ /etc/entrypoint.d
 
 # Copy application files from previous stages
 COPY --from=base --chown=www-data:www-data /var/www/html/vendor ./vendor
-COPY --from=static-assets --chown=www-data:www-data /app/public/build ./public/build
 
-# Copy application source code
+# Copy application source code (public/build is pre-built by CI)
 COPY --chown=www-data:www-data composer.json composer.lock ./
 COPY --chown=www-data:www-data app ./app
 COPY --chown=www-data:www-data bootstrap ./bootstrap

@@ -25,7 +25,7 @@ class PrivateKeyPolicy
      */
     public function view(User $user, PrivateKey $privateKey): bool
     {
-        if ($privateKey->team_id === null) {
+        if ($privateKey->team_id === null) { // @phpstan-ignore identical.alwaysFalse
             return false;
         }
 
@@ -55,7 +55,7 @@ class PrivateKeyPolicy
      */
     public function update(User $user, PrivateKey $privateKey): bool
     {
-        if ($privateKey->team_id === null) {
+        if ($privateKey->team_id === null) { // @phpstan-ignore identical.alwaysFalse
             return false;
         }
 
@@ -76,7 +76,7 @@ class PrivateKeyPolicy
      */
     public function delete(User $user, PrivateKey $privateKey): bool
     {
-        if ($privateKey->team_id === null) {
+        if ($privateKey->team_id === null) { // @phpstan-ignore identical.alwaysFalse
             return false;
         }
 

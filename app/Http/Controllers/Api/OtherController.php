@@ -7,6 +7,7 @@ use App\Http\Requests\Api\Other\FeedbackRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
 use OpenApi\Attributes as OA;
 
@@ -158,7 +159,9 @@ class OtherController extends Controller
                     'content' => $content,
                 ]);
             } catch (\Throwable $e) {
-                // Don't fail the request if Discord is down
+                Log::warning('Failed to send feedback to Discord webhook', [
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

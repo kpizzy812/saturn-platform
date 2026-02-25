@@ -241,6 +241,21 @@ export default function AcceptInvite({ invitation, error, isAuthenticated }: Pro
                         <p className="text-sm text-blue-600 dark:text-blue-400">
                             You'll need to sign in or create an account to accept this invitation.
                         </p>
+                        <div className="mt-3 flex items-center gap-3">
+                            <Link
+                                href={`/login?redirect=/auth/invitations/${invitation.id}`}
+                                className="text-sm font-medium text-primary hover:underline"
+                            >
+                                Sign in
+                            </Link>
+                            <span className="text-foreground-muted">or</span>
+                            <Link
+                                href={`/register?invite=${invitation.id}`}
+                                className="text-sm font-medium text-primary hover:underline"
+                            >
+                                Create Account
+                            </Link>
+                        </div>
                     </div>
                 )}
 
@@ -273,7 +288,7 @@ export default function AcceptInvite({ invitation, error, isAuthenticated }: Pro
                         <p className="text-sm text-foreground-muted">
                             Already have an account?{' '}
                             <Link
-                                href={`/login?redirect=/invitations/${invitation.id}`}
+                                href={`/login?redirect=/auth/invitations/${invitation.id}`}
                                 className="text-primary hover:underline"
                             >
                                 Sign in

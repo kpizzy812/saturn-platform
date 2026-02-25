@@ -118,7 +118,8 @@ class ScheduledJobManager implements ShouldQueue
 
     private function processScheduledBackups(): void
     {
-        $dbRelations = ['destination.server.settings', 'destination.server.team'];
+        // Eager load team.subscription to avoid N+1 when checking stripe_invoice_paid in shouldProcessBackup
+        $dbRelations = ['destination.server.settings', 'destination.server.team.subscription'];
         $backups = ScheduledDatabaseBackup::with(['database' => function (MorphTo $morphTo) use ($dbRelations) {
             $morphTo->morphWith([
                 StandalonePostgresql::class => $dbRelations,
@@ -129,7 +130,7 @@ class ScheduledJobManager implements ShouldQueue
                 StandaloneKeydb::class => $dbRelations,
                 StandaloneDragonfly::class => $dbRelations,
                 StandaloneClickhouse::class => $dbRelations,
-                ServiceDatabase::class => ['service.destination.server.settings', 'service.destination.server.team'],
+                ServiceDatabase::class => ['service.destination.server.settings', 'service.destination.server.team.subscription'],
             ]);
         }])->where('enabled', true)->get();
 
@@ -166,11 +167,12 @@ class ScheduledJobManager implements ShouldQueue
 
     private function processScheduledTasks(): void
     {
+        // Eager load team.subscription to avoid N+1 when checking stripe_invoice_paid in shouldProcessTask
         $tasks = ScheduledTask::with([
             'service.destination.server.settings',
-            'service.destination.server.team',
+            'service.destination.server.team.subscription',
             'application.destination.server.settings',
-            'application.destination.server.team',
+            'application.destination.server.team.subscription',
         ])->where('enabled', true)->get();
 
         foreach ($tasks as $task) {
@@ -320,12 +322,13 @@ class ScheduledJobManager implements ShouldQueue
 
     private function getServersForCleanup(): Collection
     {
-        $query = Server::with(['settings', 'team'])
+        // Eager load team.subscription to avoid N+1 when checking stripe_invoice_paid in shouldProcessDockerCleanup
+        $query = Server::with(['settings', 'team.subscription'])
             ->where('ip', '!=', '1.2.3.4');
 
         if (isCloud()) {
             $servers = $query->whereRelation('team.subscription', 'stripe_invoice_paid', true)->get();
-            $own = Team::find(0)->servers()->with(['settings', 'team'])->get();
+            $own = Team::find(0)->servers()->with(['settings', 'team.subscription'])->get();
 
             return $servers->merge($own);
         }

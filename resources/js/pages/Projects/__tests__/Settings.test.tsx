@@ -120,6 +120,7 @@ const defaultProps = {
         default_auto_rollback: null,
     },
     projectRepositories: ['https://github.com/example/repo.git'],
+    repoGithubAppMap: {},
     notificationOverrides: {
         deployment_success: null,
         deployment_failure: null,

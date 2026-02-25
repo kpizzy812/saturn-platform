@@ -70,28 +70,34 @@ trait HandlesComposeFileGeneration
         if (! empty($this->application->custom_network_aliases_array)) {
             $custom_network_aliases = $this->application->custom_network_aliases_array;
         }
+        $serviceConfig = [
+            'image' => $this->production_image_name,
+            'container_name' => $this->container_name,
+            'restart' => RESTART_MODE,
+            'networks' => [
+                $this->destination->network => [
+                    'aliases' => array_merge(
+                        [$this->container_name],
+                        $custom_network_aliases
+                    ),
+                ],
+            ],
+            'mem_limit' => $this->application->limits_memory,
+            'memswap_limit' => $this->application->limits_memory_swap,
+            'mem_swappiness' => $this->application->limits_memory_swappiness,
+            'mem_reservation' => $this->application->limits_memory_reservation,
+            'cpus' => (float) $this->application->limits_cpus,
+            'cpu_shares' => $this->application->limits_cpu_shares,
+        ];
+
+        // Only expose ports for non-worker applications
+        if (! empty($ports)) {
+            $serviceConfig['expose'] = $ports;
+        }
+
         $docker_compose = [
             'services' => [
-                $this->container_name => [
-                    'image' => $this->production_image_name,
-                    'container_name' => $this->container_name,
-                    'restart' => RESTART_MODE,
-                    'expose' => $ports,
-                    'networks' => [
-                        $this->destination->network => [
-                            'aliases' => array_merge(
-                                [$this->container_name],
-                                $custom_network_aliases
-                            ),
-                        ],
-                    ],
-                    'mem_limit' => $this->application->limits_memory,
-                    'memswap_limit' => $this->application->limits_memory_swap,
-                    'mem_swappiness' => $this->application->limits_memory_swappiness,
-                    'mem_reservation' => $this->application->limits_memory_reservation,
-                    'cpus' => (float) $this->application->limits_cpus,
-                    'cpu_shares' => $this->application->limits_cpu_shares,
-                ],
+                $this->container_name => $serviceConfig,
             ],
             'networks' => [
                 $this->destination->network => [

@@ -36,7 +36,7 @@ use Visus\Cuid2\Cuid2;
  * @property string $uuid
  * @property string $name
  * @property string|null $fqdn
- * @property string $ports_exposes
+ * @property string|null $ports_exposes
  * @property string|null $ports_mappings
  * @property string|null $git_repository
  * @property string|null $git_branch
@@ -83,6 +83,7 @@ use Visus\Cuid2\Cuid2;
         new OA\Property(property: 'docker_registry_image_name', type: 'string', nullable: true, description: 'Docker registry image name.'),
         new OA\Property(property: 'docker_registry_image_tag', type: 'string', nullable: true, description: 'Docker registry image tag.'),
         new OA\Property(property: 'build_pack', type: 'string', description: 'Build pack.', enum: ['nixpacks', 'static', 'dockerfile', 'dockercompose']),
+        new OA\Property(property: 'application_type', type: 'string', description: 'Application type. "web" for HTTP services, "worker" for background processes (no port), "both" for apps with web + worker.', enum: ['web', 'worker', 'both']),
         new OA\Property(property: 'static_image', type: 'string', description: 'Static image used when static site is deployed.'),
         new OA\Property(property: 'install_command', type: 'string', description: 'Install command.'),
         new OA\Property(property: 'build_command', type: 'string', description: 'Build command.'),
@@ -182,6 +183,7 @@ class Application extends BaseModel
         'docker_registry_image_name',
         'docker_registry_image_tag',
         'build_pack',
+        'application_type',
         'static_image',
         'install_command',
         'build_command',
@@ -1048,6 +1050,10 @@ class Application extends BaseModel
 
     public function main_port()
     {
+        if ($this->isWorker()) {
+            return [];
+        }
+
         return $this->settings->is_static ? [80] : $this->ports_exposes_array;
     }
 
@@ -1263,7 +1269,28 @@ class Application extends BaseModel
             return true;
         }
 
+        // Workers have no HTTP port, so healthcheck is always disabled
+        if ($this->isWorker()) {
+            return true;
+        }
+
         return false;
+    }
+
+    /**
+     * Check if this application is a worker process (no HTTP port).
+     */
+    public function isWorker(): bool
+    {
+        return $this->application_type === 'worker';
+    }
+
+    /**
+     * Check if this application needs proxy configuration (domain + ports).
+     */
+    public function needsProxy(): bool
+    {
+        return ! $this->isWorker() && ! empty($this->fqdn);
     }
 
     public function workdir()
@@ -1279,7 +1306,7 @@ class Application extends BaseModel
     public function isConfigurationChanged(bool $save = false)
     {
         $newConfigHash = base64_encode($this->fqdn.$this->git_repository.$this->git_branch.$this->git_commit_sha.$this->build_pack.$this->static_image.$this->install_command.$this->build_command.$this->start_command.$this->ports_exposes.$this->ports_mappings.$this->custom_network_aliases.$this->base_directory.$this->publish_directory.$this->dockerfile.$this->dockerfile_location.$this->custom_labels.$this->custom_docker_run_options.$this->dockerfile_target_build.$this->redirect.$this->custom_nginx_configuration.$this->settings->use_build_secrets.$this->settings->inject_build_args_to_dockerfile.$this->settings->include_source_commit_in_build);
-        if ($this->pull_request_id === 0 || $this->pull_request_id === null) {
+        if ($this->pull_request_id === 0 || $this->pull_request_id === null) { // @phpstan-ignore identical.alwaysFalse
             $newConfigHash .= json_encode($this->environment_variables()->get(['value',  'is_multiline', 'is_literal', 'is_buildtime', 'is_runtime'])->sort());
         } else {
             $newConfigHash .= json_encode($this->environment_variables_preview()->get(['value',  'is_multiline', 'is_literal', 'is_buildtime', 'is_runtime'])->sort());

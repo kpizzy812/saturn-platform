@@ -110,7 +110,11 @@ function sharedDataApplications()
         'install_command' => 'string|nullable',
         'build_command' => 'string|nullable',
         'start_command' => 'string|nullable',
-        'ports_exposes' => ['string', 'regex:/^(\d+)(,\d+)*$/', function ($attribute, $value, $fail) {
+        'application_type' => 'string|in:web,worker,both',
+        'ports_exposes' => ['string', 'nullable', 'regex:/^(\d+)(,\d+)*$/', function ($attribute, $value, $fail) {
+            if ($value === null) {
+                return;
+            }
             foreach (explode(',', $value) as $port) {
                 $port = (int) $port;
                 if ($port < 1 || $port > 65535) {

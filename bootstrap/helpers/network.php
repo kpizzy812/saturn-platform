@@ -10,6 +10,7 @@
 use App\Models\InstanceSettings;
 use App\Models\Server;
 use Illuminate\Process\Pool;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Request;
 use PurplePixie\PhpDns\DNSQuery;
@@ -276,7 +277,7 @@ function validateDNSEntry(string $fqdn, Server $server)
             $query = new DNSQuery($dns_server);
             $results = $query->query($host, $type);
             if ($results === false || $query->hasError()) {
-                ray('Error: '.$query->getLasterror());
+                Log::debug('DNS query error', ['error' => $query->getLasterror(), 'dns_server' => $dns_server, 'host' => $host]);
             } else {
                 foreach ($results as $result) {
                     if ($result->getType() == $type) {

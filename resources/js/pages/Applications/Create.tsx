@@ -7,6 +7,7 @@ import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, Extern
 import { Bitbucket } from '@/components/icons/Bitbucket';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
+import { DeployGuide } from '@/components/features/DeployGuide';
 import type { Project, Server } from '@/types';
 
 interface WildcardDomain {
@@ -50,6 +51,7 @@ interface Props {
 
 type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
 type BuildPack = 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage';
+type ApplicationType = 'web' | 'worker' | 'both';
 
 interface FormData {
     name: string;
@@ -57,12 +59,14 @@ interface FormData {
     git_repository: string;
     git_branch: string;
     build_pack: BuildPack;
+    application_type: ApplicationType;
     project_uuid: string;
     environment_uuid: string;
     server_uuid: string;
     fqdn: string;
     description: string;
     docker_image?: string;
+    github_app_id?: number;
 }
 
 export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null, hasGithubApp = false, githubApps = [] }: Props) {
@@ -96,6 +100,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         git_repository: '',
         git_branch: 'main',
         build_pack: 'nixpacks',
+        application_type: 'web',
         project_uuid: projects[0]?.uuid || '',
         environment_uuid: projects[0]?.environments[0]?.uuid || '',
         server_uuid: 'auto',
@@ -378,7 +383,12 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         setIsSubmitting(true);
         setErrors({});
 
-        router.post('/applications', formData as unknown as RouterPayload, {
+        const submitData = {
+            ...formData,
+            ...(repoMode === 'picker' && selectedGithubApp ? { github_app_id: selectedGithubApp.id } : {}),
+        };
+
+        router.post('/applications', submitData as unknown as RouterPayload, {
             onError: (serverErrors) => {
                 setErrors(serverErrors as Record<string, string>);
                 setIsSubmitting(false);
@@ -443,6 +453,8 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     selected={formData.source_type === 'bitbucket'}
                                 />
                             </div>
+
+                            <DeployGuide variant="full" className="mt-6" />
                         </div>
                     )}
 
@@ -759,6 +771,27 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                 Nixpacks will automatically detect your application type
                                             </p>
                                         </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Application Type
+                                            </label>
+                                            <Select
+                                                value={formData.application_type}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, application_type: e.target.value as ApplicationType }))}
+                                            >
+                                                <option value="web">Web (HTTP service with port)</option>
+                                                <option value="worker">Worker (background process, no port)</option>
+                                                <option value="both">Both (web + worker)</option>
+                                            </Select>
+                                            <p className="mt-1 text-xs text-foreground-muted">
+                                                {formData.application_type === 'worker'
+                                                    ? 'Workers run without HTTP port. No domain or health check needed. Perfect for bots, queue workers, scrapers.'
+                                                    : formData.application_type === 'both'
+                                                        ? 'Application serves HTTP and runs background processes.'
+                                                        : 'Standard web application with HTTP port and domain.'}
+                                            </p>
+                                        </div>
                                     </div>
                                 ) : (
                                     <div data-error={!!errors.docker_image || undefined}>
@@ -986,6 +1019,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                     <p className="text-sm text-foreground-muted mt-1">
                                                         Automatically detect monorepo structure, frameworks, databases and create everything with one click.
                                                     </p>
+                                                    <DeployGuide variant="compact" className="mt-3" />
                                                     <Button
                                                         type="button"
                                                         size="sm"
@@ -1036,6 +1070,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                             <MonorepoAnalyzer
                                 gitRepository={formData.git_repository}
                                 gitBranch={formData.git_branch}
+                                sourceId={repoMode === 'picker' ? selectedGithubApp?.id : undefined}
                                 githubAppId={repoMode === 'picker' ? selectedGithubApp?.id : undefined}
                                 environmentUuid={formData.environment_uuid}
                                 destinationUuid={formData.server_uuid}
@@ -1055,6 +1090,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 <div className="rounded-lg bg-background-secondary p-4 space-y-3">
                                     <ReviewItem label="Application Name" value={formData.name} />
                                     <ReviewItem label="Source" value={formData.source_type || ''} />
+                                    <ReviewItem label="Application Type" value={formData.application_type === 'worker' ? 'Worker (no port)' : formData.application_type === 'both' ? 'Web + Worker' : 'Web'} />
                                     {formData.source_type !== 'docker' ? (
                                         <>
                                             <ReviewItem label="Repository" value={formData.git_repository} />

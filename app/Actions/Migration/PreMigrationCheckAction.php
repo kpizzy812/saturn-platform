@@ -8,6 +8,7 @@ use App\Models\EnvironmentMigration;
 use App\Models\MigrationHistory;
 use App\Models\Server;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
 
 /**
@@ -290,8 +291,11 @@ class PreMigrationCheckAction
                     $conflicts[] = "port {$port}";
                 }
             }
-        } catch (\Throwable) {
-            // SSH failure - don't block, just skip port check
+        } catch (\Throwable $e) {
+            Log::warning('SSH failure during pre-migration port check, skipping', [
+                'server_id' => $targetServer->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $conflicts;

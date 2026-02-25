@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Visus\Cuid2\Cuid2;
 
 /**
@@ -505,8 +506,12 @@ class EnvironmentMigration extends Model
                 $this->error_message,
                 $this->team_id,
             );
-        } catch (\Throwable) {
-            // Broadcasting failures should not break migration execution
+        } catch (\Throwable $e) {
+            Log::debug('Failed to broadcast migration progress update', [
+                'migration_uuid' => $this->uuid,
+                'status' => $this->status,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

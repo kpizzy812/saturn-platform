@@ -212,11 +212,19 @@ trait HandlesHealthCheck
         $this->application_deployment_queue->addLogEntry('Container logs:');
         $this->execute_remote_command(
             [
-                'command' => "docker logs -n 100 {$this->container_name} 2>&1",
-                'type' => 'stderr',
+                "docker logs -n 100 {$this->container_name} 2>&1",
+                'hidden' => true,
+                'save' => 'query_logs_output',
                 'ignore_errors' => true,
             ],
         );
+
+        $logOutput = trim($this->saved_outputs->get('query_logs_output', ''));
+        if (empty($logOutput)) {
+            $this->application_deployment_queue->addLogEntry('(no container logs available — the application crashed before producing any output)', type: 'stderr');
+        } else {
+            $this->application_deployment_queue->addLogEntry($logOutput, type: 'stderr');
+        }
         $this->application_deployment_queue->addLogEntry('----------------------------------------');
     }
 
@@ -297,11 +305,27 @@ trait HandlesHealthCheck
             ],
         );
 
-        $logs = $this->saved_outputs->get('failure_logs', '');
+        $logs = trim($this->saved_outputs->get('failure_logs', ''));
 
         $this->application_deployment_queue->addLogEntry('----------------------------------------');
         $this->application_deployment_queue->addLogEntry('🔍 DIAGNOSIS:', type: 'stderr');
 
+        // When logs are empty, use docker inspect to diagnose
+        if (empty($logs)) {
+            $this->diagnoseFromContainerInspect();
+
+            return;
+        }
+
+        $this->diagnoseFromLogs($logs);
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+    }
+
+    /**
+     * Diagnose failure from container logs using pattern matching.
+     */
+    private function diagnoseFromLogs(string $logs): void
+    {
         // Check for missing environment variables first (most common issue)
         $missingEnvVars = $this->detectMissingEnvVars($logs);
         if (! empty($missingEnvVars)) {
@@ -363,6 +387,124 @@ trait HandlesHealthCheck
             $this->application_deployment_queue->addLogEntry('- Missing dependencies', type: 'stderr');
             $this->application_deployment_queue->addLogEntry('- Incorrect start command', type: 'stderr');
         }
+    }
+
+    /**
+     * Diagnose container failure using docker inspect when logs are empty.
+     * Extracts exit code, OOM status, and Docker error details.
+     */
+    private function diagnoseFromContainerInspect(): void
+    {
+        $this->execute_remote_command(
+            [
+                "docker inspect --format='{{json .State}}' {$this->container_name}",
+                'hidden' => true,
+                'save' => 'inspect_state_json',
+                'ignore_errors' => true,
+            ],
+            [
+                "docker inspect --format='ENTRYPOINT={{json .Config.Entrypoint}} CMD={{json .Config.Cmd}} IMAGE={{.Config.Image}}' {$this->container_name}",
+                'hidden' => true,
+                'save' => 'inspect_config',
+                'ignore_errors' => true,
+            ],
+        );
+
+        $stateJson = trim($this->saved_outputs->get('inspect_state_json', ''));
+        $state = json_decode($stateJson, true);
+
+        // If we can't even inspect the container
+        if (! $state) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ Container failed to start and produced no logs.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('   Could not inspect container state (container may have been removed).', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Try redeploying. If the issue persists, check:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Docker image builds correctly', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Start command / Dockerfile CMD is valid', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Required environment variables are set', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+
+            return;
+        }
+
+        $exitCode = $state['ExitCode'] ?? null;
+        $oomKilled = $state['OOMKilled'] ?? false;
+        $dockerError = $state['Error'] ?? '';
+
+        if ($oomKilled || $exitCode === 137) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: Out of memory (OOM Kill)', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('The container was killed because it exceeded its memory limit.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('Solutions:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('1. Increase memory limit in Application → Resource Limits', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('2. Optimize the application\'s memory usage', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('3. Check for memory leaks on startup', type: 'stderr');
+        } elseif (! empty($dockerError)) {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ ERROR: Docker runtime error', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry("Details: {$dockerError}", type: 'stderr');
+
+            if (str_contains($dockerError, 'executable file not found') || str_contains($dockerError, 'not found')) {
+                $config = trim($this->saved_outputs->get('inspect_config', ''));
+                $this->application_deployment_queue->addLogEntry('');
+                $this->application_deployment_queue->addLogEntry('The start command or entrypoint binary does not exist in the container.', type: 'stderr');
+                if (! empty($config)) {
+                    $this->application_deployment_queue->addLogEntry("Container config: {$config}", type: 'stderr');
+                }
+                $this->application_deployment_queue->addLogEntry('');
+                $this->application_deployment_queue->addLogEntry('Solutions:', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('1. Check that your Dockerfile installs all required binaries', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('2. Verify the start command in Application settings', type: 'stderr');
+            }
+        } elseif ($exitCode !== null && $exitCode !== 0) {
+            $exitCodeMeanings = [
+                1 => 'General application error — the app crashed on startup',
+                2 => 'Shell misuse or missing command argument',
+                126 => 'Command found but not executable (permission issue)',
+                127 => 'Command not found — the start command does not exist in the container',
+                139 => 'Segmentation fault (SIGSEGV) — native code crash',
+                143 => 'Process terminated (SIGTERM)',
+            ];
+
+            $meaning = $exitCodeMeanings[$exitCode] ?? 'Unknown error';
+            $config = trim($this->saved_outputs->get('inspect_config', ''));
+
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry("❌ ERROR: Container exited with code {$exitCode}", type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry("Meaning: {$meaning}", type: 'stderr');
+
+            if (! empty($config)) {
+                $this->application_deployment_queue->addLogEntry("Container config: {$config}", type: 'stderr');
+            }
+
+            $this->application_deployment_queue->addLogEntry('');
+            if ($exitCode === 127) {
+                $this->application_deployment_queue->addLogEntry('Solutions:', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('1. Check that the start command exists in the container', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('2. Verify your Dockerfile CMD/ENTRYPOINT', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('3. Try setting a custom Start Command in Application settings', type: 'stderr');
+            } elseif ($exitCode === 126) {
+                $this->application_deployment_queue->addLogEntry('Solutions:', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('1. Make the start script executable: chmod +x in your Dockerfile', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('2. Check file permissions in the container', type: 'stderr');
+            } else {
+                $this->application_deployment_queue->addLogEntry('The application crashed immediately without producing any logs.', type: 'stderr');
+                $this->application_deployment_queue->addLogEntry('Try running the container locally to debug: docker run --rm <image>', type: 'stderr');
+            }
+        } else {
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('❌ Container failed to start and produced no logs.', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('');
+            $this->application_deployment_queue->addLogEntry('Common issues:', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Missing environment variables', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Incorrect start command / Dockerfile CMD', type: 'stderr');
+            $this->application_deployment_queue->addLogEntry('- Missing dependencies in the Docker image', type: 'stderr');
+        }
 
         $this->application_deployment_queue->addLogEntry('----------------------------------------');
     }
@@ -399,7 +541,8 @@ trait HandlesHealthCheck
         }
 
         // Pattern: "VAR_NAME must be defined" or "VAR_NAME and VAR2 must be defined"
-        if (preg_match_all('/([A-Z][A-Z0-9_]+(?:\s+and\s+[A-Z][A-Z0-9_]+)*)\s+must\s+be\s+(?:defined|set|provided)/i', $logs, $matches)) {
+        // Note: no /i flag on capture group — env var names must be UPPERCASE to avoid false positives like "is"
+        if (preg_match_all('/([A-Z][A-Z0-9_]+(?:\s+and\s+[A-Z][A-Z0-9_]+)*)\s+(?i:must\s+be\s+(?:defined|set|provided))/', $logs, $matches)) {
             foreach ($matches[1] as $match) {
                 // Split "VAR1 and VAR2" into separate vars
                 $vars = preg_split('/\s+and\s+/i', $match);
@@ -413,7 +556,8 @@ trait HandlesHealthCheck
         }
 
         // Pattern: "VAR_NAME is required" or "VAR_NAME is not set"
-        if (preg_match_all('/([A-Z][A-Z0-9_]+)\s+(?:is\s+)?(?:required|not\s+set|not\s+defined|missing|undefined)/i', $logs, $matches)) {
+        // Note: no /i on capture group — prevents false positives ("is", "or" etc.)
+        if (preg_match_all('/([A-Z][A-Z0-9_]+)\s+(?i:(?:is\s+)?(?:required|not\s+set|not\s+defined|missing|undefined))/', $logs, $matches)) {
             foreach ($matches[1] as $var) {
                 $var = trim($var);
                 if (! empty($var) && ! in_array($var, $missingVars)) {
@@ -423,7 +567,7 @@ trait HandlesHealthCheck
         }
 
         // Pattern: "Missing environment variable: VAR_NAME" or "Missing required env var VAR_NAME"
-        if (preg_match_all('/[Mm]issing\s+(?:required\s+)?(?:environment\s+)?(?:variable|env\s+var)s?[:\s]+([A-Z][A-Z0-9_]+)/i', $logs, $matches)) {
+        if (preg_match_all('/(?i:missing\s+(?:required\s+)?(?:environment\s+)?(?:variable|env\s+var)s?)[:\s]+([A-Z][A-Z0-9_]+)/', $logs, $matches)) {
             foreach ($matches[1] as $var) {
                 $var = trim($var);
                 if (! empty($var) && ! in_array($var, $missingVars)) {
@@ -433,7 +577,7 @@ trait HandlesHealthCheck
         }
 
         // Pattern: "process.env.VAR_NAME is undefined" (JavaScript)
-        if (preg_match_all('/process\.env\.([A-Z][A-Z0-9_]+)\s+is\s+undefined/i', $logs, $matches)) {
+        if (preg_match_all('/process\.env\.([A-Z][A-Z0-9_]+)\s+(?i:is\s+undefined)/', $logs, $matches)) {
             foreach ($matches[1] as $var) {
                 $var = trim($var);
                 if (! empty($var) && ! in_array($var, $missingVars)) {
@@ -443,7 +587,7 @@ trait HandlesHealthCheck
         }
 
         // Pattern: "Config validation error: VAR_NAME should not be empty"
-        if (preg_match_all('/(?:Config|Configuration|Validation)\s+(?:validation\s+)?error[^:]*:\s*([A-Z][A-Z0-9_]+)\s+(?:should\s+not\s+be\s+empty|is\s+required)/i', $logs, $matches)) {
+        if (preg_match_all('/(?i:(?:Config|Configuration|Validation)\s+(?:validation\s+)?error[^:]*:)\s*([A-Z][A-Z0-9_]+)\s+(?i:(?:should\s+not\s+be\s+empty|is\s+required))/', $logs, $matches)) {
             foreach ($matches[1] as $var) {
                 $var = trim($var);
                 if (! empty($var) && ! in_array($var, $missingVars)) {
@@ -453,7 +597,7 @@ trait HandlesHealthCheck
         }
 
         // Pattern: Python/Django style "ImproperlyConfigured: Set the VAR_NAME environment variable"
-        if (preg_match_all('/Set\s+the\s+([A-Z][A-Z0-9_]+)\s+environment\s+variable/i', $logs, $matches)) {
+        if (preg_match_all('/(?i:set\s+the\s+)([A-Z][A-Z0-9_]+)(?i:\s+environment\s+variable)/', $logs, $matches)) {
             foreach ($matches[1] as $var) {
                 $var = trim($var);
                 if (! empty($var) && ! in_array($var, $missingVars)) {
@@ -462,9 +606,30 @@ trait HandlesHealthCheck
             }
         }
 
-        // Filter out false positives — generic words that match [A-Z][A-Z0-9_]+ with /i flag
-        // e.g. "Field required" from Pydantic logs matches the generic "VAR is required" pattern
-        $falsePositives = ['Field', 'This', 'Error', 'Value', 'Input', 'Type', 'String', 'Integer', 'Boolean'];
+        // Pattern: Quoted variable names — "VAR_NAME" or 'VAR_NAME' followed by error keywords
+        // Handles mixed-case names since quotes disambiguate from English words
+        if (preg_match_all('/["\']([A-Z][A-Z0-9_]+)["\']\s+(?i:(?:is\s+)?(?:required|not\s+set|not\s+defined|not\s+configured|missing|undefined))/', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        // Pattern: Error keyword followed by quoted variable — missing "VAR_NAME" / required 'VAR_NAME'
+        if (preg_match_all('/(?i:(?:missing|required|undefined|not\s+found|not\s+set|not\s+configured)\s+(?:(?:environment\s+)?(?:variable|env\s+var|config)\s+)?)["\']([A-Z][A-Z0-9_]+)["\']/', $logs, $matches)) {
+            foreach ($matches[1] as $var) {
+                $var = trim($var);
+                if (! empty($var) && ! in_array($var, $missingVars)) {
+                    $missingVars[] = $var;
+                }
+            }
+        }
+
+        // Filter out false positives — generic ALL-CAPS words that could match env var patterns
+        // Most are prevented by removing /i flag, but keep as a safety net
+        $falsePositives = ['FIELD', 'THIS', 'ERROR', 'VALUE', 'INPUT', 'TYPE', 'STRING', 'INTEGER', 'BOOLEAN', 'NULL', 'TRUE', 'FALSE', 'NONE'];
         $missingVars = array_values(array_filter($missingVars, fn ($var) => ! in_array($var, $falsePositives)));
 
         return $missingVars;

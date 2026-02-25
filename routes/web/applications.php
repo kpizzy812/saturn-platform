@@ -59,7 +59,9 @@ Route::get('/applications', function () {
                     'health' => $health,
                 ],
                 'project_name' => $app->environment->project->name,
+                'project_uuid' => $app->environment->project->uuid,
                 'environment_name' => $app->environment->name,
+                'environment_uuid' => $app->environment->uuid ?? null,
                 'environment_type' => $app->environment->type ?? 'development',
                 'created_at' => $app->created_at,
                 'updated_at' => $app->updated_at,
@@ -149,6 +151,7 @@ Route::post('/applications', function (Request $request) {
         'git_repository' => 'required_unless:source_type,docker|nullable|string',
         'git_branch' => 'nullable|string',
         'build_pack' => 'required|string|in:nixpacks,dockerfile,dockercompose,dockerimage',
+        'application_type' => 'nullable|string|in:web,worker,both',
         'project_uuid' => 'required|string',
         'environment_uuid' => 'required|string',
         'server_uuid' => 'nullable|string',
@@ -210,6 +213,7 @@ Route::post('/applications', function (Request $request) {
     $application->git_repository = $validated['git_repository'] ?? null;
     $application->git_branch = $validated['git_branch'] ?? 'main';
     $application->build_pack = $validated['build_pack'];
+    $application->application_type = $validated['application_type'] ?? 'web';
     $application->environment_id = $environment->id;
     $application->destination_id = $destination->id;
     $application->destination_type = $destination->getMorphClass();
@@ -280,21 +284,31 @@ Route::post('/applications', function (Request $request) {
         $application->manual_webhook_secret_github = \Illuminate\Support\Str::random(32);
     }
 
-    // Set default ports
-    $application->ports_exposes = '80';
+    // Workers: no port, no domain, no health check
+    $isWorker = ($validated['application_type'] ?? 'web') === 'worker';
+    if ($isWorker) {
+        $application->ports_exposes = null;
+        $application->health_check_enabled = false;
+        $application->fqdn = null;
+    } else {
+        // Set default ports for web applications
+        $application->ports_exposes = '80';
+    }
 
     $application->save();
 
-    // Handle domain: expand subdomain-only input or auto-generate if empty
-    if (! empty($application->fqdn) && ! str_contains($application->fqdn, '.') && ! str_contains($application->fqdn, '://')) {
-        // User entered just a subdomain (e.g. "uranus") — expand to full URL
-        $application->fqdn = generateUrl(server: $server, random: $application->fqdn);
-        $application->save();
-    } elseif (empty($application->fqdn)) {
-        // No domain provided — auto-generate from project name
-        $slug = generateSubdomainFromName($application->name, $server, $project->name);
-        $application->fqdn = generateUrl(server: $server, random: $slug);
-        $application->save();
+    if (! $isWorker) {
+        // Handle domain: expand subdomain-only input or auto-generate if empty
+        if (! empty($application->fqdn) && ! str_contains($application->fqdn, '.') && ! str_contains($application->fqdn, '://')) {
+            // User entered just a subdomain (e.g. "uranus") — expand to full URL
+            $application->fqdn = generateUrl(server: $server, random: $application->fqdn);
+            $application->save();
+        } elseif (empty($application->fqdn)) {
+            // No domain provided — auto-generate from project name
+            $slug = generateSubdomainFromName($application->name, $server, $project->name);
+            $application->fqdn = generateUrl(server: $server, random: $slug);
+            $application->save();
+        }
     }
 
     return redirect()->route('applications.show', $application->uuid)
@@ -722,7 +736,9 @@ Route::get('/applications/{uuid}/previews', function (string $uuid) {
         'application' => $application,
         'previews' => $previews,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.previews');
 
@@ -744,7 +760,9 @@ Route::get('/applications/{uuid}/previews/settings', function (string $uuid) {
         'application' => $application,
         'settings' => $settings,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.previews.settings');
 
@@ -778,7 +796,9 @@ Route::get('/applications/{uuid}/previews/{previewUuid}', function (string $uuid
         'preview' => $previewData,
         'previewUuid' => $previewUuid,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.previews.show');
 
@@ -805,7 +825,9 @@ Route::get('/applications/{uuid}/settings', function (string $uuid) {
             'docker_images_to_keep' => $settings->docker_images_to_keep ?? 2,
         ],
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.settings');
 
@@ -826,6 +848,8 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'description' => 'sometimes|nullable|string',
         'git_branch' => 'sometimes|nullable|string|max:255',
         'base_directory' => 'sometimes|nullable|string|max:255',
+        'dockerfile_location' => 'sometimes|nullable|string|max:255',
+        'docker_compose_location' => 'sometimes|nullable|string|max:255',
         'build_command' => 'sometimes|nullable|string',
         'install_command' => 'sometimes|nullable|string',
         'start_command' => 'sometimes|nullable|string',
@@ -918,7 +942,9 @@ Route::get('/applications/{uuid}/settings/domains', function (string $uuid) {
         'application' => $application,
         'domains' => $domains,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.settings.domains');
 
@@ -953,7 +979,9 @@ Route::get('/applications/{uuid}/settings/variables', function (string $uuid) {
         'application' => $application,
         'variables' => $variables,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.settings.variables');
 
@@ -995,7 +1023,9 @@ Route::get('/applications/{uuid}/logs', function (string $uuid) {
     return Inertia::render('Applications/Logs', [
         'application' => $application,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.logs');
 
@@ -1078,7 +1108,9 @@ Route::get('/applications/{uuid}/deployments', function (string $uuid) {
         'application' => $application,
         'deployments' => $deployments,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.deployments');
 
@@ -1095,18 +1127,18 @@ Route::get('/applications/{uuid}/deployments/{deploymentUuid}', function (string
     $project = $application->environment->project;
     $environment = $application->environment;
 
-    // Parse logs from JSON
+    // Parse logs from JSON — include hidden logs with a flag for debug toggle
     $logs = [];
     if ($deployment->logs) {
         $rawLogs = json_decode($deployment->logs, true);
         if (is_array($rawLogs)) {
             $logs = collect($rawLogs)
-                ->filter(fn ($log) => ! ($log['hidden'] ?? false))
                 ->map(fn ($log) => [
                     'output' => $log['output'] ?? '',
                     'type' => $log['type'] ?? 'stdout',
                     'timestamp' => $log['timestamp'] ?? null,
                     'order' => $log['order'] ?? 0,
+                    'hidden' => (bool) ($log['hidden'] ?? false),
                 ])
                 ->sortBy('order')
                 ->values()

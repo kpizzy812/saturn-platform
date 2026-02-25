@@ -14,25 +14,51 @@ use Inertia\Inertia;
 */
 
 Route::get('/boarding', function () {
-    $servers = \App\Models\Server::ownedByCurrentTeam()->get(['id', 'name', 'ip']);
-    $privateKeys = \App\Models\PrivateKey::ownedByCurrentTeam()->get(['id', 'name']);
-
     // Get GitHub Apps for current team
     $githubApps = \App\Models\GithubApp::where(function ($query) {
         $query->where('team_id', currentTeam()->id)
             ->orWhere('is_system_wide', true);
     })->whereNotNull('app_id')->get();
 
+    // Pass projects for the blurred dashboard background
+    $projects = \App\Models\Project::ownedByCurrentTeam()
+        ->with([
+            'environments.applications',
+            'environments.postgresqls',
+            'environments.redis',
+            'environments.mongodbs',
+            'environments.mysqls',
+            'environments.mariadbs',
+            'environments.keydbs',
+            'environments.dragonflies',
+            'environments.clickhouses',
+            'environments.services',
+        ])
+        ->get();
+
+    $projects->each(function ($project) {
+        $project->environments->each(function ($env) {
+            $env->setAttribute('databases', $env->databases());
+            $env->unsetRelation('postgresqls');
+            $env->unsetRelation('redis');
+            $env->unsetRelation('mongodbs');
+            $env->unsetRelation('mysqls');
+            $env->unsetRelation('mariadbs');
+            $env->unsetRelation('keydbs');
+            $env->unsetRelation('dragonflies');
+            $env->unsetRelation('clickhouses');
+        });
+    });
+
     return Inertia::render('Boarding/Index', [
         'userName' => auth()->user()->name,
-        'existingServers' => $servers,
-        'privateKeys' => $privateKeys,
         'githubApps' => $githubApps->map(fn ($app) => [
             'id' => $app->id,
             'uuid' => $app->uuid,
             'name' => $app->name,
             'installation_id' => $app->installation_id,
         ]),
+        'projects' => $projects,
     ]);
 })->name('boarding.index');
 
@@ -55,17 +81,16 @@ Route::post('/boarding/deploy', function (Request $request) {
         'name' => 'required|string|max:255',
         'git_repository' => 'required|string',
         'git_branch' => 'nullable|string',
-        'server_id' => 'required|integer',
         'github_app_id' => 'nullable|integer',
     ]);
 
-    // Find server
+    // Auto-select server: prefer localhost (id=0), then first available
     $server = \App\Models\Server::ownedByCurrentTeam()
-        ->where('id', $validated['server_id'])
+        ->orderByRaw('CASE WHEN id = 0 THEN 0 ELSE 1 END')
         ->first();
 
     if (! $server) {
-        return redirect()->back()->withErrors(['server_id' => 'Server not found']);
+        return redirect()->back()->withErrors(['server' => 'No servers available. Please contact your administrator.']);
     }
 
     $destination = $server->destinations()->first();

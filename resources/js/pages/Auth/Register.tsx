@@ -1,7 +1,7 @@
 import { useForm, Link } from '@inertiajs/react';
 import { AuthLayout } from '@/components/layout';
-import { Input, Button } from '@/components/ui';
-import { Github, Mail, GitBranch } from 'lucide-react';
+import { Input, Button, Badge } from '@/components/ui';
+import { Github, Mail, GitBranch, Users, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 interface OAuthProvider {
@@ -10,9 +10,17 @@ interface OAuthProvider {
     enabled: boolean;
 }
 
+interface InvitationData {
+    uuid: string;
+    email: string;
+    team_name: string;
+    role: string;
+}
+
 interface Props {
     isFirstUser?: boolean;
     enabled_oauth_providers?: OAuthProvider[];
+    invitation?: InvitationData | null;
 }
 
 const providerConfig: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -24,12 +32,13 @@ const providerConfig: Record<string, { label: string; icon: React.ReactNode }> =
     discord: { label: 'Discord', icon: <Mail className="mr-2 h-4 w-4" /> },
 };
 
-export default function Register({ enabled_oauth_providers = [] }: Props) {
+export default function Register({ enabled_oauth_providers = [], invitation }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
-        email: '',
+        email: invitation?.email ?? '',
         password: '',
         password_confirmation: '',
+        invite: invitation?.uuid ?? '',
     });
     const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
@@ -45,9 +54,42 @@ export default function Register({ enabled_oauth_providers = [] }: Props) {
 
     const hasOAuthProviders = enabled_oauth_providers.length > 0;
 
+    const title = invitation ? 'Join Team' : 'Create Account';
+    const subtitle = invitation
+        ? `Create an account to join ${invitation.team_name}.`
+        : 'Start deploying your applications for free.';
+
     return (
-        <AuthLayout title="Create Account" subtitle="Start deploying your applications for free.">
+        <AuthLayout title={title} subtitle={subtitle}>
+            {/* Invitation context banner */}
+            {invitation && (
+                <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                            <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-semibold text-foreground">
+                                {invitation.team_name}
+                            </p>
+                            <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                                <span>You'll join as</span>
+                                <Badge variant="secondary" size="sm">
+                                    <Shield className="mr-1 h-3 w-3" />
+                                    {invitation.role}
+                                </Badge>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Hidden invite UUID */}
+                {invitation && (
+                    <input type="hidden" name="invite" value={data.invite} />
+                )}
+
                 <Input
                     label="Name"
                     type="text"
@@ -67,7 +109,13 @@ export default function Register({ enabled_oauth_providers = [] }: Props) {
                     onChange={(e) => setData('email', e.target.value)}
                     error={errors.email}
                     required
+                    disabled={!!invitation}
                 />
+                {invitation && (
+                    <p className="!mt-1 text-xs text-foreground-muted">
+                        Email is locked to the invitation address.
+                    </p>
+                )}
 
                 <Input
                     label="Password"
@@ -91,10 +139,10 @@ export default function Register({ enabled_oauth_providers = [] }: Props) {
                 />
 
                 <Button type="submit" className="w-full" loading={processing}>
-                    Create Account
+                    {invitation ? 'Create Account & Join Team' : 'Create Account'}
                 </Button>
 
-                {hasOAuthProviders && (
+                {hasOAuthProviders && !invitation && (
                     <>
                         {/* Divider */}
                         <div className="relative my-6">

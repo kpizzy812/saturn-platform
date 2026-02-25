@@ -53,7 +53,6 @@ trait HandlesImageBuilding
             $this->application_deployment_queue->addLogEntry('Static deployment. Copying static assets to the image.');
         } else {
             $this->application_deployment_queue->addLogEntry('Building docker image started.');
-            $this->application_deployment_queue->addLogEntry('To check the current progress, click on Show Debug Logs.');
         }
 
         if ($this->application->settings->is_static) {

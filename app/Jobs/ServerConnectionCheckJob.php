@@ -52,7 +52,10 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                 'is_usable' => false,
             ]);
         } catch (\Throwable $e) {
-            // Don't mask the original failure
+            Log::warning('Failed to update server settings after connection check failure', [
+                'server_id' => $this->server->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -173,7 +176,10 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                         $diskUsage = (float) $diskUsageStr;
                     }
                 } catch (\Throwable $e) {
-                    // Ignore disk usage errors
+                    Log::debug('Failed to collect disk usage metrics', [
+                        'server_id' => $this->server->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
 
                 // Try to get CPU and memory usage + uptime
@@ -208,7 +214,10 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                         }
                     }
                 } catch (\Throwable $e) {
-                    // Ignore metric collection errors
+                    Log::debug('Failed to collect CPU/memory metrics', [
+                        'server_id' => $this->server->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
 
                 // Try to get container counts
@@ -224,7 +233,10 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                         ];
                     }
                 } catch (\Throwable $e) {
-                    // Ignore container count errors
+                    Log::debug('Failed to collect container count metrics', [
+                        'server_id' => $this->server->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
 

@@ -22,13 +22,15 @@ interface UseGitBranchesReturn {
     platform: string | null;
     isLoading: boolean;
     error: string | null;
-    fetchBranches: (repositoryUrl: string) => void;
+    /** Fetch branches. Pass githubAppId to authenticate via GitHub App for private repos. */
+    fetchBranches: (repositoryUrl: string, githubAppId?: number | null) => void;
     clearBranches: () => void;
 }
 
 /**
- * Hook to fetch branches from a public git repository.
+ * Hook to fetch branches from a git repository.
  * Supports GitHub, GitLab, and Bitbucket.
+ * When githubAppId is provided, uses the GitHub App installation token for private repos.
  */
 export function useGitBranches({
     debounceMs = 500,
@@ -49,7 +51,7 @@ export function useGitBranches({
         setError(null);
     }, []);
 
-    const fetchBranchesInternal = React.useCallback(async (repositoryUrl: string) => {
+    const fetchBranchesInternal = React.useCallback(async (repositoryUrl: string, githubAppId?: number | null) => {
         // Cancel any in-flight request
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -71,18 +73,21 @@ export function useGitBranches({
             // Get CSRF token for web route
             const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
-            const response = await fetch(
-                `/web-api/git/branches?repository_url=${encodeURIComponent(repositoryUrl)}`,
-                {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                    },
-                    credentials: 'include',
-                    signal: abortControllerRef.current.signal,
-                }
-            );
+            // Build URL with optional github_app_id for private repo authentication
+            let url = `/web-api/git/branches?repository_url=${encodeURIComponent(repositoryUrl)}`;
+            if (githubAppId) {
+                url += `&github_app_id=${githubAppId}`;
+            }
+
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                signal: abortControllerRef.current.signal,
+            });
 
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
@@ -107,7 +112,7 @@ export function useGitBranches({
         }
     }, [clearBranches]);
 
-    const fetchBranches = React.useCallback((repositoryUrl: string) => {
+    const fetchBranches = React.useCallback((repositoryUrl: string, githubAppId?: number | null) => {
         // Clear existing debounce timer
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
@@ -121,7 +126,7 @@ export function useGitBranches({
 
         // Debounce the fetch
         debounceTimerRef.current = setTimeout(() => {
-            fetchBranchesInternal(repositoryUrl);
+            fetchBranchesInternal(repositoryUrl, githubAppId);
         }, debounceMs);
     }, [fetchBranchesInternal, debounceMs, clearBranches]);
 

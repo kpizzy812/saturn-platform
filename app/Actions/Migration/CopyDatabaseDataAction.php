@@ -229,8 +229,11 @@ class CopyDatabaseDataAction
         try {
             $escapedDumpFile = escapeshellarg($dumpFile);
             instant_remote_process(["rm -f {$escapedDumpFile}"], $server, false);
-        } catch (\Throwable) {
-            // Cleanup failure is non-critical
+        } catch (\Throwable $e) {
+            Log::debug('Failed to clean up dump file after database migration', [
+                'dump_file' => $dumpFile,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

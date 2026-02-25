@@ -200,6 +200,11 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
                         $this->updateApplicationPreviewStatus($applicationId, $pullRequestId, $containerStatus);
                     }
                 } catch (\Exception $e) {
+                    Log::warning('Failed to process application container status update', [
+                        'server_id' => $this->server->id,
+                        'container' => $containerName ?? 'unknown',
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             } elseif ($labels->has('saturn.serviceId')) {
                 $serviceId = $labels->get('saturn.serviceId');
@@ -482,6 +487,11 @@ class PushServerUpdateJob implements ShouldBeEncrypted, ShouldQueue, Silenced
                         $this->server->team?->notify(new ContainerRestarted('saturn-proxy', $this->server));
                     }
                 } catch (\Throwable $e) {
+                    Log::error('Failed to check/start proxy on server', [
+                        'server_id' => $this->server->id,
+                        'server_name' => $this->server->name,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             } else {
                 // Connect proxy to networks asynchronously to avoid blocking the status update

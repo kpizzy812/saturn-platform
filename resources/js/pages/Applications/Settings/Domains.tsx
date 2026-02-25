@@ -9,7 +9,9 @@ interface Props {
     application: Application;
     domains?: SimpleDomain[];
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
 // Simple structure from backend (matches routes/web.php)
@@ -19,7 +21,7 @@ interface SimpleDomain {
     is_primary: boolean;
 }
 
-export default function ApplicationDomains({ application, domains: propDomains, projectUuid, environmentUuid }: Props) {
+export default function ApplicationDomains({ application, domains: propDomains, projectUuid, projectName }: Props) {
     const confirm = useConfirm();
     const [domains, setDomains] = React.useState<SimpleDomain[]>(propDomains || []);
     const [newDomain, setNewDomain] = React.useState('');
@@ -94,8 +96,7 @@ export default function ApplicationDomains({ application, domains: propDomains, 
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Domains' },
     ];

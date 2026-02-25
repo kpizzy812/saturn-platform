@@ -21,6 +21,10 @@ describe('Database Backups Page', () => {
             filename: 'backup-2024-01-01.sql',
             size: '128 MB',
             status: 'completed' as const,
+            restore_status: null,
+            restore_started_at: null,
+            restore_finished_at: null,
+            restore_message: null,
             created_at: '2024-01-01T12:00:00Z',
         },
         {
@@ -28,6 +32,10 @@ describe('Database Backups Page', () => {
             filename: 'backup-2024-01-02.sql',
             size: '132 MB',
             status: 'completed' as const,
+            restore_status: null,
+            restore_started_at: null,
+            restore_finished_at: null,
+            restore_message: null,
             created_at: '2024-01-02T12:00:00Z',
         },
         {
@@ -35,6 +43,10 @@ describe('Database Backups Page', () => {
             filename: 'backup-2024-01-03.sql',
             size: '0 MB',
             status: 'failed' as const,
+            restore_status: null,
+            restore_started_at: null,
+            restore_finished_at: null,
+            restore_message: null,
             created_at: '2024-01-03T12:00:00Z',
         },
     ];
@@ -78,14 +90,14 @@ describe('Database Backups Page', () => {
             render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
             expect(screen.getByText('Automatic Backups')).toBeInTheDocument();
-            expect(screen.getByText('Schedule automatic backups to run periodically')).toBeInTheDocument();
+            expect(screen.getByText('Enable to schedule periodic backups')).toBeInTheDocument();
         });
 
         it('should show frequency options when auto backup is enabled', async () => {
             const { user } = render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
-            const checkbox = screen.getByRole('checkbox');
-            await user.click(checkbox);
+            const toggle = screen.getByRole('switch');
+            await user.click(toggle);
 
             expect(screen.getByText('Backup Frequency')).toBeInTheDocument();
             expect(screen.getByText('Hourly')).toBeInTheDocument();
@@ -96,8 +108,8 @@ describe('Database Backups Page', () => {
         it('should show save button when changes are made', async () => {
             const { user } = render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
-            const checkbox = screen.getByRole('checkbox');
-            await user.click(checkbox);
+            const toggle = screen.getByRole('switch');
+            await user.click(toggle);
 
             await waitFor(() => {
                 expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
@@ -189,8 +201,8 @@ describe('Database Backups Page', () => {
                 />
             );
 
-            const checkbox = screen.getByRole('checkbox');
-            expect(checkbox).toBeChecked();
+            const toggle = screen.getByRole('switch');
+            expect(toggle).toHaveAttribute('aria-checked', 'true');
         });
 
         it('should show backup frequency for scheduled backup', () => {
@@ -202,7 +214,7 @@ describe('Database Backups Page', () => {
                 />
             );
 
-            expect(screen.getByText(/Backup runs daily/)).toBeInTheDocument();
+            expect(screen.getByText(/Scheduled to run daily/)).toBeInTheDocument();
         });
     });
 
@@ -211,8 +223,8 @@ describe('Database Backups Page', () => {
             const { user } = render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
             // Enable auto backup
-            const checkbox = screen.getByRole('checkbox');
-            await user.click(checkbox);
+            const toggle = screen.getByRole('switch');
+            await user.click(toggle);
 
             // Click save
             const saveButton = await screen.findByRole('button', { name: /save schedule/i });
@@ -226,6 +238,131 @@ describe('Database Backups Page', () => {
                 }),
                 expect.any(Object)
             );
+        });
+    });
+
+    describe('restore history', () => {
+        const backupsWithRestore = [
+            {
+                ...mockBackups[0],
+                restore_status: 'success' as const,
+                restore_started_at: '2024-01-01T13:00:00Z',
+                restore_finished_at: '2024-01-01T13:02:30Z',
+                restore_message: null,
+            },
+            {
+                ...mockBackups[1],
+                restore_status: 'failed' as const,
+                restore_started_at: '2024-01-02T13:00:00Z',
+                restore_finished_at: '2024-01-02T13:01:00Z',
+                restore_message: 'Connection refused: database container not running',
+            },
+            mockBackups[2],
+        ];
+
+        it('should show Restore History section when restores exist', () => {
+            render(<DatabaseBackups database={mockDatabase} backups={backupsWithRestore} />);
+
+            expect(screen.getByText('Restore History')).toBeInTheDocument();
+        });
+
+        it('should not show Restore History when no restores exist', () => {
+            render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
+
+            expect(screen.queryByText('Restore History')).not.toBeInTheDocument();
+        });
+
+        it('should show successful restore card', () => {
+            render(<DatabaseBackups database={mockDatabase} backups={backupsWithRestore} />);
+
+            expect(screen.getByText('Restore from backup-2024-01-01.sql')).toBeInTheDocument();
+            expect(screen.getByText('Restored')).toBeInTheDocument();
+        });
+
+        it('should show failed restore with error message', () => {
+            render(<DatabaseBackups database={mockDatabase} backups={backupsWithRestore} />);
+
+            expect(screen.getByText('Restore from backup-2024-01-02.sql')).toBeInTheDocument();
+            expect(screen.getByText('Restore Failed')).toBeInTheDocument();
+            expect(screen.getByText('Connection refused: database container not running')).toBeInTheDocument();
+        });
+
+        it('should show in-progress restore with spinner', () => {
+            const backupsWithActiveRestore = [
+                {
+                    ...mockBackups[0],
+                    restore_status: 'in_progress' as const,
+                    restore_started_at: '2024-01-01T13:00:00Z',
+                    restore_finished_at: null,
+                    restore_message: null,
+                },
+                mockBackups[1],
+                mockBackups[2],
+            ];
+
+            render(<DatabaseBackups database={mockDatabase} backups={backupsWithActiveRestore} />);
+
+            // "Restoring..." appears in both RestoreCard badge and BackupCard button
+            const restoringElements = screen.getAllByText('Restoring...');
+            expect(restoringElements.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('should show pending restore as queued', () => {
+            const backupsWithPending = [
+                {
+                    ...mockBackups[0],
+                    restore_status: 'pending' as const,
+                    restore_started_at: null,
+                    restore_finished_at: null,
+                    restore_message: null,
+                },
+                mockBackups[1],
+                mockBackups[2],
+            ];
+
+            render(<DatabaseBackups database={mockDatabase} backups={backupsWithPending} />);
+
+            expect(screen.getByText('Queued')).toBeInTheDocument();
+            expect(screen.getByText('Waiting in queue...')).toBeInTheDocument();
+        });
+
+        it('should disable Restore button when restore is in progress', () => {
+            const backupsWithActiveRestore = [
+                {
+                    ...mockBackups[0],
+                    restore_status: 'in_progress' as const,
+                    restore_started_at: '2024-01-01T13:00:00Z',
+                    restore_finished_at: null,
+                    restore_message: null,
+                },
+                mockBackups[1],
+                mockBackups[2],
+            ];
+
+            render(<DatabaseBackups database={mockDatabase} backups={backupsWithActiveRestore} />);
+
+            // The first backup's Restore button should be disabled and show "Restoring..."
+            const restoringButton = screen.getByRole('button', { name: /restoring\.\.\./i });
+            expect(restoringButton).toBeDisabled();
+        });
+
+        it('should show Restoring badge on backup card during active restore', () => {
+            const backupsWithActiveRestore = [
+                {
+                    ...mockBackups[0],
+                    restore_status: 'in_progress' as const,
+                    restore_started_at: '2024-01-01T13:00:00Z',
+                    restore_finished_at: null,
+                    restore_message: null,
+                },
+                mockBackups[1],
+                mockBackups[2],
+            ];
+
+            render(<DatabaseBackups database={mockDatabase} backups={backupsWithActiveRestore} />);
+
+            // Should show "Restoring" badge alongside the status badge
+            expect(screen.getByText('Restoring')).toBeInTheDocument();
         });
     });
 });

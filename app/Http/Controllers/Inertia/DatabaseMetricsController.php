@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DatabaseMetric;
 use App\Services\DatabaseMetrics\ClickhouseMetricsService;
 use App\Services\DatabaseMetrics\DatabaseResolver;
+use App\Services\DatabaseMetrics\InputValidator;
 use App\Services\DatabaseMetrics\MongoMetricsService;
 use App\Services\DatabaseMetrics\MysqlMetricsService;
 use App\Services\DatabaseMetrics\PostgresMetricsService;
@@ -108,7 +109,7 @@ class DatabaseMetricsController extends Controller
     {
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
             $lines = min(max((int) $request->input('lines', 100), 10), 1000);
-            $containerName = $db->uuid;
+            $containerName = escapeshellarg($db->uuid);
 
             $checkCommand = "docker inspect --format='{{.State.Status}}' {$containerName} 2>&1";
             $containerStatus = trim(instant_remote_process([$checkCommand], $server, false) ?? '');
@@ -240,7 +241,7 @@ class DatabaseMetricsController extends Controller
     {
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
             $pattern = $request->input('pattern', '*');
-            if (! preg_match('/^[a-zA-Z0-9_:.*?\[\]-]+$/', $pattern)) {
+            if (! InputValidator::isValidRedisPattern($pattern)) {
                 return response()->json(['available' => false, 'error' => 'Invalid pattern format']);
             }
 
@@ -280,8 +281,11 @@ class DatabaseMetricsController extends Controller
         $this->authorizeDatabase($uuid, 'manage');
 
         $operation = $request->input('operation', 'vacuum');
-        if (! in_array($operation, ['vacuum', 'analyze'])) {
-            return $this->errorResponse('Invalid operation');
+        // Validate against centralized whitelist (defense-in-depth)
+        try {
+            InputValidator::validateMaintenanceOperation($operation);
+        } catch (\InvalidArgumentException) {
+            return $this->errorResponse('Invalid operation. Allowed: vacuum, analyze');
         }
 
         return $this->withDatabase($uuid, function ($db, $server) use ($operation) {
@@ -319,7 +323,7 @@ class DatabaseMetricsController extends Controller
         $this->authorizeDatabase($uuid, 'update');
 
         $extensionName = $request->input('extension');
-        if (! $extensionName || ! preg_match('/^[a-z_][a-z0-9_]*$/i', $extensionName)) {
+        if (! $extensionName || ! InputValidator::isValidExtensionName($extensionName)) {
             return $this->errorResponse('Invalid extension name');
         }
 
@@ -500,13 +504,18 @@ class DatabaseMetricsController extends Controller
             ];
 
             if ($endpoint = $request->input('endpoint')) {
-                // SSRF protection: block private/reserved IP ranges
+                // SSRF protection: block private/reserved/link-local IP ranges
                 $parsed = parse_url($endpoint);
                 $host = $parsed['host'] ?? '';
                 $resolvedIp = filter_var($host, FILTER_VALIDATE_IP) ? $host : gethostbyname($host);
 
                 if (filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
                     return $this->errorResponse('Invalid endpoint: private or reserved addresses are not allowed');
+                }
+
+                // Block link-local (169.254.x.x) and shared address space (100.64.0.0/10)
+                if (str_starts_with($resolvedIp, '169.254.') || (ip2long($resolvedIp) >= ip2long('100.64.0.0') && ip2long($resolvedIp) <= ip2long('100.127.255.255'))) {
+                    return $this->errorResponse('Invalid endpoint: link-local and shared addresses are not allowed');
                 }
 
                 $config['endpoint'] = $endpoint;
@@ -545,7 +554,8 @@ class DatabaseMetricsController extends Controller
             $db->{$passwordField} = \Illuminate\Support\Str::password(32);
             $db->save();
 
-            instant_remote_process(["docker restart {$db->uuid} 2>&1"], $server, false);
+            $safeUuid = escapeshellarg($db->uuid);
+            instant_remote_process(["docker restart {$safeUuid} 2>&1"], $server, false);
 
             return $this->successResponse(message: 'Password regenerated and database restarting. Services using this database will need redeployment.');
         }, errorPrefix: 'Failed to regenerate password');
@@ -556,7 +566,7 @@ class DatabaseMetricsController extends Controller
      */
     private function validateTableName(string $tableName): bool
     {
-        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $tableName);
+        return InputValidator::isValidTableName($tableName);
     }
 
     public function getTableColumns(string $uuid, string $tableName): JsonResponse
@@ -587,8 +597,8 @@ class DatabaseMetricsController extends Controller
         $orderBy = $request->input('order_by', '') ?? '';
         $orderDir = $request->input('order_dir', 'asc') === 'desc' ? 'desc' : 'asc';
 
-        // Sanitize search: strip SQL/NoSQL special chars
-        $search = preg_replace("/[;'\"\\\\%_\x00]/", '', $search);
+        // Sanitize search: strip SQL/NoSQL special chars via centralized validator
+        $search = InputValidator::sanitizeSearch($search);
 
         // Remove raw $filters entirely — it was passed directly into SQL, creating injection risk
         $filters = '';

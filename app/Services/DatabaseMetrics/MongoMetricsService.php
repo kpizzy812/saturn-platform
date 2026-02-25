@@ -3,6 +3,7 @@
 namespace App\Services\DatabaseMetrics;
 
 use App\Traits\FormatHelpers;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for MongoDB database metrics and operations.
@@ -12,11 +13,11 @@ class MongoMetricsService
     use FormatHelpers;
 
     /**
-     * Validate field/key name against NoSQL injection: only alphanumeric, underscore, dot allowed.
+     * Validate field/key name against NoSQL injection using centralized validator.
      */
     private function isValidFieldName(string $name): bool
     {
-        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $name);
+        return InputValidator::isValidFieldName($name);
     }
 
     /**
@@ -52,7 +53,10 @@ class MongoMetricsService
                 }
             }
         } catch (\Exception $e) {
-            // Metrics will remain as defaults
+            Log::debug('Failed to collect MongoDB metrics', [
+                'database_uuid' => $database->uuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -141,7 +145,7 @@ class MongoMetricsService
         $escapedDbName = escapeshellarg($dbName);
 
         // Validate collection name
-        if (empty($collection) || ! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $collection)) {
+        if (empty($collection) || ! InputValidator::isValidCollectionName($collection)) {
             return ['success' => false, 'error' => 'Invalid collection name'];
         }
 
@@ -152,7 +156,7 @@ class MongoMetricsService
         $indexSpecJson = json_encode($indexSpec);
         $options = $unique ? ', { unique: true }' : '';
 
-        // Build mongosh command and escape for shell
+        // Build mongosh command and escape for shell — getCollection() for safe collection access
         $mongoCommand = "db.getCollection('{$collection}').createIndex({$indexSpecJson}{$options})";
         $escapedMongoCommand = escapeshellarg($mongoCommand);
 
@@ -305,12 +309,13 @@ class MongoMetricsService
         $dbName = escapeshellarg($database->mongo_initdb_database ?? 'admin');
 
         // Validate collection name to prevent NoSQL injection
-        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $collectionName)) {
+        if (! InputValidator::isValidCollectionName($collectionName)) {
             return [['name' => '_id', 'type' => 'ObjectId', 'nullable' => false, 'default' => null, 'is_primary' => true]];
         }
 
         // Get unique fields from first 100 documents to infer schema
-        $eval = escapeshellarg("db.{$collectionName}.findOne()");
+        // Safe: $collectionName validated above, then entire JS expression escaped for shell
+        $eval = escapeshellarg("db.getCollection('{$collectionName}').findOne()");
         $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>/dev/null || echo '{}'";
         $result = trim(instant_remote_process([$command], $server, false) ?? '{}');
 
@@ -354,7 +359,7 @@ class MongoMetricsService
         $columns = $this->getColumns($server, $database, $collectionName);
 
         // Validate collection name to prevent NoSQL injection
-        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $collectionName)) {
+        if (! InputValidator::isValidCollectionName($collectionName)) {
             return ['rows' => [], 'total' => 0, 'columns' => $columns];
         }
 
@@ -362,23 +367,25 @@ class MongoMetricsService
         $searchQuery = '{}';
         if ($search !== '') {
             // Strip chars that could break out of regex context or inject JS
-            $escapedSearch = preg_replace('/[\/\\\\.*+?|()\\[\\]{}^$;`"\']/', '', $search);
+            $escapedSearch = InputValidator::sanitizeMongoSearch($search);
             if ($escapedSearch !== '') {
                 $safeColumns = array_filter($columns, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $col['name']));
                 $searchQuery = '{$or: ['.implode(',', array_map(fn ($col) => "{{$col['name']}: /.*{$escapedSearch}.*/i}}", $safeColumns)).']}';
             }
         }
 
-        // Build sort query
-        $sortQuery = $orderBy !== '' ? "{{$orderBy}: ".($orderDir === 'asc' ? '1' : '-1').'}' : '{}';
+        // Build sort query — validate $orderBy against known column names to prevent NoSQL injection
+        $columnNames = array_column($columns, 'name');
+        $safeOrderBy = ($orderBy !== '' && in_array($orderBy, $columnNames, true)) ? $orderBy : '';
+        $sortQuery = $safeOrderBy !== '' ? "{{$safeOrderBy}: ".($orderDir === 'asc' ? '1' : '-1').'}' : '{}';
 
-        // Get total count
-        $countEval = escapeshellarg("db.{$collectionName}.countDocuments({$searchQuery})");
+        // Get total count — use getCollection() for safe collection access
+        $countEval = escapeshellarg("db.getCollection('{$collectionName}').countDocuments({$searchQuery})");
         $countCommand = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$countEval} 2>/dev/null || echo '0'";
         $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
 
-        // Get data
-        $dataEval = escapeshellarg("JSON.stringify(db.{$collectionName}.find({$searchQuery}).sort({$sortQuery}).skip({$skip}).limit({$perPage}).toArray())");
+        // Get data — use getCollection() for safe collection access
+        $dataEval = escapeshellarg("JSON.stringify(db.getCollection('{$collectionName}').find({$searchQuery}).sort({$sortQuery}).skip({$skip}).limit({$perPage}).toArray())");
         $dataCommand = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$dataEval} 2>/dev/null || echo '[]'";
         $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '[]');
 
@@ -405,7 +412,9 @@ class MongoMetricsService
                 }
             }
         } catch (\Exception $e) {
-            // Return empty result on error
+            Log::debug('Failed to query MongoDB collection data', [
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return [
@@ -420,6 +429,11 @@ class MongoMetricsService
      */
     public function updateRow(mixed $server, mixed $database, string $collectionName, array $primaryKey, array $updates): bool
     {
+        // Validate collection name to prevent NoSQL injection
+        if (! InputValidator::isValidCollectionName($collectionName)) {
+            return false;
+        }
+
         $containerName = escapeshellarg($database->uuid);
         $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
         $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
@@ -455,7 +469,7 @@ class MongoMetricsService
             return false;
         }
 
-        $eval = escapeshellarg("db.{$collectionName}.updateOne({".implode(', ', $filterParts).'}, {$set: {'.implode(', ', $updateParts).'}})');
+        $eval = escapeshellarg("db.getCollection('{$collectionName}').updateOne({".implode(', ', $filterParts).'}, {$set: {'.implode(', ', $updateParts).'}})');
         $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
@@ -467,6 +481,11 @@ class MongoMetricsService
      */
     public function deleteRow(mixed $server, mixed $database, string $collectionName, array $primaryKey): bool
     {
+        // Validate collection name to prevent NoSQL injection
+        if (! InputValidator::isValidCollectionName($collectionName)) {
+            return false;
+        }
+
         $containerName = escapeshellarg($database->uuid);
         $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
         $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
@@ -488,7 +507,7 @@ class MongoMetricsService
             return false;
         }
 
-        $eval = escapeshellarg("db.{$collectionName}.deleteOne({".implode(', ', $filterParts).'})');
+        $eval = escapeshellarg("db.getCollection('{$collectionName}').deleteOne({".implode(', ', $filterParts).'})');
         $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
@@ -500,6 +519,11 @@ class MongoMetricsService
      */
     public function createRow(mixed $server, mixed $database, string $collectionName, array $data): bool
     {
+        // Validate collection name to prevent NoSQL injection
+        if (! InputValidator::isValidCollectionName($collectionName)) {
+            return false;
+        }
+
         $containerName = escapeshellarg($database->uuid);
         $password = escapeshellarg($database->mongo_initdb_root_password ?? '');
         $username = escapeshellarg($database->mongo_initdb_root_username ?? 'root');
@@ -518,7 +542,7 @@ class MongoMetricsService
             return false;
         }
 
-        $eval = escapeshellarg("db.{$collectionName}.insertOne({".implode(', ', $docParts).'})');
+        $eval = escapeshellarg("db.getCollection('{$collectionName}').insertOne({".implode(', ', $docParts).'})');
         $command = "docker exec {$containerName} mongosh -u {$username} -p {$password} --authenticationDatabase admin {$dbName} --quiet --eval {$eval} 2>&1";
         $result = instant_remote_process([$command], $server, false);
 
