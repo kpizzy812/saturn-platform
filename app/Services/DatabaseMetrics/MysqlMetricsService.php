@@ -3,6 +3,7 @@
 namespace App\Services\DatabaseMetrics;
 
 use App\Traits\FormatHelpers;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for MySQL/MariaDB database metrics and operations.
@@ -58,7 +59,10 @@ class MysqlMetricsService
                 $metrics['slowQueries'] = (int) $slowQueries;
             }
         } catch (\Exception $e) {
-            // Metrics will remain as defaults
+            Log::debug('Failed to collect MySQL metrics', [
+                'database_uuid' => $database->uuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -243,13 +247,13 @@ class MysqlMetricsService
             foreach (explode("\n", $result) as $line) {
                 $parts = preg_split('/\t/', trim($line));
                 if (count($parts) >= 5 && ! empty($parts[0])) {
-                    $time = (int) ($parts[4] ?? 0);
+                    $time = (int) $parts[4];
                     $connections[] = [
                         'id' => $id++,
                         'pid' => (int) $parts[0],
-                        'user' => $parts[1] ?? '',
-                        'database' => $parts[2] ?? '',
-                        'state' => strtolower($parts[3] ?? 'idle') === 'query' ? 'active' : 'idle',
+                        'user' => $parts[1],
+                        'database' => $parts[2],
+                        'state' => strtolower($parts[3]) === 'query' ? 'active' : 'idle',
                         'query' => $parts[5] ?? '<IDLE>',
                         'duration' => $time < 60 ? $time.'s' : round($time / 60, 1).'m',
                         'clientAddr' => explode(':', $parts[6] ?? '')[0],

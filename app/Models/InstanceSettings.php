@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Url\Url;
@@ -264,7 +265,9 @@ class InstanceSettings extends Model
                         \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                     }
                 } catch (\Throwable $e) {
-                    // Don't break FQDN update if Cloudflare sync fails
+                    Log::warning('Cloudflare sync failed during instance settings FQDN update', [
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         });

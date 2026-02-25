@@ -1703,7 +1703,10 @@ class Service extends BaseModel
                 }
             }
         } catch (\Exception $e) {
-            // If parsing fails, return defaults
+            Log::debug('Failed to parse healthcheck config from docker compose', [
+                'service_id' => $this->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $defaults;
@@ -1834,7 +1837,10 @@ class Service extends BaseModel
                 ];
             }
         } catch (\Exception $e) {
-            // Parsing failed
+            Log::debug('Failed to parse healthcheck summary from docker compose', [
+                'service_id' => $this->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $result;

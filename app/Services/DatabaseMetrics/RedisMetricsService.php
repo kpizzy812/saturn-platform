@@ -3,6 +3,7 @@
 namespace App\Services\DatabaseMetrics;
 
 use App\Traits\FormatHelpers;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for Redis/KeyDB/Dragonfly database metrics and operations.
@@ -60,7 +61,10 @@ class RedisMetricsService
                 }
             }
         } catch (\Exception $e) {
-            // Metrics will remain as defaults
+            Log::debug('Failed to collect Redis metrics', [
+                'database_uuid' => $database->uuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;

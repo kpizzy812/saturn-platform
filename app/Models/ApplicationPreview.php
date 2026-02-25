@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Log;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
@@ -67,7 +68,10 @@ class ApplicationPreview extends BaseModel
                     \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                 }
             } catch (\Throwable $e) {
-                // Don't block deletion if Cloudflare cleanup fails
+                Log::warning('Cloudflare sync failed during preview deletion', [
+                    'preview_id' => $preview->id ?? null,
+                    'error' => $e->getMessage(),
+                ]);
             }
         });
         static::updated(function ($preview) {
@@ -77,7 +81,10 @@ class ApplicationPreview extends BaseModel
                         \App\Jobs\SyncCloudflareRoutesJob::dispatch();
                     }
                 } catch (\Throwable $e) {
-                    // Don't break FQDN update if Cloudflare sync fails
+                    Log::warning('Cloudflare sync failed during preview FQDN update', [
+                        'preview_id' => $preview->id ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         });

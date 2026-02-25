@@ -343,7 +343,11 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
                     $sshReady = true;
                 }
             } catch (\Throwable $e) {
-                // SSH not ready yet
+                Log::debug('SSH not ready yet during server provisioning', [
+                    'server_id' => $server->id,
+                    'attempt' => $attempts + 1,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             if (! $sshReady) {

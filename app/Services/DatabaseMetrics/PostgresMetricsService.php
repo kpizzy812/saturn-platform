@@ -3,6 +3,7 @@
 namespace App\Services\DatabaseMetrics;
 
 use App\Traits\FormatHelpers;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for PostgreSQL database metrics and operations.
@@ -76,7 +77,10 @@ class PostgresMetricsService
                 $metrics['maxConnections'] = (int) $maxConnections;
             }
         } catch (\Exception $e) {
-            // Metrics will remain as defaults
+            Log::debug('Failed to collect PostgreSQL metrics', [
+                'database_uuid' => $database->uuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;

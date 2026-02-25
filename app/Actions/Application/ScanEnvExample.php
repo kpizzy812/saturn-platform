@@ -4,6 +4,7 @@ namespace App\Actions\Application;
 
 use App\Models\Application;
 use App\Services\EnvExampleParser;
+use Illuminate\Support\Facades\Log;
 use Visus\Cuid2\Cuid2;
 
 /**
@@ -74,8 +75,11 @@ class ScanEnvExample
         // Cleanup temp directory
         try {
             instant_remote_process(["rm -rf /tmp/{$uuid}"], $server, false);
-        } catch (\Exception) {
-            // Ignore cleanup errors
+        } catch (\Exception $e) {
+            Log::debug('Failed to clean up temp directory during env example scan', [
+                'uuid' => $uuid,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         if ($content === null) {

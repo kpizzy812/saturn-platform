@@ -11,6 +11,7 @@ use App\Models\PrivateKey;
 use App\Models\Server;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -383,7 +384,10 @@ class ServerController extends Controller
                     $proxyVersion = $server->detected_traefik_version ?? null;
                 }
             } catch (\Throwable $e) {
-                // Ignore errors, will use default values
+                Log::debug('Failed to fetch proxy status for server page', [
+                    'server_id' => $server->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

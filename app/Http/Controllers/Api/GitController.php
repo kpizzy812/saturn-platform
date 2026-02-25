@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 class GitController extends Controller
@@ -69,7 +70,10 @@ class GitController extends Controller
                 $token = generateGithubInstallationToken($githubApp);
                 $headers['Authorization'] = "token {$token}";
             } catch (\Exception $e) {
-                // Fall back to unauthenticated request
+                Log::warning('GitHub App token generation failed, falling back to unauthenticated request', [
+                    'github_app_id' => $githubAppId,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

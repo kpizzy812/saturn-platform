@@ -252,7 +252,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 $metrics['totalQueries'] = (int) $totalTxn;
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -301,7 +305,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 $metrics['totalQueries'] = (int) $totalQueries;
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -352,7 +360,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 }
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -387,7 +399,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 }
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -422,7 +438,11 @@ class CollectDatabaseMetricsJob implements ShouldBeEncrypted, ShouldQueue, Silen
                 $metrics['queriesPerSec'] = (int) $queries;
             }
         } catch (\Exception $e) {
-            // Metrics remain as defaults
+            Log::debug('Failed to collect database metrics', [
+                'database_id' => $database->id ?? null,
+                'database_type' => $database->type() ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;

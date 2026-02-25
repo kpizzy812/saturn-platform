@@ -1149,8 +1149,10 @@ $schema://$host {
         if ($isFunctional === false) {
             try {
                 Storage::disk('ssh-mux')->delete($this->muxFilename());
-            } catch (UnableToCreateDirectory) {
-                // Directory doesn't exist yet, nothing to delete
+            } catch (UnableToCreateDirectory $e) {
+                Log::debug('SSH mux directory does not exist yet, skipping cleanup', [
+                    'server_id' => $this->id,
+                ]);
             }
         }
 

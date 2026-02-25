@@ -12,6 +12,7 @@ use App\Models\Server;
 use App\Models\Service;
 use App\Models\Tag;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 use Visus\Cuid2\Cuid2;
 
@@ -275,7 +276,11 @@ class DeployController extends Controller
                         $processKillCommand = "kill -9 {$safePid}";
                         instant_remote_process([$processKillCommand], $server);
                     } catch (\Throwable $e) {
-                        // Process might already be gone
+                        Log::debug('Failed to kill deployment process (may already be gone)', [
+                            'deployment_uuid' => $deployment->deployment_uuid ?? null,
+                            'pid' => $deployment->current_process_id ?? null,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
                 }
             }

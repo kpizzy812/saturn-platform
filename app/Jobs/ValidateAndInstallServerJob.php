@@ -210,7 +210,10 @@ class ValidateAndInstallServerJob implements ShouldQueue
         try {
             $this->server->update(['is_validating' => false]);
         } catch (\Throwable $e) {
-            // Don't mask the original failure
+            Log::warning('Failed to reset is_validating flag after server validation failure', [
+                'server_id' => $this->server->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }
