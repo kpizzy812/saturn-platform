@@ -176,7 +176,7 @@ function MetricCard({
                 <div className="flex items-center justify-between">
                     <div>
                         <p className="text-sm text-foreground-subtle">{label}</p>
-                        {value !== undefined ? (
+                        {value != null ? (
                             <p className={`text-2xl font-bold ${getColorClass(value)}`}>
                                 {value.toFixed(1)}{unit}
                             </p>
