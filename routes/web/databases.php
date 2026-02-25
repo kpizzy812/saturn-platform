@@ -344,6 +344,10 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
                     'running' => 'in_progress',
                     default => $execution->status,
                 },
+                'restore_status' => $execution->restore_status,
+                'restore_started_at' => $execution->restore_started_at?->toISOString(),
+                'restore_finished_at' => $execution->restore_finished_at?->toISOString(),
+                'restore_message' => $execution->restore_message,
                 'created_at' => $execution->created_at,
             ];
         });
@@ -422,10 +426,21 @@ Route::post('/databases/{uuid}/backups/{executionId}/restore', function (string 
         return back()->with('error', 'Cannot restore from a non-successful backup.');
     }
 
+    if ($execution->restore_status === 'in_progress') {
+        return back()->with('error', 'A restore is already in progress for this backup.');
+    }
+
+    $execution->update([
+        'restore_status' => 'pending',
+        'restore_message' => null,
+        'restore_started_at' => null,
+        'restore_finished_at' => null,
+    ]);
+
     $backup = $execution->scheduledDatabaseBackup;
     \App\Jobs\DatabaseRestoreJob::dispatch($backup, $execution);
 
-    return back()->with('success', 'Restore job queued. The database will be restored shortly.');
+    return back()->with('success', 'Restore job queued. Track progress in the Restore History below.');
 })->name('databases.backups.restore');
 
 // Delete a specific backup execution
