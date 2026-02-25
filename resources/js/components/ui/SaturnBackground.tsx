@@ -11,7 +11,7 @@ export function SaturnBackground({ variant = 'subtle' }: SaturnBackgroundProps) 
     return (
         <div
             aria-hidden="true"
-            className="pointer-events-none fixed inset-0 -z-10 overflow-hidden select-none"
+            className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
         >
             {/* Stars layer — dark theme only, masked to fade out over planet area (bottom-right) */}
             <div

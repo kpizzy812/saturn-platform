@@ -65,7 +65,7 @@ export function AppLayout({ children, title, showNewProject = true, breadcrumbs 
             <Head title={title ? `${title} | Saturn` : 'Saturn'} />
             <FlashMessages />
             <SaturnBackground variant="subtle" />
-            <div className="relative flex h-screen flex-col">
+            <div className="relative z-10 flex h-screen flex-col">
                 <Header showNewProject={showNewProject} onCommandPalette={commandPalette.open} />
                 {breadcrumbs && breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
                 <main className="flex-1 overflow-auto px-6 py-8">
