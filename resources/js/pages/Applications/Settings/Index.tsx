@@ -18,10 +18,12 @@ interface Props {
     application: Application;
     applicationSettings?: ApplicationSettings;
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
-export default function ApplicationSettingsPage({ application, applicationSettings, projectUuid, environmentUuid }: Props) {
+export default function ApplicationSettingsPage({ application, applicationSettings, projectUuid, projectName, environmentUuid: _environmentUuid, environmentName: _environmentName }: Props) {
     const [settings, setSettings] = React.useState({
         name: application.name || '',
         description: application.description || '',
@@ -112,8 +114,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Settings' },
     ];

@@ -17,7 +17,7 @@ use Inertia\Inertia;
 // Dashboard
 Route::get('/dashboard', function () {
     $projects = \App\Models\Project::ownedByCurrentTeam()
-        ->with(['environments.applications', 'environments.services'])
+        ->with(['environments.applications', 'environments.databases', 'environments.services'])
         ->get();
 
     return Inertia::render('Dashboard', [

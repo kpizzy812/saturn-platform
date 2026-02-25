@@ -20,7 +20,9 @@ interface Props {
     application: Application;
     settings?: PreviewSettings;
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
 // Default settings when none provided
@@ -29,7 +31,7 @@ const DEFAULT_SETTINGS: PreviewSettings = {
     instant_deploy_preview: false,
 };
 
-export default function PreviewSettingsPage({ application, settings: propSettings, projectUuid, environmentUuid }: Props) {
+export default function PreviewSettingsPage({ application, settings: propSettings, projectUuid, projectName }: Props) {
     const [settings, setSettings] = React.useState<PreviewSettings>(
         propSettings || DEFAULT_SETTINGS
     );
@@ -56,8 +58,7 @@ export default function PreviewSettingsPage({ application, settings: propSetting
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Preview Deployments', href: `/applications/${application.uuid}/previews` },
         { label: 'Settings' },

@@ -10,7 +10,9 @@ interface Props {
     application: Application;
     deployments?: Deployment[];
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
 // Extended deployment interface with additional details
@@ -24,7 +26,7 @@ interface ExtendedDeployment extends Deployment {
     finished_at?: string;
 }
 
-export default function ApplicationDeployments({ application, deployments: propDeployments, projectUuid, environmentUuid }: Props) {
+export default function ApplicationDeployments({ application, deployments: propDeployments, projectUuid, projectName }: Props) {
     const confirm = useConfirm();
     const [deployments, _setDeployments] = React.useState<ExtendedDeployment[]>((propDeployments || []) as ExtendedDeployment[]);
     const [searchQuery, setSearchQuery] = React.useState('');
@@ -95,8 +97,7 @@ export default function ApplicationDeployments({ application, deployments: propD
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Deployments' },
     ];

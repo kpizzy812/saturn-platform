@@ -16,7 +16,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
             <Head title={`${title} | Saturn`} />
             <FlashMessages />
             <SaturnBackground variant="prominent" />
-            <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+            <div className="relative flex min-h-screen items-center justify-center p-4">
                 <div className="w-full max-w-md">
                     {/* Logo */}
                     <div className="mb-8 flex flex-col items-center">

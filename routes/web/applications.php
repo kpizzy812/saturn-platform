@@ -736,7 +736,9 @@ Route::get('/applications/{uuid}/previews', function (string $uuid) {
         'application' => $application,
         'previews' => $previews,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.previews');
 
@@ -758,7 +760,9 @@ Route::get('/applications/{uuid}/previews/settings', function (string $uuid) {
         'application' => $application,
         'settings' => $settings,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.previews.settings');
 
@@ -792,7 +796,9 @@ Route::get('/applications/{uuid}/previews/{previewUuid}', function (string $uuid
         'preview' => $previewData,
         'previewUuid' => $previewUuid,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.previews.show');
 
@@ -819,7 +825,9 @@ Route::get('/applications/{uuid}/settings', function (string $uuid) {
             'docker_images_to_keep' => $settings->docker_images_to_keep ?? 2,
         ],
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.settings');
 
@@ -934,7 +942,9 @@ Route::get('/applications/{uuid}/settings/domains', function (string $uuid) {
         'application' => $application,
         'domains' => $domains,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.settings.domains');
 
@@ -969,7 +979,9 @@ Route::get('/applications/{uuid}/settings/variables', function (string $uuid) {
         'application' => $application,
         'variables' => $variables,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.settings.variables');
 
@@ -1011,7 +1023,9 @@ Route::get('/applications/{uuid}/logs', function (string $uuid) {
     return Inertia::render('Applications/Logs', [
         'application' => $application,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.logs');
 
@@ -1094,7 +1108,9 @@ Route::get('/applications/{uuid}/deployments', function (string $uuid) {
         'application' => $application,
         'deployments' => $deployments,
         'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
         'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
     ]);
 })->name('applications.deployments');
 
