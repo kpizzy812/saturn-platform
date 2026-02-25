@@ -106,8 +106,9 @@ export default function BoardingIndex({ userName, githubApps = [], projects = []
                 markStepComplete('deploy');
                 setCurrentStep('complete');
             },
-            onError: () => {
-                addToast('error', 'Deploy failed. Please check your settings and try again.');
+            onError: (errors) => {
+                const msg = Object.values(errors).flat().join('. ') || 'Deploy failed. Please check your settings and try again.';
+                addToast('error', msg);
             },
             preserveScroll: true,
         });
