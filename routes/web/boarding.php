@@ -20,6 +20,36 @@ Route::get('/boarding', function () {
             ->orWhere('is_system_wide', true);
     })->whereNotNull('app_id')->get();
 
+    // Pass projects for the blurred dashboard background
+    $projects = \App\Models\Project::ownedByCurrentTeam()
+        ->with([
+            'environments.applications',
+            'environments.postgresqls',
+            'environments.redis',
+            'environments.mongodbs',
+            'environments.mysqls',
+            'environments.mariadbs',
+            'environments.keydbs',
+            'environments.dragonflies',
+            'environments.clickhouses',
+            'environments.services',
+        ])
+        ->get();
+
+    $projects->each(function ($project) {
+        $project->environments->each(function ($env) {
+            $env->setAttribute('databases', $env->databases());
+            $env->unsetRelation('postgresqls');
+            $env->unsetRelation('redis');
+            $env->unsetRelation('mongodbs');
+            $env->unsetRelation('mysqls');
+            $env->unsetRelation('mariadbs');
+            $env->unsetRelation('keydbs');
+            $env->unsetRelation('dragonflies');
+            $env->unsetRelation('clickhouses');
+        });
+    });
+
     return Inertia::render('Boarding/Index', [
         'userName' => auth()->user()->name,
         'githubApps' => $githubApps->map(fn ($app) => [
@@ -28,6 +58,7 @@ Route::get('/boarding', function () {
             'name' => $app->name,
             'installation_id' => $app->installation_id,
         ]),
+        'projects' => $projects,
     ]);
 })->name('boarding.index');
 
