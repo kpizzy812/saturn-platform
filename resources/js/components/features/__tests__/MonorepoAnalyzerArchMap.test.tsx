@@ -346,7 +346,7 @@ describe('MonorepoAnalyzer — Architecture Map section', () => {
         it('hummingbot (deploy_order 0) appears before fundingbot (deploy_order 1) in timeline', async () => {
             mockedPost.mockResolvedValue(mockAnalysisResponse);
 
-            const { container } = render(<MonorepoAnalyzer {...defaultProps} />);
+            render(<MonorepoAnalyzer {...defaultProps} />);
 
             await waitFor(() => {
                 expect(screen.getByText(/Deploy:/)).toBeDefined();
