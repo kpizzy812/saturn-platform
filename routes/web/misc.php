@@ -17,8 +17,35 @@ use Inertia\Inertia;
 // Dashboard
 Route::get('/dashboard', function () {
     $projects = \App\Models\Project::ownedByCurrentTeam()
-        ->with(['environments.applications', 'environments.databases', 'environments.services'])
+        ->with([
+            'environments.applications',
+            'environments.postgresqls',
+            'environments.redis',
+            'environments.mongodbs',
+            'environments.mysqls',
+            'environments.mariadbs',
+            'environments.keydbs',
+            'environments.dragonflies',
+            'environments.clickhouses',
+            'environments.services',
+        ])
         ->get();
+
+    // Merge individual DB relationships into a single "databases" collection per environment
+    $projects->each(function ($project) {
+        $project->environments->each(function ($env) {
+            $env->setAttribute('databases', $env->databases());
+            // Remove individual DB type relations from serialization
+            $env->unsetRelation('postgresqls');
+            $env->unsetRelation('redis');
+            $env->unsetRelation('mongodbs');
+            $env->unsetRelation('mysqls');
+            $env->unsetRelation('mariadbs');
+            $env->unsetRelation('keydbs');
+            $env->unsetRelation('dragonflies');
+            $env->unsetRelation('clickhouses');
+        });
+    });
 
     return Inertia::render('Dashboard', [
         'projects' => $projects,
