@@ -149,4 +149,78 @@ class AddCspHeadersTest extends TestCase
 
         $this->assertStringContainsString('https://fonts.bunny.net', $csp);
     }
+
+    public function test_production_injects_nonce_into_inline_scripts(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+
+        $request = Request::create('/');
+
+        $html = '<html><head><style>body{color:red}</style></head><body><script>alert(1)</script></body></html>';
+
+        $response = $this->middleware->handle($request, function () use ($html) {
+            return new Response($html, 200, ['Content-Type' => 'text/html']);
+        });
+
+        $content = $response->getContent();
+
+        // Inline script and style should have nonce injected
+        $this->assertMatchesRegularExpression('/<script nonce="[^"]+"/', $content);
+        $this->assertMatchesRegularExpression('/<style nonce="[^"]+"/', $content);
+    }
+
+    public function test_production_does_not_double_nonce_existing_tags(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+
+        $request = Request::create('/');
+
+        $html = '<html><head></head><body><script nonce="existing123">alert(1)</script></body></html>';
+
+        $response = $this->middleware->handle($request, function () use ($html) {
+            return new Response($html, 200, ['Content-Type' => 'text/html']);
+        });
+
+        $content = $response->getContent();
+
+        // Should keep original nonce, not double it
+        $this->assertStringContainsString('nonce="existing123"', $content);
+        $this->assertEquals(1, substr_count($content, 'nonce='));
+    }
+
+    public function test_production_does_not_nonce_external_scripts(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+
+        $request = Request::create('/');
+
+        $html = '<html><head></head><body><script src="/app.js"></script></body></html>';
+
+        $response = $this->middleware->handle($request, function () use ($html) {
+            return new Response($html, 200, ['Content-Type' => 'text/html']);
+        });
+
+        $content = $response->getContent();
+
+        // External scripts with src should NOT get nonce (they're covered by strict-dynamic)
+        $this->assertStringNotContainsString('nonce=', $content);
+    }
+
+    public function test_non_production_does_not_inject_nonces_into_tags(): void
+    {
+        app()->detectEnvironment(fn () => 'local');
+
+        $request = Request::create('/');
+
+        $html = '<html><head><style>body{color:red}</style></head><body><script>alert(1)</script></body></html>';
+
+        $response = $this->middleware->handle($request, function () use ($html) {
+            return new Response($html, 200, ['Content-Type' => 'text/html']);
+        });
+
+        $content = $response->getContent();
+
+        // Non-production should not inject nonces (unsafe-inline handles it)
+        $this->assertStringNotContainsString('nonce=', $content);
+    }
 }
