@@ -294,8 +294,5 @@ function loggy($message = null, array $context = [])
     if (is_null($message)) {
         return;
     }
-    if (config('app.debug')) {
-        ray($message, $context);
-    }
     logger()->debug($message, $context);
 }

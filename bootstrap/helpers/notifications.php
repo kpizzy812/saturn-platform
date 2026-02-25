@@ -4,6 +4,7 @@ use App\Models\Team;
 use App\Notifications\Internal\GeneralNotification;
 use Illuminate\Mail\Message;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 function is_transactional_emails_enabled(): bool
@@ -19,7 +20,7 @@ function send_internal_notification(string $message): void
         $team = Team::find(0);
         $team?->notify(new GeneralNotification($message));
     } catch (\Throwable $e) {
-        ray($e->getMessage());
+        Log::warning('Failed to send internal notification', ['error' => $e->getMessage()]);
     }
 }
 
