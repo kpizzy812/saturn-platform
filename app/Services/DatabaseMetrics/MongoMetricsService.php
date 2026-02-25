@@ -3,6 +3,7 @@
 namespace App\Services\DatabaseMetrics;
 
 use App\Traits\FormatHelpers;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for MongoDB database metrics and operations.
@@ -52,7 +53,10 @@ class MongoMetricsService
                 }
             }
         } catch (\Exception $e) {
-            // Metrics will remain as defaults
+            Log::debug('Failed to collect MongoDB metrics', [
+                'database_uuid' => $database->uuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -408,7 +412,9 @@ class MongoMetricsService
                 }
             }
         } catch (\Exception $e) {
-            // Return empty result on error
+            Log::debug('Failed to query MongoDB collection data', [
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return [

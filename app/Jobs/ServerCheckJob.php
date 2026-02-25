@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -72,6 +73,11 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
                                 $this->server->team?->notify(new ContainerRestarted('saturn-proxy', $this->server));
                             }
                         } catch (\Throwable $e) {
+                            Log::error('Failed to check/start proxy during server check', [
+                                'server_id' => $this->server->id,
+                                'server_name' => $this->server->name,
+                                'error' => $e->getMessage(),
+                            ]);
                         }
                     } else {
                         $this->server->proxy->set('status', data_get($foundProxyContainer, 'State.Status'));

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 /**
@@ -312,8 +313,11 @@ class ApplicationDeploymentQueue extends Model
                     order: $order,
                     stage: $effectiveStage
                 ));
-            } catch (\Throwable) {
-                // Silently fail broadcasting - don't break deployment for WebSocket issues
+            } catch (\Throwable $e) {
+                Log::debug('Failed to broadcast deployment log entry', [
+                    'deployment_uuid' => $this->deployment_uuid,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
     }

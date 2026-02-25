@@ -6,6 +6,7 @@ use App\Models\InstanceSettings;
 use Illuminate\Http\Middleware\TrustHosts as Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Spatie\Url\Url;
 
 class TrustHosts extends Middleware
@@ -84,7 +85,10 @@ class TrustHosts extends Middleware
                     $trustedHosts[] = $appUrlHost;
                 }
             } catch (\Exception $e) {
-                // Ignore parse errors
+                Log::debug('Failed to parse APP_URL for trusted hosts', [
+                    'app_url' => $appUrl,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 

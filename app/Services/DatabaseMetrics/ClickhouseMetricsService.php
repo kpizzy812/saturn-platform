@@ -3,6 +3,7 @@
 namespace App\Services\DatabaseMetrics;
 
 use App\Traits\FormatHelpers;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Service for ClickHouse database metrics and operations.
@@ -43,7 +44,10 @@ class ClickhouseMetricsService
                 $metrics['queriesPerSec'] = (int) $queries;
             }
         } catch (\Exception $e) {
-            // Metrics will remain as defaults
+            Log::debug('Failed to collect ClickHouse metrics', [
+                'database_uuid' => $database->uuid ?? null,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return $metrics;
@@ -274,8 +278,8 @@ class ClickhouseMetricsService
                 if (count($parts) >= 3 && ! empty($parts[0])) {
                     $tables[] = [
                         'name' => $parts[0],
-                        'rows' => (int) ($parts[1] ?? 0),
-                        'size' => $parts[2] ?? '0 B',
+                        'rows' => (int) $parts[1],
+                        'size' => $parts[2],
                     ];
                 }
             }

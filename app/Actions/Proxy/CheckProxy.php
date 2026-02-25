@@ -293,11 +293,19 @@ class CheckProxy
                     // Our proxy is using the port, which is fine
                     return false;
                 } catch (\Throwable $e) {
-                    // Our container exists but not using this port
+                    Log::debug('Proxy container exists but port check failed', [
+                        'server_id' => $server->id,
+                        'port' => $port,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         } catch (\Throwable $e) {
-            // Container not found or error checking, continue with regular checks
+            Log::debug('Proxy container not found or error during port conflict check', [
+                'server_id' => $server->id,
+                'port' => $port,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         // Command sets for different ways to check ports, ordered by preference
