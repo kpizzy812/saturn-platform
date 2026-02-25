@@ -125,4 +125,76 @@ LOG;
         expect($result)->toHaveCount(1);
         expect($result)->toContain('DATABASE_URL');
     });
+
+    it('does not return "is" as a false positive from "something is not set"', function () {
+        $logs = 'Error: the required configuration is not set';
+
+        $result = callDetectMissingEnvVars($logs);
+
+        expect($result)->not->toContain('is');
+        expect($result)->toBeEmpty();
+    });
+
+    it('does not return lowercase words as variable names', function () {
+        $logs = <<<'LOG'
+configuration is required
+something is missing
+value is undefined
+LOG;
+
+        $result = callDetectMissingEnvVars($logs);
+
+        expect($result)->toBeEmpty();
+    });
+
+    it('detects quoted variable names with double quotes', function () {
+        $logs = 'Error: "DATABASE_URL" is not set';
+
+        $result = callDetectMissingEnvVars($logs);
+
+        expect($result)->toContain('DATABASE_URL');
+    });
+
+    it('detects quoted variable names with single quotes', function () {
+        $logs = "Error: 'API_KEY' is required";
+
+        $result = callDetectMissingEnvVars($logs);
+
+        expect($result)->toContain('API_KEY');
+    });
+
+    it('detects missing quoted variable after error keyword', function () {
+        $logs = 'Missing environment variable "REDIS_URL"';
+
+        $result = callDetectMissingEnvVars($logs);
+
+        expect($result)->toContain('REDIS_URL');
+    });
+
+    it('does not false-positive on common ALL-CAPS words', function () {
+        $logs = <<<'LOG'
+ERROR is not defined
+NULL is missing
+TRUE is required
+LOG;
+
+        $result = callDetectMissingEnvVars($logs);
+
+        expect($result)->toBeEmpty();
+    });
+
+    it('still detects uppercase vars alongside noise text', function () {
+        $logs = <<<'LOG'
+Starting application...
+Error: the required configuration is not set
+STRIPE_SECRET_KEY is not defined
+something is missing
+LOG;
+
+        $result = callDetectMissingEnvVars($logs);
+
+        expect($result)->toHaveCount(1);
+        expect($result)->toContain('STRIPE_SECRET_KEY');
+        expect($result)->not->toContain('is');
+    });
 });
