@@ -32,6 +32,30 @@ class ProductionSeeder extends Seeder
             echo "  Running in self-hosted mode.\n";
         }
 
+        // Root user and team MUST be created before anything that references team_id=0
+        // (Server, GithubApp, GitlabApp, PrivateKey all have FK to teams)
+        $this->call(RootUserSeeder::class);
+
+        // Ensure root team (id=0) exists — RootUserSeeder creates the user,
+        // but the team is created during registration. Create it if missing.
+        if (Team::find(0) === null) {
+            if (User::find(0) !== null) {
+                $rootUser = User::find(0);
+                $team = Team::create([
+                    'id' => 0,
+                    'name' => $rootUser->name."'s Team",
+                    'personal_team' => true,
+                ]);
+                DB::table('team_user')->updateOrInsert(
+                    ['user_id' => 0, 'team_id' => 0],
+                    ['role' => 'owner', 'created_at' => now(), 'updated_at' => now()]
+                );
+                echo "  Root team created for user: {$rootUser->email}\n";
+            } else {
+                echo "  WARNING: No root user (id=0) found. Set ROOT_USER_EMAIL and ROOT_USER_PASSWORD in .env\n";
+            }
+        }
+
         if (User::find(0) !== null && Team::find(0) !== null) {
             if (DB::table('team_user')->where('user_id', 0)->first() === null) {
                 DB::table('team_user')->insert([
@@ -208,7 +232,7 @@ uZx9iFkCELtxrh31QJ68AAAAEXNhaWxANzZmZjY2ZDJlMmRkAQIDBA==
         $this->call(OauthSettingSeeder::class);
         $this->call(PopulateSshKeysDirectorySeeder::class);
         $this->call(SentinelSeeder::class);
-        $this->call(RootUserSeeder::class);
+        // RootUserSeeder already called at the top (before Server/Team creation)
         $this->call(CaSslCertSeeder::class);
     }
 }
