@@ -12,6 +12,14 @@ class PostgresMetricsService
     use FormatHelpers;
 
     /**
+     * Validate and return safe ORDER BY direction (ASC or DESC only).
+     */
+    private function safeOrderDir(string $dir): string
+    {
+        return InputValidator::safeOrderDirection($dir);
+    }
+
+    /**
      * Quote a table name for safe use in SQL, handling schema-qualified names.
      * "public.system_config" → "public"."system_config"
      * "my_table" → "my_table"
@@ -130,6 +138,11 @@ class PostgresMetricsService
      */
     public function toggleExtension(mixed $server, mixed $database, string $extensionName, bool $enable): array
     {
+        // Validate extension name to prevent SQL injection
+        if (! InputValidator::isValidExtensionName($extensionName)) {
+            return ['success' => false, 'error' => 'Invalid extension name format'];
+        }
+
         $containerName = escapeshellarg($database->uuid);
         $user = escapeshellarg($database->postgres_user ?? 'postgres');
         $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
@@ -252,11 +265,17 @@ class PostgresMetricsService
      */
     public function runMaintenance(mixed $server, mixed $database, string $operation): array
     {
+        // Whitelist validation: only known maintenance operations are allowed
+        try {
+            $sql = InputValidator::validateMaintenanceOperation($operation);
+        } catch (\InvalidArgumentException $e) {
+            return ['success' => false, 'error' => 'Invalid maintenance operation. Allowed: '.implode(', ', InputValidator::POSTGRES_MAINTENANCE_OPS)];
+        }
+
         $containerName = escapeshellarg($database->uuid);
         $user = escapeshellarg($database->postgres_user ?? 'postgres');
         $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
 
-        $sql = strtoupper($operation);
         $escapedSql = escapeshellarg("{$sql};");
         $command = "docker exec {$containerName} psql -U {$user} -d {$dbName} -c {$escapedSql} 2>&1";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
@@ -454,8 +473,8 @@ class PostgresMetricsService
 
         // Add search condition if provided (sanitized to prevent SQL injection)
         if ($search !== '') {
-            $escapedSearch = str_replace(["'", '"', '\\', ';', '--', '$'], '', $search);
-            $safeColumns = array_filter($columnNames, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $col));
+            $escapedSearch = InputValidator::sanitizeSearch($search);
+            $safeColumns = array_filter($columnNames, fn ($col) => InputValidator::isValidColumnName($col));
             $searchConditions = array_map(fn ($col) => "CAST(\"{$col}\" AS TEXT) ILIKE '%{$escapedSearch}%'", $safeColumns);
             if (! empty($searchConditions)) {
                 $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
@@ -466,27 +485,28 @@ class PostgresMetricsService
 
         $whereClause = count($whereConditions) > 0 ? 'WHERE '.implode(' AND ', $whereConditions) : '';
 
-        // Build ORDER BY clause
+        // Build ORDER BY clause — validate direction against whitelist
         $orderClause = '';
         if ($orderBy !== '' && in_array($orderBy, $columnNames)) {
-            $orderClause = "ORDER BY \"{$orderBy}\" {$orderDir}";
+            $safeDir = $this->safeOrderDir($orderDir);
+            $orderClause = "ORDER BY \"{$orderBy}\" {$safeDir}";
         }
 
         // Validate table name to prevent SQL injection
-        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $tableName)) {
+        if (! InputValidator::isValidTableName($tableName)) {
             return ['rows' => [], 'total' => 0, 'columns' => $columns];
         }
 
         $safeTableName = $this->quoteTableName($tableName);
 
-        // Get total count
+        // Get total count — use escapeshellarg to prevent shell injection from WHERE clause
         $countQuery = "SELECT COUNT(*) FROM {$safeTableName} {$whereClause}";
-        $countCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -c \"{$countQuery}\" 2>/dev/null || echo '0'";
+        $countCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -c ".escapeshellarg($countQuery)." 2>/dev/null || echo '0'";
         $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
 
-        // Get data
+        // Get data — use escapeshellarg to prevent shell injection
         $dataQuery = "SELECT * FROM {$safeTableName} {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
-        $dataCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"{$dataQuery}\" 2>/dev/null || echo ''";
+        $dataCommand = "docker exec {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c ".escapeshellarg($dataQuery)." 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '');
 
         $rows = [];
@@ -511,11 +531,11 @@ class PostgresMetricsService
     }
 
     /**
-     * Validate column name against injection: only alphanumeric and underscore allowed.
+     * Validate column name against injection using centralized validator.
      */
     private function isValidColumnName(string $column): bool
     {
-        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column);
+        return InputValidator::isValidColumnName($column);
     }
 
     /**

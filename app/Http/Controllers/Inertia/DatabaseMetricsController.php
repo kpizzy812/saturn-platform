@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\DatabaseMetric;
 use App\Services\DatabaseMetrics\ClickhouseMetricsService;
 use App\Services\DatabaseMetrics\DatabaseResolver;
+use App\Services\DatabaseMetrics\InputValidator;
 use App\Services\DatabaseMetrics\MongoMetricsService;
 use App\Services\DatabaseMetrics\MysqlMetricsService;
 use App\Services\DatabaseMetrics\PostgresMetricsService;
@@ -240,7 +241,7 @@ class DatabaseMetricsController extends Controller
     {
         return $this->withDatabase($uuid, function ($db, $server) use ($request) {
             $pattern = $request->input('pattern', '*');
-            if (! preg_match('/^[a-zA-Z0-9_:.*?\[\]-]+$/', $pattern)) {
+            if (! InputValidator::isValidRedisPattern($pattern)) {
                 return response()->json(['available' => false, 'error' => 'Invalid pattern format']);
             }
 
@@ -280,8 +281,11 @@ class DatabaseMetricsController extends Controller
         $this->authorizeDatabase($uuid, 'manage');
 
         $operation = $request->input('operation', 'vacuum');
-        if (! in_array($operation, ['vacuum', 'analyze'])) {
-            return $this->errorResponse('Invalid operation');
+        // Validate against centralized whitelist (defense-in-depth)
+        try {
+            InputValidator::validateMaintenanceOperation($operation);
+        } catch (\InvalidArgumentException) {
+            return $this->errorResponse('Invalid operation. Allowed: vacuum, analyze');
         }
 
         return $this->withDatabase($uuid, function ($db, $server) use ($operation) {
@@ -319,7 +323,7 @@ class DatabaseMetricsController extends Controller
         $this->authorizeDatabase($uuid, 'update');
 
         $extensionName = $request->input('extension');
-        if (! $extensionName || ! preg_match('/^[a-z_][a-z0-9_]*$/i', $extensionName)) {
+        if (! $extensionName || ! InputValidator::isValidExtensionName($extensionName)) {
             return $this->errorResponse('Invalid extension name');
         }
 
@@ -562,7 +566,7 @@ class DatabaseMetricsController extends Controller
      */
     private function validateTableName(string $tableName): bool
     {
-        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $tableName);
+        return InputValidator::isValidTableName($tableName);
     }
 
     public function getTableColumns(string $uuid, string $tableName): JsonResponse
@@ -593,8 +597,8 @@ class DatabaseMetricsController extends Controller
         $orderBy = $request->input('order_by', '') ?? '';
         $orderDir = $request->input('order_dir', 'asc') === 'desc' ? 'desc' : 'asc';
 
-        // Sanitize search: strip SQL/NoSQL special chars
-        $search = preg_replace("/[;'\"\\\\%_\x00]/", '', $search);
+        // Sanitize search: strip SQL/NoSQL special chars via centralized validator
+        $search = InputValidator::sanitizeSearch($search);
 
         // Remove raw $filters entirely — it was passed directly into SQL, creating injection risk
         $filters = '';

@@ -75,8 +75,8 @@ class RedisMetricsService
         $password = $database->redis_password ?? $database->keydb_password ?? $database->dragonfly_password ?? '';
         $authFlag = $password ? '-a '.escapeshellarg($password) : '';
 
-        // Validate pattern to prevent command injection - allow only safe Redis glob patterns
-        if (! preg_match('/^[a-zA-Z0-9_:.*?\[\]-]+$/', $pattern)) {
+        // Validate pattern to prevent command injection — allow only safe Redis glob patterns
+        if (! InputValidator::isValidRedisPattern($pattern)) {
             return [];
         }
         $escapedPattern = escapeshellarg($pattern);

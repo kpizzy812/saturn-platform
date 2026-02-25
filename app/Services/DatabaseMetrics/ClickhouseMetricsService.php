@@ -16,7 +16,7 @@ class ClickhouseMetricsService
      */
     public function collectMetrics(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
 
         $metrics = [
@@ -27,7 +27,7 @@ class ClickhouseMetricsService
         ];
 
         try {
-            $authFlag = $password ? "--password '{$password}'" : '';
+            $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
             // Get total tables
             $tablesCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT count() FROM system.tables WHERE database NOT IN ('system', 'INFORMATION_SCHEMA', 'information_schema')\" 2>/dev/null || echo 'N/A'";
@@ -54,9 +54,9 @@ class ClickhouseMetricsService
      */
     public function getQueryLog(mixed $server, mixed $database, int $limit = 50): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
-        $authFlag = $password ? "--password '{$password}'" : '';
+        $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
         // Get recent queries from system.query_log
         $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT query, query_duration_ms/1000 as duration_sec, read_rows, formatReadableSize(read_bytes) as read_size, event_time, user FROM system.query_log WHERE type = 'QueryFinish' AND query NOT LIKE '%system.%' ORDER BY event_time DESC LIMIT {$limit} FORMAT JSONEachRow\" 2>/dev/null || echo ''";
@@ -90,9 +90,9 @@ class ClickhouseMetricsService
      */
     public function getMergeStatus(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
-        $authFlag = $password ? "--password '{$password}'" : '';
+        $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
         // Get active merges count
         $mergesCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT count() FROM system.merges\" 2>/dev/null || echo '0'";
@@ -118,9 +118,9 @@ class ClickhouseMetricsService
      */
     public function getReplicationStatus(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
-        $authFlag = $password ? "--password '{$password}'" : '';
+        $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
         // Check if replication is configured by querying system.replicas
         $replicasCommand = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT database, table, replica_name, replica_path, is_leader, is_readonly, absolute_delay, last_queue_update FROM system.replicas FORMAT JSONEachRow\" 2>/dev/null || echo ''";
@@ -170,9 +170,9 @@ class ClickhouseMetricsService
      */
     public function getSettings(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
-        $authFlag = $password ? "--password '{$password}'" : '';
+        $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
         // Get important performance settings
         $settingsToFetch = [
@@ -260,9 +260,9 @@ class ClickhouseMetricsService
      */
     public function getTables(mixed $server, mixed $database): array
     {
-        $containerName = $database->uuid;
+        $containerName = escapeshellarg($database->uuid);
         $password = $database->clickhouse_admin_password ?? '';
-        $authFlag = $password ? "--password '{$password}'" : '';
+        $authFlag = $password ? '--password '.escapeshellarg($password) : '';
 
         $command = "docker exec {$containerName} clickhouse-client {$authFlag} -q \"SELECT name, total_rows, formatReadableSize(total_bytes) FROM system.tables WHERE database = currentDatabase() AND total_rows IS NOT NULL ORDER BY total_rows DESC LIMIT 100 FORMAT TabSeparated\" 2>/dev/null || echo ''";
         $result = trim(instant_remote_process([$command], $server, false) ?? '');
