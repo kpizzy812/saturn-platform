@@ -16,6 +16,12 @@ class VolumeCloneJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 1;
+
+    public int $timeout = 3600;
+
+    public int $maxExceptions = 1;
+
     protected string $cloneDir = '/data/saturn/clone';
 
     public function __construct(

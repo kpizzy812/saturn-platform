@@ -52,7 +52,69 @@ Route::get('/projects', function () {
 })->name('projects.index');
 
 Route::get('/projects/create', function () {
-    return Inertia::render('Projects/Create');
+    $team = currentTeam();
+    if (! $team) {
+        return redirect()->route('dashboard')->with('error', 'Please select a team first');
+    }
+
+    $authService = app(ProjectAuthorizationService::class);
+    $currentUser = auth()->user();
+
+    $projects = \App\Models\Project::ownedByCurrentTeam()
+        ->with('environments')
+        ->get()
+        ->each(function ($project) use ($authService, $currentUser) {
+            $project->setRelation(
+                'environments',
+                $authService->filterVisibleEnvironments($currentUser, $project, $project->environments)
+            );
+        });
+
+    // Extract wildcard domain from master server for subdomain input
+    $wildcardDomain = null;
+    $masterServer = \App\Models\Server::where('id', 0)->first();
+    if ($masterServer) {
+        $wildcard = data_get($masterServer, 'settings.wildcard_domain');
+        if ($wildcard) {
+            $url = \Spatie\Url\Url::fromString($wildcard);
+            $wildcardDomain = [
+                'host' => $url->getHost(),
+                'scheme' => $url->getScheme(),
+            ];
+        }
+    }
+
+    // Get active GitHub Apps for repo picker
+    $githubApps = \App\Models\GithubApp::where('team_id', $team->id)
+        ->whereNotNull('app_id')
+        ->whereNotNull('installation_id')
+        ->where('is_public', false)
+        ->get(['id', 'uuid', 'name', 'installation_id']);
+
+    // Pass preselected project/environment from canvas "Create" button
+    $preselectedProject = null;
+    $preselectedEnvironment = null;
+    if ($projectUuid = request()->query('project')) {
+        $project = $projects->firstWhere('uuid', $projectUuid);
+        if ($project) {
+            $preselectedProject = $project->uuid;
+            if ($envUuid = request()->query('environment')) {
+                $env = $project->environments->firstWhere('uuid', $envUuid);
+                $preselectedEnvironment = $env?->uuid;
+            }
+            // Default to first environment if not specified
+            $preselectedEnvironment ??= $project->environments->first()?->uuid;
+        }
+    }
+
+    return Inertia::render('Projects/Create', [
+        'projects' => $projects,
+        'wildcardDomain' => $wildcardDomain,
+        'hasGithubApp' => $githubApps->isNotEmpty(),
+        'githubApps' => $githubApps,
+        'preselectedProject' => $preselectedProject,
+        'preselectedEnvironment' => $preselectedEnvironment,
+    ]);
 })->name('projects.create');
 
 // Sub-routes for project creation flow
@@ -215,14 +277,33 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
     ];
     $totalResources = array_sum($resourcesCount);
 
-    // Collect unique git repositories from project's applications
-    $projectRepositories = $project->applications()
+    // Collect unique git repositories from project's applications (with GitHub App IDs for private repos)
+    $projectApps = $project->applications()
         ->whereNotNull('git_repository')
         ->where('git_repository', '!=', '')
-        ->distinct()
+        ->with('source')
+        ->get();
+
+    $projectRepositories = $projectApps
         ->pluck('git_repository')
+        ->unique()
         ->values()
         ->all();
+
+    // Map repository URLs to their GitHub App IDs (for private repo branch fetching)
+    $repoGithubAppMap = [];
+    foreach ($projectApps as $app) {
+        $source = $app->source;
+        if ($source instanceof \App\Models\GithubApp
+            && $source->id !== 0
+            && ! $source->is_public
+            && $source->app_id
+            && $source->installation_id
+            && ! isset($repoGithubAppMap[$app->git_repository])
+        ) {
+            $repoGithubAppMap[$app->git_repository] = $source->id;
+        }
+    }
 
     // Filter environments visible to user (hide production from developers)
     $currentUser = auth()->user();
@@ -354,6 +435,7 @@ Route::get('/projects/{uuid}/settings', function (string $uuid) {
         'quotas' => $quotas,
         'deploymentDefaults' => $deploymentDefaults,
         'projectRepositories' => $projectRepositories,
+        'repoGithubAppMap' => $repoGithubAppMap,
         'notificationOverrides' => [
             'deployment_success' => $project->notificationOverrides?->deployment_success,
             'deployment_failure' => $project->notificationOverrides?->deployment_failure,

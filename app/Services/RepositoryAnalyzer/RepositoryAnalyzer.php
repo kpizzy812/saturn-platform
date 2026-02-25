@@ -61,6 +61,13 @@ class RepositoryAnalyzer
             $dockerComposeResult = $this->dockerComposeAnalyzer->analyze($repoPath);
             $dockerComposeServices = $dockerComposeResult['services'];
 
+            $this->logger->info('[RepositoryAnalyzer] Docker-compose analysis', [
+                'services_count' => count($dockerComposeServices),
+                'databases_count' => count($dockerComposeResult['databases']),
+                'external_services_count' => count($dockerComposeResult['externalServices']),
+                'service_names' => array_map(fn ($s) => $s->name, $dockerComposeServices),
+            ]);
+
             // Step 4: Detect CI/CD configuration (repo-level)
             $ciConfig = $this->ciConfigDetector->detect($repoPath);
 
@@ -116,9 +123,97 @@ class RepositoryAnalyzer
                 $enrichedApps[] = $app;
             }
 
+            // Step 5b: Promote compose build-context services to applications
+            // (e.g. hummingbot with its own Dockerfile in a subdirectory)
+            foreach ($dockerComposeServices as $service) {
+                if (! str_starts_with($service->image, 'build:')) {
+                    continue;
+                }
+
+                // Parse build spec: "build:." or "build:./hummingbot_custom/Dockerfile.custom"
+                $buildSpec = substr($service->image, strlen('build:'));
+                $context = '.';
+                $dockerfile = 'Dockerfile';
+
+                if (str_contains($buildSpec, '/')) {
+                    $parts = explode('/', rtrim($buildSpec, '/'));
+                    $lastPart = end($parts);
+                    if (stripos($lastPart, 'dockerfile') !== false || stripos($lastPart, 'Dockerfile') !== false) {
+                        $dockerfile = $lastPart;
+                        $context = implode('/', array_slice($parts, 0, -1)) ?: '.';
+                    } else {
+                        $context = $buildSpec;
+                    }
+                } else {
+                    $context = $buildSpec;
+                }
+
+                // Normalize context path
+                $context = rtrim(ltrim($context, './'), '/');
+                $fullContextPath = $context ? $repoPath.'/'.$context : $repoPath;
+
+                // Skip if this build context already matches a detected app
+                $alreadyDetected = false;
+                foreach ($enrichedApps as $existingApp) {
+                    $existingPath = $existingApp->path === '.' ? '' : $existingApp->path;
+                    if ($existingPath === $context) {
+                        $alreadyDetected = true;
+                        break;
+                    }
+                }
+
+                if ($alreadyDetected) {
+                    continue;
+                }
+
+                // Analyze the Dockerfile for port/health/info
+                $dockerfilePath = $fullContextPath.'/'.$dockerfile;
+                $dockerfileInfo = file_exists($dockerfilePath)
+                    ? $this->dockerfileAnalyzer->analyzeFile($dockerfilePath)
+                    : null;
+                $port = $dockerfileInfo?->getPrimaryPort() ?? 0;
+
+                // Build dockerfile_location relative to repo root
+                $dockerfileLocation = ($context ? '/'.$context : '').'/'.$dockerfile;
+
+                $newApp = new DTOs\DetectedApp(
+                    name: $service->name,
+                    path: $context ?: '.',
+                    framework: 'dockerfile',
+                    buildPack: 'dockerfile',
+                    defaultPort: $port,
+                    type: 'unknown',
+                    dockerfileInfo: $dockerfileInfo,
+                    applicationMode: $port === 0 ? 'worker' : 'web',
+                    dockerfileLocation: $dockerfile !== 'Dockerfile' ? $dockerfileLocation : null,
+                );
+
+                // Run dependency analysis on promoted app (env vars, databases, services)
+                $promotedDeps = $this->dependencyAnalyzer->analyze($repoPath, $newApp);
+                $databases = array_merge($databases, $promotedDeps->databases);
+                $services = array_merge($services, $promotedDeps->services);
+                $envVariables = array_merge($envVariables, $promotedDeps->envVariables);
+                $persistentVolumes = array_merge($persistentVolumes, $promotedDeps->persistentVolumes);
+
+                // Detect health check
+                $healthCheck = $this->healthCheckDetector->detect($fullContextPath, $newApp->framework);
+                if ($healthCheck !== null) {
+                    $newApp = $newApp->withHealthCheck($healthCheck);
+                }
+
+                $enrichedApps[] = $newApp;
+
+                $this->logger->info('[RepositoryAnalyzer] Promoted compose service to app', [
+                    'service' => $service->name,
+                    'context' => $context,
+                    'dockerfile' => $dockerfile,
+                    'port' => $port,
+                ]);
+            }
+
             // Step 6: Detect app dependencies and deploy order (for monorepos)
             $appDependencies = [];
-            if ($monorepoInfo->isMonorepo && count($enrichedApps) > 1) {
+            if (count($enrichedApps) > 1) {
                 $appDependencies = $this->appDependencyDetector->analyze($repoPath, $enrichedApps);
             }
 
@@ -132,6 +227,10 @@ class RepositoryAnalyzer
 
             // Deduplicate databases (e.g., if both apps need PostgreSQL)
             $databases = $this->deduplicateDatabases($databases);
+
+            // Enrich database consumers from env variables
+            // If an app has REDIS_URL in .env.example, it should be a consumer of Redis
+            $databases = $this->enrichDatabaseConsumers($databases, $envVariables);
 
             return new AnalysisResult(
                 monorepo: $monorepoInfo,
@@ -188,6 +287,74 @@ class RepositoryAnalyzer
         $output = shell_exec('du -sm '.escapeshellarg($path).' 2>/dev/null | cut -f1');
 
         return (float) trim($output ?: '0');
+    }
+
+    /**
+     * Enrich database consumers from env variables
+     *
+     * When a database is detected via docker-compose (consumers=[]),
+     * we cross-reference app env variables to find which apps actually use it.
+     * E.g., if an app has REDIS_URL in .env.example, it consumes Redis.
+     *
+     * @param  DetectedDatabase[]  $databases
+     * @param  DTOs\DetectedEnvVariable[]  $envVariables
+     * @return DetectedDatabase[]
+     */
+    private function enrichDatabaseConsumers(array $databases, array $envVariables): array
+    {
+        // Map env var prefixes to database types
+        $envVarPatterns = [
+            'REDIS' => 'redis',
+            'POSTGRES' => 'postgresql',
+            'PG_' => 'postgresql',
+            'PGHOST' => 'postgresql',
+            'MYSQL' => 'mysql',
+            'MONGO' => 'mongodb',
+            'CLICKHOUSE' => 'clickhouse',
+        ];
+
+        // Build app → database_types map from env variables
+        $appDbMap = []; // app_name => [db_type => true]
+        foreach ($envVariables as $env) {
+            $upperKey = strtoupper($env->key);
+            foreach ($envVarPatterns as $pattern => $dbType) {
+                if (str_starts_with($upperKey, $pattern)) {
+                    $appDbMap[$env->forApp][$dbType] = true;
+
+                    break;
+                }
+            }
+            // DATABASE_URL is generic — match against any detected SQL DB
+            if ($upperKey === 'DATABASE_URL') {
+                foreach ($databases as $db) {
+                    if (in_array($db->type, ['postgresql', 'mysql'], true)) {
+                        $appDbMap[$env->forApp][$db->type] = true;
+                    }
+                }
+            }
+        }
+
+        // Enrich consumers on each database
+        return array_map(function ($db) use ($appDbMap) {
+            $newConsumers = $db->consumers;
+            foreach ($appDbMap as $appName => $dbTypes) {
+                if (isset($dbTypes[$db->type]) && ! in_array($appName, $newConsumers, true)) {
+                    $newConsumers[] = $appName;
+                }
+            }
+            if ($newConsumers !== $db->consumers) {
+                return new DetectedDatabase(
+                    type: $db->type,
+                    name: $db->name,
+                    envVarName: $db->envVarName,
+                    consumers: $newConsumers,
+                    detectedVia: $db->detectedVia,
+                    port: $db->port,
+                );
+            }
+
+            return $db;
+        }, $databases);
     }
 
     /**

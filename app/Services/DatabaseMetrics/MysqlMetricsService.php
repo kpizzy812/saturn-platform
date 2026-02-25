@@ -373,7 +373,7 @@ class MysqlMetricsService
     {
         $containerName = escapeshellarg($database->uuid);
         $password = escapeshellarg($database->mysql_root_password ?? $database->mysql_password ?? '');
-        $dbName = $database->mysql_database ?? 'mysql';
+        $dbName = escapeshellarg($database->mysql_database ?? 'mysql');
         $offset = ($page - 1) * $perPage;
 
         // Get columns first
@@ -392,7 +392,6 @@ class MysqlMetricsService
         // Add search condition if provided (sanitized to prevent SQL injection)
         if ($search !== '') {
             $escapedSearch = str_replace(["'", '"', '\\', ';', '--'], '', $search);
-            $escapedSearch = str_replace("'", "''", $escapedSearch);
             $safeColumns = array_filter($columnNames, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $col));
             $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $safeColumns);
             if (! empty($searchConditions)) {
@@ -412,12 +411,12 @@ class MysqlMetricsService
 
         // Get total count
         $countQuery = "SELECT COUNT(*) FROM `{$escapedTableName}` {$whereClause}";
-        $countCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$countQuery}\" 2>/dev/null || echo '0'";
+        $countCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e \"{$countQuery}\" 2>/dev/null || echo '0'";
         $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
 
         // Get data
         $dataQuery = "SELECT * FROM `{$escapedTableName}` {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
-        $dataCommand = "docker exec {$containerName} mysql -u root -p'{$password}' -D {$dbName} -N -e \"{$dataQuery}\" 2>/dev/null | awk -F'\\t' 'BEGIN{OFS=\"|\"} {for(i=1;i<=NF;i++) printf \"%s%s\", \$i, (i==NF?\"\\n\":OFS)}' || echo ''";
+        $dataCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e \"{$dataQuery}\" 2>/dev/null | awk -F'\\t' 'BEGIN{OFS=\"|\"} {for(i=1;i<=NF;i++) printf \"%s%s\", \$i, (i==NF?\"\\n\":OFS)}' || echo ''";
         $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '');
 
         $rows = [];

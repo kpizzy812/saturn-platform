@@ -11,10 +11,12 @@ interface Props {
     application: Application;
     previews?: PreviewDeployment[];
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
-export default function PreviewsIndex({ application, previews: propPreviews, projectUuid, environmentUuid }: Props) {
+export default function PreviewsIndex({ application, previews: propPreviews, projectUuid, projectName }: Props) {
     const [previews, _setPreviews] = React.useState<PreviewDeployment[]>(
         propPreviews || []
     );
@@ -46,8 +48,7 @@ export default function PreviewsIndex({ application, previews: propPreviews, pro
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Preview Deployments' },
     ];

@@ -10,7 +10,9 @@ interface Props {
     application: Application;
     variables?: EnvironmentVariable[];
     projectUuid?: string;
+    projectName?: string;
     environmentUuid?: string;
+    environmentName?: string;
 }
 
 // Structure from backend (matches routes/web.php)
@@ -27,7 +29,7 @@ interface EnvironmentVariable {
     created_at?: string;
 }
 
-export default function ApplicationVariables({ application, variables: propVariables, projectUuid, environmentUuid }: Props) {
+export default function ApplicationVariables({ application, variables: propVariables, projectUuid, projectName }: Props) {
     const confirm = useConfirm();
     const [variables, setVariables] = React.useState<EnvironmentVariable[]>(propVariables || []);
     const [revealedVars, setRevealedVars] = React.useState<Set<string | number>>(new Set());
@@ -192,8 +194,7 @@ export default function ApplicationVariables({ application, variables: propVaria
 
     const breadcrumbs = [
         { label: 'Projects', href: '/projects' },
-        ...(projectUuid ? [{ label: 'Project', href: `/projects/${projectUuid}` }] : []),
-        ...(environmentUuid ? [{ label: 'Environment', href: `/projects/${projectUuid}/environments/${environmentUuid}` }] : []),
+        ...(projectUuid ? [{ label: projectName || 'Project', href: `/projects/${projectUuid}` }] : []),
         { label: application.name, href: `/applications/${application.uuid}` },
         { label: 'Environment Variables' },
     ];

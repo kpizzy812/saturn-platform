@@ -1085,8 +1085,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private function generate_healthcheck_commands()
     {
+        // Workers have no ports — healthcheck should be skipped before calling this
+        if ($this->application->isWorker() && empty($this->application->ports_exposes_array)) {
+            return 'exit 0';
+        }
+
         if (! $this->application->health_check_port) {
-            $health_check_port = $this->application->ports_exposes_array[0];
+            $health_check_port = $this->application->ports_exposes_array[0] ?? null;
+            if ($health_check_port === null) {
+                // No port available — skip healthcheck
+                return 'exit 0';
+            }
         } else {
             $health_check_port = $this->application->health_check_port;
         }

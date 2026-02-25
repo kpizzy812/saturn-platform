@@ -121,6 +121,7 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
     Gate::authorize('update', $application);
 
     $allowedFields = [
+        'application_type',
         'health_check_enabled', 'health_check_path', 'health_check_interval',
         'health_check_timeout', 'health_check_retries',
         'ports_exposes', 'ports_mappings',
@@ -330,6 +331,7 @@ Route::get('/web-api/github-apps/{github_app_id}/repositories/{owner}/{repo}/bra
 // Public git repository branches
 Route::get('/web-api/git/branches', function (Request $request) {
     $repositoryUrl = $request->query('repository_url');
+    $githubAppId = $request->query('github_app_id');
 
     if (empty($repositoryUrl)) {
         return response()->json([
@@ -360,8 +362,8 @@ Route::get('/web-api/git/branches', function (Request $request) {
         ], 400);
     }
 
-    // Cache key
-    $cacheKey = 'git_branches_'.md5($repositoryUrl);
+    // Cache key (include github_app_id for authenticated requests)
+    $cacheKey = 'git_branches_'.md5($repositoryUrl.($githubAppId ? '_app_'.$githubAppId : ''));
     $cached = Cache::get($cacheKey);
     if ($cached) {
         return response()->json($cached);
@@ -373,10 +375,30 @@ Route::get('/web-api/git/branches', function (Request $request) {
 
     // Fetch branches based on platform
     if ($parsed['platform'] === 'github') {
-        $response = Http::withHeaders([
+        // Use GitHub App installation token for private repos if available
+        $headers = [
             'Accept' => 'application/vnd.github.v3+json',
             'User-Agent' => 'Saturn-Platform',
-        ])->timeout(15)->retry(2, 100, throw: false)
+        ];
+
+        if ($githubAppId) {
+            try {
+                $githubApp = \App\Models\GithubApp::where('id', (int) $githubAppId)
+                    ->where(function ($query) {
+                        $query->where('team_id', currentTeam()->id)
+                            ->orWhere('is_system_wide', true);
+                    })
+                    ->firstOrFail();
+
+                $token = generateGithubInstallationToken($githubApp);
+                $headers['Authorization'] = "token {$token}";
+            } catch (\Exception $e) {
+                // Fall back to unauthenticated request
+            }
+        }
+
+        $response = Http::withHeaders($headers)
+            ->timeout(15)->retry(2, 100, throw: false)
             ->get("https://api.github.com/repos/{$owner}/{$repo}/branches", ['per_page' => 100]);
 
         if ($response->failed()) {
@@ -391,10 +413,8 @@ Route::get('/web-api/git/branches', function (Request $request) {
         $branches = collect($response->json())->map(fn ($b) => ['name' => $b['name'], 'is_default' => false])->toArray();
 
         // Get default branch
-        $repoResponse = Http::withHeaders([
-            'Accept' => 'application/vnd.github.v3+json',
-            'User-Agent' => 'Saturn-Platform',
-        ])->timeout(10)->get("https://api.github.com/repos/{$owner}/{$repo}");
+        $repoResponse = Http::withHeaders($headers)
+            ->timeout(10)->get("https://api.github.com/repos/{$owner}/{$repo}");
 
         $defaultBranch = $repoResponse->json('default_branch', 'main');
         foreach ($branches as &$branch) {

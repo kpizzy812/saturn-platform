@@ -114,20 +114,20 @@ function ProjectCard({ project }: { project: Project }) {
     return (
         <Link
             href={projectUrl}
-            className={`group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/20 ${config.glow}`}
+            className={`group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20 ${config.glow}`}
         >
             {/* Subtle gradient overlay on hover */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/[0.03] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/[0.02] to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
             {/* Header: icon + status + name + menu */}
             <div className="relative flex items-start justify-between">
                 <div className="flex items-center gap-3">
                     <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 transition-colors group-hover:bg-primary/20">
-                        <FolderKanban className="h-5 w-5 text-primary" />
-                        <span className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background-secondary ${config.dot}`} />
+                        <FolderKanban className="h-5 w-5 text-primary transition-transform duration-200 group-hover:scale-110 group-hover:animate-wiggle" />
+                        <span className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-background-secondary transition-transform duration-200 group-hover:scale-125 ${config.dot}`} />
                     </div>
                     <div>
-                        <h3 className="font-medium text-foreground transition-colors group-hover:text-primary">{project.name}</h3>
+                        <h3 className="font-medium text-foreground transition-colors group-hover:text-white">{project.name}</h3>
                         <p className="text-sm text-foreground-muted">
                             {total} resource{total !== 1 ? 's' : ''}
                         </p>
@@ -137,7 +137,7 @@ function ProjectCard({ project }: { project: Project }) {
                     <DropdownTrigger>
                         <button
                             onClick={(e) => e.preventDefault()}
-                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-primary/10 group-hover:opacity-100"
+                            className="rounded-md p-1.5 opacity-0 transition-all duration-200 hover:bg-white/10 group-hover:opacity-100"
                         >
                             <MoreHorizontal className="h-4 w-4 text-foreground-muted" />
                         </button>
@@ -167,14 +167,33 @@ function ProjectCard({ project }: { project: Project }) {
             {/* Resource breakdown */}
             {resourceSegments.length > 0 && (
                 <div className="relative mt-3 flex items-center gap-3">
-                    {resourceSegments.map((seg) => (
-                        <div key={seg.label} className="flex items-center gap-1.5">
-                            <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
-                            <span className="text-xs text-foreground-muted">
-                                {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
-                            </span>
-                        </div>
-                    ))}
+                    {resourceSegments.map((seg) => {
+                        const targetUrl = seg.label === 'app'
+                            ? `/applications?project=${encodeURIComponent(project.name)}`
+                            : seg.label === 'db'
+                            ? `/databases?project=${encodeURIComponent(project.name)}`
+                            : null;
+                        return targetUrl ? (
+                            <Link
+                                key={seg.label}
+                                href={targetUrl}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 -my-0.5 transition-all duration-200 hover:bg-white/10 hover:scale-105"
+                            >
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor} transition-transform duration-200 group-hover:scale-125`} />
+                                <span className="text-xs text-foreground-muted transition-colors hover:text-foreground">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </Link>
+                        ) : (
+                            <div key={seg.label} className="flex items-center gap-1.5">
+                                <span className={`h-1.5 w-1.5 rounded-full ${seg.dotColor}`} />
+                                <span className="text-xs text-foreground-muted">
+                                    {seg.count} {seg.label}{seg.count !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
@@ -182,9 +201,16 @@ function ProjectCard({ project }: { project: Project }) {
             {project.environments && project.environments.length > 0 && (
                 <div className="relative mt-3 flex flex-wrap gap-1.5">
                     {project.environments.slice(0, 4).map((env, i) => (
-                        <Badge key={i} variant={getEnvBadgeVariant(env.name || '')} size="sm">
-                            {env.name || 'unknown'}
-                        </Badge>
+                        <Link
+                            key={i}
+                            href={`${projectUrl}?env=${encodeURIComponent(env.name || '')}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex transition-transform duration-200 hover:scale-110"
+                        >
+                            <Badge variant={getEnvBadgeVariant(env.name || '')} size="sm" className="cursor-pointer transition-all duration-200 hover:shadow-md hover:brightness-110">
+                                {env.name || 'unknown'}
+                            </Badge>
+                        </Link>
                     ))}
                     {project.environments.length > 4 && (
                         <Badge variant="default" size="sm">
@@ -273,8 +299,8 @@ export default function Dashboard({ projects = [] }: Props) {
                             </p>
                         </div>
                         <Link href="/projects/create">
-                            <Button>
-                                <Plus className="mr-2 h-4 w-4" />
+                            <Button className="group">
+                                <Plus className="mr-2 h-4 w-4 group-hover:animate-wiggle" />
                                 New Project
                             </Button>
                         </Link>

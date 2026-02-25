@@ -282,4 +282,95 @@ class InfrastructureProvisionerTest extends TestCase
         $result = $this->callPrivateMethod($provisioner, 'adaptEnvVarForFramework', ['API_URL', 'sveltekit']);
         $this->assertEquals('VITE_API_URL', $result);
     }
+
+    // ── Worker Mode Provisioning ────────────────────────────────────
+
+    /**
+     * Replicate the port resolution logic from InfrastructureProvisioner::createApplication().
+     */
+    private function resolvePortsExposes(DetectedApp $app, array $overrides = []): ?string
+    {
+        $applicationType = $overrides['application_type'] ?? $app->applicationMode;
+
+        if ($applicationType === 'worker') {
+            return null;
+        }
+
+        return $app->defaultPort > 0 ? (string) $app->defaultPort : '80';
+    }
+
+    public function test_worker_app_gets_null_ports(): void
+    {
+        $app = new DetectedApp(
+            name: 'bot',
+            path: '.',
+            framework: 'dockerfile',
+            buildPack: 'dockerfile',
+            defaultPort: 0,
+            applicationMode: 'worker',
+        );
+
+        $result = $this->resolvePortsExposes($app);
+        $this->assertNull($result, 'Worker apps should have null ports_exposes');
+    }
+
+    public function test_web_app_gets_detected_port(): void
+    {
+        $app = new DetectedApp(
+            name: 'api',
+            path: '.',
+            framework: 'nestjs',
+            buildPack: 'nixpacks',
+            defaultPort: 3000,
+            applicationMode: 'web',
+        );
+
+        $result = $this->resolvePortsExposes($app);
+        $this->assertEquals('3000', $result, 'Web apps should get detected port');
+    }
+
+    public function test_web_app_with_zero_port_defaults_to_80(): void
+    {
+        $app = new DetectedApp(
+            name: 'web',
+            path: '.',
+            framework: 'docker-compose',
+            buildPack: 'docker-compose',
+            defaultPort: 0,
+            applicationMode: 'web',
+        );
+
+        $result = $this->resolvePortsExposes($app);
+        $this->assertEquals('80', $result, 'Web app with no detected port should default to 80');
+    }
+
+    public function test_user_override_to_worker_nullifies_port(): void
+    {
+        $app = new DetectedApp(
+            name: 'api',
+            path: '.',
+            framework: 'nestjs',
+            buildPack: 'nixpacks',
+            defaultPort: 3000,
+            applicationMode: 'web',
+        );
+
+        $result = $this->resolvePortsExposes($app, ['application_type' => 'worker']);
+        $this->assertNull($result, 'User override to worker should nullify ports');
+    }
+
+    public function test_user_override_to_web_gives_port(): void
+    {
+        $app = new DetectedApp(
+            name: 'bot',
+            path: '.',
+            framework: 'dockerfile',
+            buildPack: 'dockerfile',
+            defaultPort: 0,
+            applicationMode: 'worker',
+        );
+
+        $result = $this->resolvePortsExposes($app, ['application_type' => 'web']);
+        $this->assertEquals('80', $result, 'User override to web should give port 80 when no detected port');
+    }
 }

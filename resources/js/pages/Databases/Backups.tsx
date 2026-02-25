@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Checkbox, useConfirm } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Switch, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, Save, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, Save, Loader2, Play, CheckCircle, XCircle, AlertCircle, DatabaseZap } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
 import { getStatusIcon, getStatusVariant, getStatusLabel } from '@/lib/statusUtils';
 import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
@@ -19,6 +19,10 @@ interface Backup {
     filename: string;
     size: string;
     status: 'completed' | 'failed' | 'in_progress';
+    restore_status: 'pending' | 'in_progress' | 'success' | 'failed' | null;
+    restore_started_at: string | null;
+    restore_finished_at: string | null;
+    restore_message: string | null;
     created_at: string;
 }
 
@@ -141,14 +145,36 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
     const handleRestore = async (backupId: number) => {
         const confirmed = await confirm({
             title: 'Restore Backup',
-            description: 'Are you sure you want to restore this backup? This will overwrite the current database.',
+            description: 'Are you sure you want to restore this backup? This will overwrite the current database with the backup data.',
             confirmText: 'Restore',
             variant: 'warning',
         });
         if (confirmed) {
-            router.post(`/databases/${database.uuid}/backups/${backupId}/restore`);
+            router.post(`/databases/${database.uuid}/backups/${backupId}/restore`, {}, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Poll to track restore progress
+                    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+                    pollTimerRef.current = setInterval(() => {
+                        router.reload({ only: ['backups'] });
+                    }, 3000);
+                    // Stop polling after 5 minutes
+                    pollTimeoutRef.current = setTimeout(() => {
+                        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+                    }, 300000);
+                },
+            });
         }
     };
+
+    // Stop polling when all restores are finished
+    const hasActiveRestore = backups?.some(b => b.restore_status === 'pending' || b.restore_status === 'in_progress');
+    useEffect(() => {
+        if (!hasActiveRestore && pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+        }
+    }, [hasActiveRestore]);
 
     const handleDownload = (backupId: number) => {
         window.location.href = `/download/backup/${backupId}`;
@@ -209,20 +235,27 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
             <Card className="mb-6">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="font-medium text-foreground">Automatic Backups</h3>
-                            <p className="mt-1 text-sm text-foreground-muted">
-                                Schedule automatic backups to run periodically
-                            </p>
+                        <div className="flex items-center gap-3">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${autoBackupEnabled ? 'bg-primary/15' : 'bg-background-tertiary'} transition-colors`}>
+                                <Clock className={`h-5 w-5 ${autoBackupEnabled ? 'text-primary' : 'text-foreground-muted'} transition-colors`} />
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-foreground">Automatic Backups</h3>
+                                <p className="mt-0.5 text-sm text-foreground-muted">
+                                    {autoBackupEnabled
+                                        ? `Scheduled to run ${backupFrequency}`
+                                        : 'Enable to schedule periodic backups'}
+                                </p>
+                            </div>
                         </div>
-                        <Checkbox
+                        <Switch
                             checked={autoBackupEnabled}
-                            onChange={(e) => setAutoBackupEnabled(e.target.checked)}
+                            onChange={setAutoBackupEnabled}
                         />
                     </div>
 
                     {autoBackupEnabled && (
-                        <div className="mt-4 space-y-3">
+                        <div className="mt-4 space-y-3 border-t border-border pt-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
                                     Backup Frequency
@@ -232,7 +265,7 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                                         <button
                                             key={freq}
                                             onClick={() => setBackupFrequency(freq)}
-                                            className={`rounded-md border px-4 py-2 text-sm transition-colors ${
+                                            className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
                                                 backupFrequency === freq
                                                     ? 'border-primary bg-primary/10 text-primary'
                                                     : 'border-border bg-background-secondary text-foreground-muted hover:bg-background-tertiary'
@@ -242,15 +275,6 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                                         </button>
                                     ))}
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
-                                <Clock className="h-4 w-4 text-foreground-muted" />
-                                <span className="text-sm text-foreground-muted">
-                                    {initialScheduledBackup
-                                        ? `Backup runs ${backupFrequency}`
-                                        : 'Save to schedule backups'}
-                                </span>
                             </div>
                         </div>
                     )}
@@ -276,6 +300,35 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                     )}
                 </CardContent>
             </Card>
+
+            {/* Restore History */}
+            {backups.some(b => b.restore_status) && (
+                <div className="mb-6 space-y-3">
+                    <div className="flex items-center gap-2">
+                        <DatabaseZap className="h-5 w-5 text-foreground-muted" />
+                        <h2 className="text-lg font-medium text-foreground">Restore History</h2>
+                    </div>
+                    <StaggerList className="space-y-2">
+                        {backups
+                            .filter(b => b.restore_status)
+                            .sort((a, b) => {
+                                // Active restores first, then by restore_started_at desc
+                                const aActive = a.restore_status === 'pending' || a.restore_status === 'in_progress';
+                                const bActive = b.restore_status === 'pending' || b.restore_status === 'in_progress';
+                                if (aActive !== bActive) return aActive ? -1 : 1;
+                                const aTime = a.restore_started_at || a.created_at;
+                                const bTime = b.restore_started_at || b.created_at;
+                                return new Date(bTime).getTime() - new Date(aTime).getTime();
+                            })
+                            .map((backup, i) => (
+                                <StaggerItem key={`restore-${backup.id}`} index={i}>
+                                    <RestoreCard backup={backup} />
+                                </StaggerItem>
+                            ))
+                        }
+                    </StaggerList>
+                </div>
+            )}
 
             {/* Backups List */}
             <div className="space-y-3">
@@ -325,6 +378,87 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
     );
 }
 
+function getRestoreStatusConfig(status: string | null) {
+    switch (status) {
+        case 'pending':
+            return { label: 'Queued', variant: 'info' as const, icon: Clock, animate: false };
+        case 'in_progress':
+            return { label: 'Restoring...', variant: 'warning' as const, icon: Loader2, animate: true };
+        case 'success':
+            return { label: 'Restored', variant: 'success' as const, icon: CheckCircle, animate: false };
+        case 'failed':
+            return { label: 'Restore Failed', variant: 'danger' as const, icon: XCircle, animate: false };
+        default:
+            return null;
+    }
+}
+
+function RestoreCard({ backup }: { backup: Backup }) {
+    const config = getRestoreStatusConfig(backup.restore_status);
+    if (!config) return null;
+
+    const Icon = config.icon;
+    const duration = backup.restore_started_at && backup.restore_finished_at
+        ? Math.round((new Date(backup.restore_finished_at).getTime() - new Date(backup.restore_started_at).getTime()) / 1000)
+        : null;
+
+    return (
+        <Card>
+            <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                            backup.restore_status === 'success' ? 'bg-primary/15' :
+                            backup.restore_status === 'failed' ? 'bg-danger/15' :
+                            'bg-background-tertiary'
+                        }`}>
+                            <Icon className={`h-5 w-5 ${
+                                backup.restore_status === 'success' ? 'text-primary' :
+                                backup.restore_status === 'failed' ? 'text-danger' :
+                                backup.restore_status === 'in_progress' ? 'text-warning animate-spin' :
+                                'text-info'
+                            }`} />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-medium text-foreground">
+                                    Restore from {backup.filename}
+                                </h3>
+                                <Badge variant={config.variant}>{config.label}</Badge>
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-4 text-sm text-foreground-muted">
+                                {backup.restore_started_at && (
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        {new Date(backup.restore_started_at).toLocaleString()}
+                                    </span>
+                                )}
+                                {duration !== null && (
+                                    <span className="flex items-center gap-1">
+                                        <AlertCircle className="h-3.5 w-3.5" />
+                                        {duration < 60 ? `${duration}s` : `${Math.floor(duration / 60)}m ${duration % 60}s`}
+                                    </span>
+                                )}
+                                {backup.restore_status === 'pending' && !backup.restore_started_at && (
+                                    <span className="flex items-center gap-1">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        Waiting in queue...
+                                    </span>
+                                )}
+                            </div>
+                            {backup.restore_status === 'failed' && backup.restore_message && (
+                                <div className="mt-2 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">
+                                    {backup.restore_message}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 function BackupCard({
     backup,
     onRestore,
@@ -336,6 +470,8 @@ function BackupCard({
     onDownload: () => void;
     onDelete: () => void;
 }) {
+    const isRestoring = backup.restore_status === 'pending' || backup.restore_status === 'in_progress';
+
     return (
         <Card>
             <CardContent className="p-4">
@@ -348,6 +484,12 @@ function BackupCard({
                             <div className="flex items-center gap-2">
                                 <h3 className="font-medium text-foreground">{backup.filename}</h3>
                                 <Badge variant={getStatusVariant(backup.status)}>{getStatusLabel(backup.status)}</Badge>
+                                {isRestoring && (
+                                    <Badge variant="warning">
+                                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                        Restoring
+                                    </Badge>
+                                )}
                             </div>
                             <div className="mt-1 flex items-center gap-4 text-sm text-foreground-muted">
                                 <span className="flex items-center gap-1">
@@ -368,9 +510,18 @@ function BackupCard({
                                 <Download className="mr-2 h-4 w-4" />
                                 Download
                             </Button>
-                            <Button variant="secondary" size="sm" onClick={onRestore}>
-                                <RotateCcw className="mr-2 h-4 w-4" />
-                                Restore
+                            <Button variant="secondary" size="sm" onClick={onRestore} disabled={isRestoring}>
+                                {isRestoring ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Restoring...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RotateCcw className="mr-2 h-4 w-4" />
+                                        Restore
+                                    </>
+                                )}
                             </Button>
                             <Button variant="danger" size="sm" onClick={onDelete}>
                                 <Trash2 className="h-4 w-4" />

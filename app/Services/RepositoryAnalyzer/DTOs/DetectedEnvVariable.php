@@ -13,5 +13,6 @@ class DetectedEnvVariable
         public bool $isRequired,
         public string $category,
         public string $forApp,
+        public ?string $comment = null,
     ) {}
 }

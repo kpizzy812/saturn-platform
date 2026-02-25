@@ -53,13 +53,27 @@ class GitController extends Controller
 
     /**
      * Fetch branches from GitHub API.
+     * When $githubAppId is provided, uses the GitHub App installation token for private repos.
      */
-    private function fetchGitHubBranches(string $owner, string $repo): array
+    private function fetchGitHubBranches(string $owner, string $repo, ?int $githubAppId = null): array
     {
-        $response = Http::withHeaders([
+        $headers = [
             'Accept' => 'application/vnd.github.v3+json',
             'User-Agent' => 'Saturn-Platform',
-        ])
+        ];
+
+        // Authenticate via GitHub App for private repositories
+        if ($githubAppId) {
+            try {
+                $githubApp = \App\Models\GithubApp::findOrFail($githubAppId);
+                $token = generateGithubInstallationToken($githubApp);
+                $headers['Authorization'] = "token {$token}";
+            } catch (\Exception $e) {
+                // Fall back to unauthenticated request
+            }
+        }
+
+        $response = Http::withHeaders($headers)
             ->timeout(15)
             ->retry(2, 100, throw: false)
             ->get("https://api.github.com/repos/{$owner}/{$repo}/branches", [
@@ -80,10 +94,7 @@ class GitController extends Controller
         ])->toArray();
 
         // Try to get default branch info
-        $repoResponse = Http::withHeaders([
-            'Accept' => 'application/vnd.github.v3+json',
-            'User-Agent' => 'Saturn-Platform',
-        ])
+        $repoResponse = Http::withHeaders($headers)
             ->timeout(10)
             ->get("https://api.github.com/repos/{$owner}/{$repo}");
 
@@ -278,6 +289,7 @@ class GitController extends Controller
     public function branches(Request $request)
     {
         $repositoryUrl = $request->query('repository_url');
+        $githubAppId = $request->query('github_app_id') ? (int) $request->query('github_app_id') : null;
 
         if (empty($repositoryUrl)) {
             return response()->json([
@@ -293,8 +305,8 @@ class GitController extends Controller
             ], 400);
         }
 
-        // Cache key based on repository URL
-        $cacheKey = 'git_branches_'.md5($repositoryUrl);
+        // Cache key based on repository URL (include github_app_id for authenticated requests)
+        $cacheKey = 'git_branches_'.md5($repositoryUrl.($githubAppId ? '_app_'.$githubAppId : ''));
 
         // Try to get from cache (5 minutes TTL)
         $cached = Cache::get($cacheKey);
@@ -302,9 +314,9 @@ class GitController extends Controller
             return response()->json($cached);
         }
 
-        // Fetch branches based on platform
+        // Fetch branches based on platform (pass github_app_id for GitHub private repos)
         $result = match ($parsed['platform']) {
-            'github' => $this->fetchGitHubBranches($parsed['owner'], $parsed['repo']),
+            'github' => $this->fetchGitHubBranches($parsed['owner'], $parsed['repo'], $githubAppId),
             'gitlab' => $this->fetchGitLabBranches($parsed['owner'], $parsed['repo']),
             'bitbucket' => $this->fetchBitbucketBranches($parsed['owner'], $parsed['repo']),
             default => ['success' => false, 'error' => 'Unsupported platform'],

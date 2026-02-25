@@ -11975,6 +11975,15 @@
                             "dockercompose"
                         ]
                     },
+                    "application_type": {
+                        "description": "Application type. \"web\" for HTTP services, \"worker\" for background processes (no port), \"both\" for apps with web + worker.",
+                        "type": "string",
+                        "enum": [
+                            "web",
+                            "worker",
+                            "both"
+                        ]
+                    },
                     "static_image": {
                         "description": "Static image used when static site is deployed.",
                         "type": "string"

@@ -116,6 +116,7 @@ interface Props {
     quotas: Record<string, QuotaItem>;
     deploymentDefaults: DeploymentDefaults;
     projectRepositories: string[];
+    repoGithubAppMap: Record<string, number>;
     notificationOverrides: NotificationOverrides;
 }
 
@@ -135,6 +136,7 @@ export default function ProjectSettings({
     quotas,
     deploymentDefaults,
     projectRepositories,
+    repoGithubAppMap,
     notificationOverrides,
 }: Props) {
     // General form
@@ -871,7 +873,7 @@ export default function ProjectSettings({
                 <ResourceLimitsSection projectUuid={project.uuid} quotas={quotas} />
 
                 {/* 8. Default Deployment Settings */}
-                <DeploymentDefaultsSection projectUuid={project.uuid} defaults={deploymentDefaults} environments={environments} repositories={projectRepositories} />
+                <DeploymentDefaultsSection projectUuid={project.uuid} defaults={deploymentDefaults} environments={environments} repositories={projectRepositories} repoGithubAppMap={repoGithubAppMap} />
 
                 {/* 9. Project Info */}
                 <Card className="mb-6">
@@ -1224,7 +1226,7 @@ const BUILD_PACK_OPTIONS = [
     { value: 'static', label: 'Static' },
 ];
 
-function DeploymentDefaultsSection({ projectUuid, defaults, environments, repositories }: { projectUuid: string; defaults: DeploymentDefaults; environments: Environment[]; repositories: string[] }) {
+function DeploymentDefaultsSection({ projectUuid, defaults, environments, repositories, repoGithubAppMap }: { projectUuid: string; defaults: DeploymentDefaults; environments: Environment[]; repositories: string[]; repoGithubAppMap: Record<string, number> }) {
     const { data, setData, patch, processing } = useForm({
         default_build_pack: defaults.default_build_pack ?? '',
         default_auto_deploy: defaults.default_auto_deploy ?? false,
@@ -1255,12 +1257,18 @@ function DeploymentDefaultsSection({ projectUuid, defaults, environments, reposi
         const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
 
         Promise.allSettled(
-            repos.map(repoUrl =>
-                fetch(`/web-api/git/branches?repository_url=${encodeURIComponent(repoUrl)}`, {
+            repos.map(repoUrl => {
+                // Include github_app_id for private repo authentication
+                let url = `/web-api/git/branches?repository_url=${encodeURIComponent(repoUrl)}`;
+                const appId = repoGithubAppMap?.[repoUrl];
+                if (appId) {
+                    url += `&github_app_id=${appId}`;
+                }
+                return fetch(url, {
                     headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
                     credentials: 'include',
-                }).then(r => r.ok ? r.json() : Promise.reject(new Error(`Failed for ${repoUrl}`)))
-            )
+                }).then(r => r.ok ? r.json() : Promise.reject(new Error(`Failed for ${repoUrl}`)));
+            })
         ).then(results => {
             if (cancelled) return;
             const seen = new Set<string>();

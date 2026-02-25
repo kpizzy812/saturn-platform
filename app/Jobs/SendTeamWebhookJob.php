@@ -54,14 +54,6 @@ class SendTeamWebhookJob implements ShouldBeEncrypted, ShouldQueue
                 0
             );
 
-            if (isDev()) {
-                ray('Team webhook URL blocked for security reasons', [
-                    'webhook_id' => $this->webhook->id,
-                    'url' => $this->webhook->url,
-                    'reason' => $validation['error'],
-                ]);
-            }
-
             return;
         }
 
@@ -99,14 +91,6 @@ class SendTeamWebhookJob implements ShouldBeEncrypted, ShouldQueue
                 );
             }
 
-            if (isDev()) {
-                ray('Team webhook sent', [
-                    'webhook_id' => $this->webhook->id,
-                    'delivery_id' => $this->delivery->id,
-                    'status' => $response->status(),
-                    'response_time_ms' => $responseTimeMs,
-                ]);
-            }
         } catch (\Exception $e) {
             $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
 
@@ -115,14 +99,6 @@ class SendTeamWebhookJob implements ShouldBeEncrypted, ShouldQueue
                 $e->getMessage(),
                 $responseTimeMs
             );
-
-            if (isDev()) {
-                ray('Team webhook failed', [
-                    'webhook_id' => $this->webhook->id,
-                    'delivery_id' => $this->delivery->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
 
             throw $e;
         }

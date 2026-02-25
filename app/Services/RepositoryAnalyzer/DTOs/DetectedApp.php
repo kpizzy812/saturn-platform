@@ -22,7 +22,34 @@ readonly class DetectedApp
         public ?string $nodeVersion = null,
         public ?string $pythonVersion = null,
         public ?DockerfileInfo $dockerfileInfo = null,
+        public string $applicationMode = 'web',  // web, worker, both
+        public ?string $dockerfileLocation = null, // Custom Dockerfile path (e.g. "/hummingbot_custom/Dockerfile.custom")
     ) {}
+
+    /**
+     * Create a new instance with a different name
+     */
+    public function withName(string $name): self
+    {
+        return new self(
+            name: $name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $this->defaultPort,
+            buildCommand: $this->buildCommand,
+            installCommand: $this->installCommand,
+            startCommand: $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $this->healthCheck,
+            nodeVersion: $this->nodeVersion,
+            pythonVersion: $this->pythonVersion,
+            dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
+        );
+    }
 
     /**
      * Create a new instance with additional properties
@@ -44,6 +71,8 @@ readonly class DetectedApp
             nodeVersion: $this->nodeVersion,
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -67,6 +96,8 @@ readonly class DetectedApp
             nodeVersion: $ci->nodeVersion ?? $this->nodeVersion,
             pythonVersion: $ci->pythonVersion ?? $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -90,6 +121,8 @@ readonly class DetectedApp
             nodeVersion: $this->nodeVersion,
             pythonVersion: $this->pythonVersion,
             dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -113,6 +146,33 @@ readonly class DetectedApp
             nodeVersion: $dockerfileInfo->getNodeVersion() ?? $this->nodeVersion,
             pythonVersion: $dockerfileInfo->getPythonVersion() ?? $this->pythonVersion,
             dockerfileInfo: $dockerfileInfo,
+            applicationMode: $this->applicationMode,
+            dockerfileLocation: $this->dockerfileLocation,
+        );
+    }
+
+    /**
+     * Create a new instance with application mode
+     */
+    public function withApplicationMode(string $mode): self
+    {
+        return new self(
+            name: $this->name,
+            path: $this->path,
+            framework: $this->framework,
+            buildPack: $this->buildPack,
+            defaultPort: $this->defaultPort,
+            buildCommand: $this->buildCommand,
+            installCommand: $this->installCommand,
+            startCommand: $this->startCommand,
+            publishDirectory: $this->publishDirectory,
+            type: $this->type,
+            healthCheck: $this->healthCheck,
+            nodeVersion: $this->nodeVersion,
+            pythonVersion: $this->pythonVersion,
+            dockerfileInfo: $this->dockerfileInfo,
+            applicationMode: $mode,
+            dockerfileLocation: $this->dockerfileLocation,
         );
     }
 
@@ -138,6 +198,8 @@ readonly class DetectedApp
             'node_version' => $this->nodeVersion,
             'python_version' => $this->pythonVersion,
             'dockerfile_info' => $this->dockerfileInfo?->toArray(),
+            'application_mode' => $this->applicationMode,
+            'dockerfile_location' => $this->dockerfileLocation,
         ];
     }
 

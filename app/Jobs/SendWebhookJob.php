@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SendWebhookJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -43,7 +44,7 @@ class SendWebhookJob implements ShouldBeEncrypted, ShouldQueue
         // Security: Validate URL to prevent SSRF attacks
         $validation = validateWebhookUrl($this->webhookUrl);
         if (! $validation['valid']) {
-            ray('Webhook URL blocked for security reasons', [
+            Log::warning('Webhook URL blocked for security reasons', [
                 'url' => $this->webhookUrl,
                 'reason' => $validation['error'],
             ]);
@@ -51,25 +52,10 @@ class SendWebhookJob implements ShouldBeEncrypted, ShouldQueue
             return;
         }
 
-        if (isDev()) {
-            ray('Sending webhook notification', [
-                'url' => $this->webhookUrl,
-                'payload' => $this->payload,
-            ]);
-        }
-
         $response = Http::timeout(10)->post($this->webhookUrl, $this->payload);
 
         if ($response->failed()) {
             throw new \RuntimeException('Webhook notification failed with status '.$response->status());
-        }
-
-        if (isDev()) {
-            ray('Webhook response', [
-                'status' => $response->status(),
-                'body' => $response->body(),
-                'successful' => $response->successful(),
-            ]);
         }
     }
 }

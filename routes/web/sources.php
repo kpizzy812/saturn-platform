@@ -79,13 +79,13 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.index');
 
         Route::get('/create', function () {
-            // Use the public FQDN from InstanceSettings (set by admin),
-            // fall back to the current request URL (never config('app.url') which may be localhost)
-            $settings = \App\Models\InstanceSettings::get();
-            $fqdn = $settings->fqdn ?: request()->getSchemeAndHttpHost();
+            // Always use the current request URL for webhook registration.
+            // GitHub App webhooks must point to the exact environment (dev/staging/prod)
+            // where the app was created, not the canonical FQDN from InstanceSettings.
+            $webhookBase = request()->getSchemeAndHttpHost();
 
             return Inertia::render('Sources/GitHub/Create', [
-                'webhookUrl' => $fqdn.'/webhooks/source/github/events',
+                'webhookUrl' => $webhookBase.'/webhooks/source/github/events',
             ]);
         })->name('sources.github.create');
 

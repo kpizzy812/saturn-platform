@@ -63,9 +63,16 @@ class GitAnalyzerController extends Controller
             $tempPath = $this->cloneRepository($validated);
             $result = $this->analyzer->analyze($tempPath);
 
+            // Fix temp-dir app names with actual repository name
+            $repoName = $this->extractRepoName($validated['git_repository']);
+            $result = $this->fixTempDirAppNames($result, $repoName);
+
             return response()->json([
                 'success' => true,
-                'data' => $result->toArray(),
+                'data' => array_merge($result->toArray(), [
+                    'repository_name' => $repoName,
+                    'git_branch' => $validated['git_branch'] ?? 'main',
+                ]),
             ]);
         } catch (RepositoryAnalysisException $e) {
             return response()->json([
@@ -116,12 +123,24 @@ class GitAnalyzerController extends Controller
             default => null,
         };
 
+        // Resolve source_id from github_app_id when not explicitly provided
+        $sourceId = $validated['source_id'] ?? null;
+        if (! $sourceId && ! empty($validated['github_app_id'])) {
+            $sourceId = $validated['github_app_id'];
+            $sourceType = $sourceType ?? GithubApp::class;
+        }
+
         $tempPath = null;
 
         try {
             $tempPath = $this->cloneRepository($validated);
 
             $analysis = $this->analyzer->analyze($tempPath);
+
+            // Fix temp-dir names before filtering (frontend sends fixed names)
+            $repoName = $this->extractRepoName($validated['git_repository']);
+            $analysis = $this->fixTempDirAppNames($analysis, $repoName);
+
             $analysis = $this->filterAnalysis($analysis, $validated);
 
             // Build per-app overrides from user input
@@ -129,8 +148,18 @@ class GitAnalyzerController extends Controller
                 ->keyBy('name')
                 ->map(fn ($a) => array_filter([
                     'base_directory' => $a['base_directory'] ?? null,
+                    'application_type' => $a['application_type'] ?? null,
                     'env_vars' => $a['env_vars'] ?? null,
                 ]))
+                ->toArray();
+
+            // Build per-database overrides (custom env var names)
+            $dbOverrides = collect($validated['databases'] ?? [])
+                ->keyBy('type')
+                ->map(fn ($d) => array_filter([
+                    'inject_as' => $d['inject_as'] ?? null,
+                ]))
+                ->filter(fn ($d) => ! empty($d))
                 ->toArray();
 
             $result = $this->provisioner->provision(
@@ -141,10 +170,11 @@ class GitAnalyzerController extends Controller
                     'git_repository' => $validated['git_repository'],
                     'git_branch' => $validated['git_branch'] ?? 'main',
                     'private_key_id' => $validated['private_key_id'] ?? null,
-                    'source_id' => $validated['source_id'] ?? null,
+                    'source_id' => $sourceId,
                     'source_type' => $sourceType,
                 ],
                 appOverrides: $appOverrides,
+                dbOverrides: $dbOverrides,
             );
 
             // Queue deployments
@@ -206,6 +236,91 @@ class GitAnalyzerController extends Controller
                 $this->cleanupTempDirectory($tempPath);
             }
         }
+    }
+
+    /**
+     * Extract human-readable repository name from git URL
+     *
+     * https://github.com/owner/repo.git → repo
+     * git@github.com:owner/repo.git → repo
+     */
+    private function extractRepoName(string $gitRepository): string
+    {
+        $repo = preg_replace('/\.git$/', '', $gitRepository);
+        $repo = basename($repo);
+
+        return $repo ?: 'app';
+    }
+
+    /**
+     * Replace temp-directory app names with the actual repository name
+     *
+     * When cloning to /tmp/saturn-repo-UUID, AppDetector::inferAppName()
+     * produces UUID-based names for root-level apps. This replaces them.
+     */
+    private function fixTempDirAppNames(AnalysisResult $result, string $repoName): AnalysisResult
+    {
+        $fixedApps = [];
+        $nameMap = []; // old name → new name (for fixing consumers in databases)
+
+        foreach ($result->applications as $app) {
+            if (str_starts_with($app->name, 'saturn-repo-')) {
+                $nameMap[$app->name] = $repoName;
+                $fixedApps[] = $app->withName($repoName);
+            } else {
+                $fixedApps[] = $app;
+            }
+        }
+
+        // Also fix database consumer names
+        $fixedDatabases = [];
+        foreach ($result->databases as $db) {
+            $fixedConsumers = array_map(
+                fn ($c) => $nameMap[$c] ?? $c,
+                $db->consumers
+            );
+            if ($fixedConsumers !== $db->consumers) {
+                $fixedDatabases[] = new \App\Services\RepositoryAnalyzer\DTOs\DetectedDatabase(
+                    type: $db->type,
+                    name: $db->name,
+                    envVarName: $db->envVarName,
+                    consumers: $fixedConsumers,
+                    detectedVia: $db->detectedVia,
+                    port: $db->port,
+                );
+            } else {
+                $fixedDatabases[] = $db;
+            }
+        }
+
+        // Fix env variable forApp references
+        $fixedEnvVars = [];
+        foreach ($result->envVariables as $env) {
+            if (isset($nameMap[$env->forApp])) {
+                $fixedEnvVars[] = new \App\Services\RepositoryAnalyzer\DTOs\DetectedEnvVariable(
+                    key: $env->key,
+                    defaultValue: $env->defaultValue,
+                    isRequired: $env->isRequired,
+                    category: $env->category,
+                    forApp: $nameMap[$env->forApp],
+                    comment: $env->comment,
+                );
+            } else {
+                $fixedEnvVars[] = $env;
+            }
+        }
+
+        return new AnalysisResult(
+            monorepo: $result->monorepo,
+            applications: $fixedApps,
+            databases: $fixedDatabases,
+            services: $result->services,
+            envVariables: $fixedEnvVars,
+            appDependencies: $result->appDependencies,
+            dockerComposeServices: $result->dockerComposeServices,
+            ciConfig: $result->ciConfig,
+            persistentVolumes: $result->persistentVolumes,
+        );
     }
 
     /**

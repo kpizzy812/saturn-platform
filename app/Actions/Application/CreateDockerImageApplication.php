@@ -42,7 +42,13 @@ class CreateDockerImageApplication
             'docker_registry_image_name' => 'string|required',
             'docker_registry_image_tag' => 'string',
             'ports_exposes' => 'string|regex:/^(\d+)(,\d+)*$/|required',
+            'application_type' => 'string|in:web,worker,both',
         ];
+
+        // Workers don't need ports
+        if ($request->application_type === 'worker') {
+            $validationRules['ports_exposes'] = 'string|regex:/^(\d+)(,\d+)*$/|nullable';
+        }
         $validationRules = array_merge(sharedDataApplications(), $validationRules);
         $validator = customApiValidator($request->all(), $validationRules);
 
