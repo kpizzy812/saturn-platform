@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
 use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Models\OauthSetting;
+use App\Models\TeamInvitation;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -46,9 +47,24 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::registerView(function () {
             $isFirstUser = User::count() === 0;
-
             $settings = instanceSettings();
-            if (! $settings->is_registration_enabled) {
+            $inviteData = null;
+
+            // Allow registration via root team invitation even if registration is disabled
+            $inviteUuid = request()->query('invite');
+            if ($inviteUuid) {
+                $invitation = TeamInvitation::where('uuid', $inviteUuid)->first();
+                if ($invitation && $invitation->isValid() && $invitation->team_id === 0) {
+                    $inviteData = [
+                        'uuid' => $invitation->uuid,
+                        'email' => $invitation->email,
+                        'team_name' => $invitation->team->name,
+                        'role' => ucfirst($invitation->role ?? 'member'),
+                    ];
+                }
+            }
+
+            if (! $settings->is_registration_enabled && ! $inviteData) {
                 return redirect()->route('login');
             }
 
@@ -58,6 +74,7 @@ class FortifyServiceProvider extends ServiceProvider
             return Inertia::render('Auth/Register', [
                 'isFirstUser' => $isFirstUser,
                 'enabled_oauth_providers' => $enabled_oauth_providers,
+                'invitation' => $inviteData,
             ]);
         });
 
