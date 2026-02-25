@@ -30,7 +30,6 @@ class AddCspHeadersTest extends TestCase
 
         $csp = $response->headers->get('Content-Security-Policy');
         $this->assertStringContainsString("default-src 'self'", $csp);
-        $this->assertStringContainsString('nonce-', $csp);
         $this->assertStringContainsString("style-src 'self' 'unsafe-inline'", $csp);
     }
 
@@ -77,8 +76,10 @@ class AddCspHeadersTest extends TestCase
         $this->assertFalse($response->headers->has('Content-Security-Policy'));
     }
 
-    public function test_nonce_is_unique_per_request(): void
+    public function test_nonce_is_unique_per_request_in_production(): void
     {
+        app()->detectEnvironment(fn () => 'production');
+
         $nonces = [];
         for ($i = 0; $i < 3; $i++) {
             // Reset Vite nonce for each simulated request
@@ -96,6 +97,22 @@ class AddCspHeadersTest extends TestCase
 
         // All nonces should be different
         $this->assertCount(3, array_unique($nonces));
+    }
+
+    public function test_non_production_does_not_include_nonce(): void
+    {
+        app()->detectEnvironment(fn () => 'local');
+
+        $request = Request::create('/');
+
+        $response = $this->middleware->handle($request, function () {
+            return new Response('<html></html>', 200, ['Content-Type' => 'text/html']);
+        });
+
+        $csp = $response->headers->get('Content-Security-Policy');
+
+        // Non-production should NOT include nonce (CSP Level 3: nonce causes browsers to ignore unsafe-inline)
+        $this->assertStringNotContainsString('nonce-', $csp);
     }
 
     public function test_csp_includes_required_directives(): void

@@ -33,12 +33,14 @@ class AddCspHeaders
 
     private function buildCspPolicy(string $nonce): string
     {
-        // In non-production environments, allow unsafe-inline for Debugbar and legacy Blade/Livewire scripts
+        // In non-production environments, use unsafe-inline WITHOUT nonce.
+        // CSP Level 3: when a nonce is present, browsers IGNORE 'unsafe-inline',
+        // which breaks legacy Blade inline scripts that don't have nonce attributes.
         $isProduction = app()->environment('production');
 
         $scriptSrc = $isProduction
             ? "script-src 'self' 'nonce-{$nonce}' 'strict-dynamic'"
-            : "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' 'unsafe-eval'";
+            : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
         return implode('; ', [
             "default-src 'self'",

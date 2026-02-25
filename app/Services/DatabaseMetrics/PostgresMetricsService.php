@@ -12,6 +12,22 @@ class PostgresMetricsService
     use FormatHelpers;
 
     /**
+     * Quote a table name for safe use in SQL, handling schema-qualified names.
+     * "public.system_config" → "public"."system_config"
+     * "my_table" → "my_table"
+     */
+    private function quoteTableName(string $tableName): string
+    {
+        if (str_contains($tableName, '.')) {
+            $parts = explode('.', $tableName, 2);
+
+            return '"'.str_replace('"', '""', $parts[0]).'"."'.str_replace('"', '""', $parts[1]).'"';
+        }
+
+        return '"'.str_replace('"', '""', $tableName).'"';
+    }
+
+    /**
      * Collect PostgreSQL metrics via SSH.
      */
     public function collectMetrics(mixed $server, mixed $database): array
@@ -461,7 +477,7 @@ class PostgresMetricsService
             return ['rows' => [], 'total' => 0, 'columns' => $columns];
         }
 
-        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
+        $safeTableName = $this->quoteTableName($tableName);
 
         // Get total count
         $countQuery = "SELECT COUNT(*) FROM {$safeTableName} {$whereClause}";
@@ -510,7 +526,7 @@ class PostgresMetricsService
         $containerName = escapeshellarg($database->uuid);
         $user = escapeshellarg($database->postgres_user ?? 'postgres');
         $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
-        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
+        $safeTableName = $this->quoteTableName($tableName);
 
         // Build SET clause — validate column names to prevent SQL injection
         $setClauses = [];
@@ -553,7 +569,7 @@ class PostgresMetricsService
         $containerName = escapeshellarg($database->uuid);
         $user = escapeshellarg($database->postgres_user ?? 'postgres');
         $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
-        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
+        $safeTableName = $this->quoteTableName($tableName);
 
         // Build WHERE clause — validate column names to prevent SQL injection
         $whereClauses = [];
@@ -583,7 +599,7 @@ class PostgresMetricsService
         $containerName = escapeshellarg($database->uuid);
         $user = escapeshellarg($database->postgres_user ?? 'postgres');
         $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
-        $safeTableName = '"'.str_replace('"', '""', $tableName).'"';
+        $safeTableName = $this->quoteTableName($tableName);
 
         // Build columns and values — validate column names to prevent SQL injection
         $safeColumns = [];
