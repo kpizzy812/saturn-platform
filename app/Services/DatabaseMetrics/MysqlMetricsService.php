@@ -12,6 +12,14 @@ class MysqlMetricsService
     use FormatHelpers;
 
     /**
+     * Validate and return safe ORDER BY direction (ASC or DESC only).
+     */
+    private function safeOrderDir(string $dir): string
+    {
+        return InputValidator::safeOrderDirection($dir);
+    }
+
+    /**
      * Collect MySQL/MariaDB metrics via SSH.
      */
     public function collectMetrics(mixed $server, mixed $database): array
@@ -380,8 +388,8 @@ class MysqlMetricsService
         $columns = $this->getColumns($server, $database, $tableName);
         $columnNames = array_map(fn ($c) => $c['name'], $columns);
 
-        // Validate and escape table name to prevent SQL injection
-        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_.\-]{0,127}$/', $tableName)) {
+        // Validate table name to prevent SQL injection
+        if (! InputValidator::isValidTableName($tableName)) {
             return ['rows' => [], 'total' => 0, 'columns' => $columns];
         }
         $escapedTableName = str_replace('`', '``', $tableName);
@@ -391,8 +399,8 @@ class MysqlMetricsService
 
         // Add search condition if provided (sanitized to prevent SQL injection)
         if ($search !== '') {
-            $escapedSearch = str_replace(["'", '"', '\\', ';', '--'], '', $search);
-            $safeColumns = array_filter($columnNames, fn ($col) => preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $col));
+            $escapedSearch = InputValidator::sanitizeSearch($search);
+            $safeColumns = array_filter($columnNames, fn ($col) => InputValidator::isValidColumnName($col));
             $searchConditions = array_map(fn ($col) => "LOWER(CAST(`{$col}` AS CHAR)) LIKE LOWER('%{$escapedSearch}%')", $safeColumns);
             if (! empty($searchConditions)) {
                 $whereConditions[] = '('.implode(' OR ', $searchConditions).')';
@@ -403,20 +411,21 @@ class MysqlMetricsService
 
         $whereClause = count($whereConditions) > 0 ? 'WHERE '.implode(' AND ', $whereConditions) : '';
 
-        // Build ORDER BY clause
+        // Build ORDER BY clause — validate direction against whitelist
         $orderClause = '';
         if ($orderBy !== '' && in_array($orderBy, $columnNames)) {
-            $orderClause = "ORDER BY `{$orderBy}` {$orderDir}";
+            $safeDir = $this->safeOrderDir($orderDir);
+            $orderClause = "ORDER BY `{$orderBy}` {$safeDir}";
         }
 
-        // Get total count
+        // Get total count — use escapeshellarg to prevent shell injection
         $countQuery = "SELECT COUNT(*) FROM `{$escapedTableName}` {$whereClause}";
-        $countCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e \"{$countQuery}\" 2>/dev/null || echo '0'";
+        $countCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e ".escapeshellarg($countQuery)." 2>/dev/null || echo '0'";
         $total = (int) trim(instant_remote_process([$countCommand], $server, false) ?? '0');
 
-        // Get data
+        // Get data — use escapeshellarg to prevent shell injection
         $dataQuery = "SELECT * FROM `{$escapedTableName}` {$whereClause} {$orderClause} LIMIT {$perPage} OFFSET {$offset}";
-        $dataCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e \"{$dataQuery}\" 2>/dev/null | awk -F'\\t' 'BEGIN{OFS=\"|\"} {for(i=1;i<=NF;i++) printf \"%s%s\", \$i, (i==NF?\"\\n\":OFS)}' || echo ''";
+        $dataCommand = "docker exec {$containerName} mysql -u root -p{$password} -D {$dbName} -N -e ".escapeshellarg($dataQuery)." 2>/dev/null | awk -F'\\t' 'BEGIN{OFS=\"|\"} {for(i=1;i<=NF;i++) printf \"%s%s\", \$i, (i==NF?\"\\n\":OFS)}' || echo ''";
         $result = trim(instant_remote_process([$dataCommand], $server, false) ?? '');
 
         $rows = [];
@@ -441,11 +450,11 @@ class MysqlMetricsService
     }
 
     /**
-     * Validate column name against injection: only alphanumeric and underscore allowed.
+     * Validate column name against injection using centralized validator.
      */
     private function isValidColumnName(string $column): bool
     {
-        return (bool) preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column);
+        return InputValidator::isValidColumnName($column);
     }
 
     /**
