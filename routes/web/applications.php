@@ -1127,18 +1127,18 @@ Route::get('/applications/{uuid}/deployments/{deploymentUuid}', function (string
     $project = $application->environment->project;
     $environment = $application->environment;
 
-    // Parse logs from JSON
+    // Parse logs from JSON — include hidden logs with a flag for debug toggle
     $logs = [];
     if ($deployment->logs) {
         $rawLogs = json_decode($deployment->logs, true);
         if (is_array($rawLogs)) {
             $logs = collect($rawLogs)
-                ->filter(fn ($log) => ! ($log['hidden'] ?? false))
                 ->map(fn ($log) => [
                     'output' => $log['output'] ?? '',
                     'type' => $log['type'] ?? 'stdout',
                     'timestamp' => $log['timestamp'] ?? null,
                     'order' => $log['order'] ?? 0,
+                    'hidden' => (bool) ($log['hidden'] ?? false),
                 ])
                 ->sortBy('order')
                 ->values()
