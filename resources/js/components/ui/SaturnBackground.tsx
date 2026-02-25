@@ -17,15 +17,15 @@ export function SaturnBackground({ variant = 'subtle' }: SaturnBackgroundProps) 
             <div
                 className="saturn-stars absolute inset-0 hidden dark:block"
                 style={{
-                    maskImage: 'radial-gradient(ellipse 60% 60% at 85% 85%, transparent 20%, black 60%)',
-                    WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 85% 85%, transparent 20%, black 60%)',
+                    maskImage: 'radial-gradient(ellipse 70% 70% at 82% 82%, transparent 25%, black 65%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse 70% 70% at 82% 82%, transparent 25%, black 65%)',
                 }}
             />
             <div
                 className="saturn-stars-sm absolute inset-0 hidden dark:block"
                 style={{
-                    maskImage: 'radial-gradient(ellipse 60% 60% at 85% 85%, transparent 20%, black 60%)',
-                    WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 85% 85%, transparent 20%, black 60%)',
+                    maskImage: 'radial-gradient(ellipse 70% 70% at 82% 82%, transparent 25%, black 65%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse 70% 70% at 82% 82%, transparent 25%, black 65%)',
                 }}
             />
 
