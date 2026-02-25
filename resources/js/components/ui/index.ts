@@ -7,6 +7,7 @@ export { Badge, StatusBadge } from './Badge';
 export { Spinner } from './Spinner';
 export { Select } from './Select';
 export { Checkbox } from './Checkbox';
+export { Switch } from './Switch';
 export { Modal, ModalFooter } from './Modal';
 export { ConfirmationModal, ConfirmationProvider, useConfirmation, useConfirm } from './ConfirmationModal';
 export {

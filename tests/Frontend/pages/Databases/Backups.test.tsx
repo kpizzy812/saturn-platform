@@ -78,14 +78,14 @@ describe('Database Backups Page', () => {
             render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
             expect(screen.getByText('Automatic Backups')).toBeInTheDocument();
-            expect(screen.getByText('Schedule automatic backups to run periodically')).toBeInTheDocument();
+            expect(screen.getByText('Enable to schedule periodic backups')).toBeInTheDocument();
         });
 
         it('should show frequency options when auto backup is enabled', async () => {
             const { user } = render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
-            const checkbox = screen.getByRole('checkbox');
-            await user.click(checkbox);
+            const toggle = screen.getByRole('switch');
+            await user.click(toggle);
 
             expect(screen.getByText('Backup Frequency')).toBeInTheDocument();
             expect(screen.getByText('Hourly')).toBeInTheDocument();
@@ -96,8 +96,8 @@ describe('Database Backups Page', () => {
         it('should show save button when changes are made', async () => {
             const { user } = render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
-            const checkbox = screen.getByRole('checkbox');
-            await user.click(checkbox);
+            const toggle = screen.getByRole('switch');
+            await user.click(toggle);
 
             await waitFor(() => {
                 expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
@@ -189,8 +189,8 @@ describe('Database Backups Page', () => {
                 />
             );
 
-            const checkbox = screen.getByRole('checkbox');
-            expect(checkbox).toBeChecked();
+            const toggle = screen.getByRole('switch');
+            expect(toggle).toHaveAttribute('aria-checked', 'true');
         });
 
         it('should show backup frequency for scheduled backup', () => {
@@ -202,7 +202,7 @@ describe('Database Backups Page', () => {
                 />
             );
 
-            expect(screen.getByText(/Backup runs daily/)).toBeInTheDocument();
+            expect(screen.getByText(/Scheduled to run daily/)).toBeInTheDocument();
         });
     });
 
@@ -211,8 +211,8 @@ describe('Database Backups Page', () => {
             const { user } = render(<DatabaseBackups database={mockDatabase} backups={mockBackups} />);
 
             // Enable auto backup
-            const checkbox = screen.getByRole('checkbox');
-            await user.click(checkbox);
+            const toggle = screen.getByRole('switch');
+            await user.click(toggle);
 
             // Click save
             const saveButton = await screen.findByRole('button', { name: /save schedule/i });

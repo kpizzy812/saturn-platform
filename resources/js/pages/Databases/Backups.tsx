@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Checkbox, useConfirm } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Switch, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
 import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, Save, Loader2, Play } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
@@ -209,20 +209,27 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
             <Card className="mb-6">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h3 className="font-medium text-foreground">Automatic Backups</h3>
-                            <p className="mt-1 text-sm text-foreground-muted">
-                                Schedule automatic backups to run periodically
-                            </p>
+                        <div className="flex items-center gap-3">
+                            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${autoBackupEnabled ? 'bg-primary/15' : 'bg-background-tertiary'} transition-colors`}>
+                                <Clock className={`h-5 w-5 ${autoBackupEnabled ? 'text-primary' : 'text-foreground-muted'} transition-colors`} />
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-foreground">Automatic Backups</h3>
+                                <p className="mt-0.5 text-sm text-foreground-muted">
+                                    {autoBackupEnabled
+                                        ? `Scheduled to run ${backupFrequency}`
+                                        : 'Enable to schedule periodic backups'}
+                                </p>
+                            </div>
                         </div>
-                        <Checkbox
+                        <Switch
                             checked={autoBackupEnabled}
-                            onChange={(e) => setAutoBackupEnabled(e.target.checked)}
+                            onChange={setAutoBackupEnabled}
                         />
                     </div>
 
                     {autoBackupEnabled && (
-                        <div className="mt-4 space-y-3">
+                        <div className="mt-4 space-y-3 border-t border-border pt-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
                                     Backup Frequency
@@ -232,7 +239,7 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                                         <button
                                             key={freq}
                                             onClick={() => setBackupFrequency(freq)}
-                                            className={`rounded-md border px-4 py-2 text-sm transition-colors ${
+                                            className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
                                                 backupFrequency === freq
                                                     ? 'border-primary bg-primary/10 text-primary'
                                                     : 'border-border bg-background-secondary text-foreground-muted hover:bg-background-tertiary'
@@ -242,15 +249,6 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                                         </button>
                                     ))}
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background-secondary p-3">
-                                <Clock className="h-4 w-4 text-foreground-muted" />
-                                <span className="text-sm text-foreground-muted">
-                                    {initialScheduledBackup
-                                        ? `Backup runs ${backupFrequency}`
-                                        : 'Save to schedule backups'}
-                                </span>
                             </div>
                         </div>
                     )}
