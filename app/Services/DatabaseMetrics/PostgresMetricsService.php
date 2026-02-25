@@ -107,7 +107,7 @@ class PostgresMetricsService
                 if (count($parts) >= 3 && ! empty($parts[0])) {
                     $extensions[] = [
                         'name' => $parts[0],
-                        'version' => $parts[1] ?? 'N/A',
+                        'version' => $parts[1],
                         'enabled' => true,
                         'description' => $parts[3] ?? '',
                     ];
@@ -126,7 +126,7 @@ class PostgresMetricsService
                 if (count($parts) >= 2 && ! empty($parts[0])) {
                     $extensions[] = [
                         'name' => $parts[0],
-                        'version' => $parts[1] ?? 'N/A',
+                        'version' => $parts[1],
                         'enabled' => false,
                         'description' => $parts[2] ?? '',
                     ];
@@ -187,7 +187,7 @@ class PostgresMetricsService
                 if (count($parts) >= 2 && ! empty($parts[0])) {
                     $users[] = [
                         'name' => $parts[0],
-                        'role' => $parts[1] ?? 'Standard',
+                        'role' => $parts[1],
                         'connections' => (int) ($parts[2] ?? 0),
                     ];
                 }
@@ -314,10 +314,10 @@ class PostgresMetricsService
                     $connections[] = [
                         'id' => $id++,
                         'pid' => (int) $parts[0],
-                        'user' => $parts[1] ?? '',
-                        'database' => $parts[2] ?? '',
-                        'state' => $parts[3] ?? 'idle',
-                        'query' => $parts[4] ?? '<IDLE>',
+                        'user' => $parts[1],
+                        'database' => $parts[2],
+                        'state' => $parts[3],
+                        'query' => $parts[4],
                         'duration' => $duration < 60 ? round($duration, 3).'s' : round($duration / 60, 1).'m',
                         'clientAddr' => $parts[6] ?? 'local',
                     ];
@@ -392,8 +392,8 @@ class PostgresMetricsService
                 if (count($parts) >= 3 && ! empty($parts[0])) {
                     $tables[] = [
                         'name' => $parts[0],
-                        'rows' => (int) ($parts[1] ?? 0),
-                        'size' => $parts[2] ?? '0 bytes',
+                        'rows' => (int) $parts[1],
+                        'size' => $parts[2],
                     ];
                 }
             }

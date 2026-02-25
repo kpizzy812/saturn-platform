@@ -205,7 +205,7 @@ class Environment extends BaseModel
      */
     public function isDevelopment(): bool
     {
-        return $this->type === 'development' || $this->type === null;
+        return $this->type === 'development' || $this->type === null; // @phpstan-ignore identical.alwaysFalse
     }
 
     /**

@@ -329,8 +329,8 @@ class MysqlMetricsService
                 if (count($parts) >= 3 && ! empty($parts[0])) {
                     $tables[] = [
                         'name' => $parts[0],
-                        'rows' => (int) ($parts[1] ?? 0),
-                        'size' => $parts[2] ?? '0 KB',
+                        'rows' => (int) $parts[1],
+                        'size' => $parts[2],
                     ];
                 }
             }
