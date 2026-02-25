@@ -32,8 +32,38 @@ class AddCspHeadersTest extends TestCase
         $this->assertStringContainsString("default-src 'self'", $csp);
         $this->assertStringContainsString('nonce-', $csp);
         $this->assertStringContainsString("style-src 'self' 'unsafe-inline'", $csp);
+    }
+
+    public function test_production_uses_strict_dynamic(): void
+    {
+        app()->detectEnvironment(fn () => 'production');
+
+        $request = Request::create('/dashboard');
+
+        $response = $this->middleware->handle($request, function () {
+            return new Response('<html></html>', 200, ['Content-Type' => 'text/html']);
+        });
+
+        $csp = $response->headers->get('Content-Security-Policy');
         $this->assertStringContainsString("'strict-dynamic'", $csp);
         $this->assertStringNotContainsString('unsafe-eval', $csp);
+        $this->assertStringNotContainsString('unsafe-inline', explode(';', explode('script-src', $csp)[1])[0]);
+    }
+
+    public function test_non_production_allows_unsafe_inline(): void
+    {
+        app()->detectEnvironment(fn () => 'local');
+
+        $request = Request::create('/dashboard');
+
+        $response = $this->middleware->handle($request, function () {
+            return new Response('<html></html>', 200, ['Content-Type' => 'text/html']);
+        });
+
+        $csp = $response->headers->get('Content-Security-Policy');
+        $this->assertStringContainsString("'unsafe-inline'", $csp);
+        $this->assertStringContainsString("'unsafe-eval'", $csp);
+        $this->assertStringNotContainsString("'strict-dynamic'", $csp);
     }
 
     public function test_does_not_add_csp_to_json_responses(): void

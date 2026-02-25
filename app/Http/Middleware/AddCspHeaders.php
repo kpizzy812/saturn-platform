@@ -33,9 +33,16 @@ class AddCspHeaders
 
     private function buildCspPolicy(string $nonce): string
     {
+        // In non-production environments, allow unsafe-inline for Debugbar and legacy Blade/Livewire scripts
+        $isProduction = app()->environment('production');
+
+        $scriptSrc = $isProduction
+            ? "script-src 'self' 'nonce-{$nonce}' 'strict-dynamic'"
+            : "script-src 'self' 'nonce-{$nonce}' 'unsafe-inline' 'unsafe-eval'";
+
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'nonce-{$nonce}' 'strict-dynamic'",
+            $scriptSrc,
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
             "img-src 'self' data: https:",
             "connect-src 'self' wss: ws:",
