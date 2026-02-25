@@ -50,11 +50,11 @@ class FortifyServiceProvider extends ServiceProvider
             $settings = instanceSettings();
             $inviteData = null;
 
-            // Allow registration via root team invitation even if registration is disabled
+            // Allow registration via any valid team invitation even if registration is disabled
             $inviteUuid = request()->query('invite');
             if ($inviteUuid) {
                 $invitation = TeamInvitation::where('uuid', $inviteUuid)->first();
-                if ($invitation && $invitation->isValid() && $invitation->team_id === 0) {
+                if ($invitation && $invitation->isValid()) {
                     $inviteData = [
                         'uuid' => $invitation->uuid,
                         'email' => $invitation->email,

@@ -21,8 +21,8 @@ class CreateNewUser implements CreatesNewUsers
     {
         $settings = instanceSettings();
 
-        // Check for valid root team invitation to bypass registration lock
-        $invitation = $this->resolveRootTeamInvitation($input);
+        // Check for valid team invitation to bypass registration lock
+        $invitation = $this->resolveInvitation($input);
 
         if (! $settings->is_registration_enabled && ! $invitation) {
             abort(403);
@@ -75,10 +75,9 @@ class CreateNewUser implements CreatesNewUsers
                 $user->markEmailAsVerified();
             }
 
-            // Auto-accept root team invitation after registration
+            // Auto-accept team invitation after registration
             if ($invitation) {
                 $this->acceptInvitation($user, $invitation);
-                $team = $invitation->team;
             }
         }
         // Set session variable
@@ -88,9 +87,9 @@ class CreateNewUser implements CreatesNewUsers
     }
 
     /**
-     * Resolve a valid root team invitation from input.
+     * Resolve a valid team invitation from input.
      */
-    private function resolveRootTeamInvitation(array $input): ?TeamInvitation
+    private function resolveInvitation(array $input): ?TeamInvitation
     {
         $inviteUuid = $input['invite'] ?? null;
         if (! $inviteUuid) {
@@ -98,7 +97,7 @@ class CreateNewUser implements CreatesNewUsers
         }
 
         $invitation = TeamInvitation::where('uuid', $inviteUuid)->first();
-        if (! $invitation || ! $invitation->isValid() || $invitation->team_id !== 0) {
+        if (! $invitation || ! $invitation->isValid()) {
             return null;
         }
 
