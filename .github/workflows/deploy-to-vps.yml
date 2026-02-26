@@ -307,7 +307,7 @@ jobs:
               _APP_ENV=staging
               _APP_DEBUG=false
               _LOG_LEVEL=info
-              _LOG_CHANNEL=stack
+              _LOG_CHANNEL=production-stack
               _PHP_MEM=512M
               _PHP_FPM_START=2
               _PHP_FPM_MIN=1
@@ -325,7 +325,7 @@ jobs:
               _APP_ENV=production
               _APP_DEBUG=false
               _LOG_LEVEL=info
-              _LOG_CHANNEL=production
+              _LOG_CHANNEL=production-stack
               _PHP_MEM=1G
               _PHP_FPM_START=4
               _PHP_FPM_MIN=2
