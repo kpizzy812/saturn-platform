@@ -42,9 +42,31 @@ http:
             depth: 1
 
   # ===========================================================================
-  # Development — dev.saturn.ac → saturn-dev
+  # Monitoring — status.saturn.ac → saturn-uptime (Uptime Kuma)
   # ===========================================================================
   routers:
+    monitoring-http:
+      middlewares:
+        - redirect-to-https
+      entryPoints:
+        - http
+      service: uptime-kuma
+      rule: Host(`status.saturn.ac`)
+
+    monitoring-https:
+      entryPoints:
+        - https
+      service: uptime-kuma
+      rule: Host(`status.saturn.ac`)
+      middlewares:
+        - security-headers
+        - gzip
+      tls:
+        certresolver: letsencrypt
+
+  # ===========================================================================
+  # Development — dev.saturn.ac → saturn-dev
+  # ===========================================================================
     # HTTP → HTTPS redirect
     dev-http:
       middlewares:
@@ -168,6 +190,12 @@ http:
   # Services
   # ===========================================================================
   services:
+    # Monitoring (Gatus)
+    uptime-kuma:
+      loadBalancer:
+        servers:
+          - url: 'http://saturn-gatus:8080'
+
     # Dev
     dev-app:
       loadBalancer:

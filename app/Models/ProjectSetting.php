@@ -7,6 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
+/**
+ * @property int|null $default_server_id
+ * @property int $max_applications
+ * @property int $max_services
+ * @property int $max_databases
+ * @property int $max_environments
+ */
 class ProjectSetting extends Model
 {
     use Auditable, LogsActivity;

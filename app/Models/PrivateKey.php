@@ -31,6 +31,11 @@ use Spatie\Activitylog\Traits\LogsActivity;
         new OA\Property(property: 'updated_at', type: 'string'),
     ],
 )]
+/**
+ * @property string $private_key
+ * @property string|null $name
+ * @property int|null $team_id
+ */
 class PrivateKey extends BaseModel
 {
     use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity, WithRateLimiting;

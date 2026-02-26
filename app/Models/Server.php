@@ -94,6 +94,14 @@ use Visus\Cuid2\Cuid2;
  *
  * @see \App\Jobs\CheckTraefikVersionForServerJob Where traefik_outdated_info is populated
  * @see \App\Livewire\Server\Proxy Where traefik_outdated_info is read and displayed
+
+ *
+ * @property string|null $hetzner_server_id
+ * @property string|null $cloud_provider_token_id
+ * @property string|null $hetzner_server_status
+ * @property string|null $sentinel_updated_at
+ * @property bool $unreachable_notification_sent
+ * @property int|null $unreachable_count
  */
 class Server extends BaseModel
 {

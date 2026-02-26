@@ -38,6 +38,10 @@ use Visus\Cuid2\Cuid2;
  * @property-read ProjectSetting|null $settings
  * @property-read Team|null $team
  * @property-read \Illuminate\Database\Eloquent\Collection<int, SharedEnvironmentVariable> $environment_variables
+
+ * @property string|null $description
+ * @property int|null $team_id
+ * @property string|null $name
  */
 class Project extends BaseModel
 {

@@ -65,6 +65,29 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  * @property-read Server $server
+
+ * @property bool $is_cloudflare_tunnel
+ * @property bool $is_logdrain_newrelic_enabled
+ * @property bool $is_logdrain_highlight_enabled
+ * @property bool $is_logdrain_axiom_enabled
+ * @property bool $is_logdrain_custom_enabled
+ * @property string|null $logdrain_custom_config
+ * @property string|null $logdrain_custom_config_parser
+ * @property string|null $logdrain_newrelic_license_key
+ * @property string|null $logdrain_newrelic_base_uri
+ * @property int|null $logdrain_highlight_project_id
+ * @property string|null $logdrain_axiom_dataset_name
+ * @property string|null $logdrain_axiom_api_key
+ * @property bool $is_sentinel_enabled
+ * @property int|null $dynamic_timeout
+ * @property bool $force_docker_cleanup
+ * @property int $docker_cleanup_threshold
+ * @property string|null $server_timezone
+ * @property string $sentinel_token
+ * @property int|null $sentinel_push_interval_seconds
+ * @property bool $is_metrics_enabled
+ * @property string|null $sentinel_custom_url
+ * @property bool $generate_exact_labels
  */
 class ServerSetting extends Model
 {

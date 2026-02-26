@@ -64,6 +64,10 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property \Carbon\Carbon $updated_at
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Team> $teams
  * @property-read \App\Models\TeamUser|null $pivot
+
+ * @property string|null $two_factor_confirmed_at
+ * @property string|null $avatar
+ * @property string|null $two_factor_secret
  */
 class User extends Authenticatable implements SendsEmail
 {

@@ -127,9 +127,13 @@ validate_prerequisites() {
     mkdir -p "${SATURN_DATA}/services"
     mkdir -p "${SATURN_DATA}/backups"
     mkdir -p "${SATURN_DATA}/uploads"
+    mkdir -p "${SATURN_DATA}/logs"
 
     # Fix SSH directory ownership for www-data (uid 9999 inside container)
     fix_ssh_permissions
+
+    # Logs must be writable by www-data (uid 9999) inside the container
+    chown -R 9999:9999 "${SATURN_DATA}/logs"
 
     log_success "Prerequisites OK"
 }
@@ -198,13 +202,16 @@ stop_services() {
 }
 
 start_infrastructure() {
-    log_step "Starting infrastructure (postgres, pgbouncer, redis, soketi)..."
+    log_step "Starting postgres, redis, soketi (NOT pgbouncer yet)..."
 
-    # pgbouncer must be included: app uses DB_HOST=saturn-db which resolves to
-    # the pgbouncer alias. Without it, migrations fail with "could not translate host name".
-    compose_cmd up -d --wait postgres pgbouncer redis soketi
+    # Start postgres first and wait for it to be healthy.
+    # PgBouncer is started separately AFTER sync_db_password — this is critical:
+    # the postgres volume may retain a password from a previous initdb, while .env
+    # may have a different password. PgBouncer would fail auth if started before the
+    # password is synced. Correct order: postgres → sync password → pgbouncer.
+    compose_cmd up -d --wait postgres redis soketi
 
-    log_success "Infrastructure healthy"
+    log_success "Core infrastructure healthy"
 }
 
 sync_db_password() {
@@ -212,15 +219,59 @@ sync_db_password() {
 
     # PostgreSQL only sets POSTGRES_PASSWORD on first initdb.
     # If the .env password was changed, the DB volume still has the old one.
-    # This ensures they always match.
-    local db_password
+    # This ensures they always match BEFORE PgBouncer starts.
+    local db_user db_password db_name
+    db_user=$(grep '^DB_USERNAME=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
     db_password=$(grep '^DB_PASSWORD=' "${SATURN_DATA}/source/.env" | cut -d= -f2-)
+    db_name=$(grep '^DB_DATABASE=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
 
     if [[ -n "$db_password" ]]; then
-        docker exec "${CONTAINER_DB}" psql -U saturn -d saturn \
-            -c "ALTER USER saturn PASSWORD '${db_password}';" > /dev/null 2>&1 || true
+        docker exec "${CONTAINER_DB}" psql -U "${db_user}" -d "${db_name}" \
+            -c "ALTER USER \"${db_user}\" PASSWORD '${db_password}';" > /dev/null 2>&1 || true
         log_success "Database password synced"
     fi
+}
+
+wait_for_db() {
+    log_step "Waiting for PgBouncer backend pool to be ready..."
+
+    local retries=20
+    local pgbouncer_container="saturn-pgbouncer-${SATURN_ENV}"
+    local db_user db_password db_name
+
+    db_user=$(grep '^DB_USERNAME=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
+    db_password=$(grep '^DB_PASSWORD=' "${SATURN_DATA}/source/.env" | cut -d= -f2-)
+    db_name=$(grep '^DB_DATABASE=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
+
+    while [[ $retries -gt 0 ]]; do
+        # Run psql INSIDE pgbouncer container — tests actual backend connectivity.
+        # env sets PGPASSWORD at runtime (not via docker exec -e which Docker Compose
+        # might substitute from host env). Connects through PgBouncer → postgres.
+        if docker exec "$pgbouncer_container" \
+            env PGPASSWORD="$db_password" \
+            psql -h 127.0.0.1 -p 5432 -U "$db_user" -d "$db_name" \
+            -c 'SELECT 1' -q > /dev/null 2>&1; then
+            log_success "PgBouncer backend pool ready"
+            return 0
+        fi
+        log_info "Waiting for backend pool... ($retries retries left)"
+        sleep 2
+        ((retries--))
+    done
+
+    log_error "PgBouncer backend pool failed to initialize"
+    log_error "Diagnostics: docker logs $pgbouncer_container"
+    exit 1
+}
+
+start_pgbouncer() {
+    log_step "Starting PgBouncer (after password sync)..."
+
+    # PgBouncer starts here — AFTER postgres has the correct password from .env.
+    # First backend connection attempt will succeed → no server_login_retry quarantine.
+    compose_cmd up -d --wait pgbouncer
+
+    log_success "PgBouncer healthy"
 }
 
 run_migrations() {
@@ -490,8 +541,10 @@ deploy() {
     backup_database
     pull_images
     stop_services
-    start_infrastructure
-    sync_db_password
+    start_infrastructure   # postgres, redis, soketi
+    sync_db_password        # ensure postgres has the password from .env
+    start_pgbouncer         # now PgBouncer can connect to postgres successfully
+    wait_for_db             # block until PgBouncer backend pool is established
     run_migrations
     start_app
     run_seeders

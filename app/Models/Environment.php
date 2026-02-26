@@ -26,6 +26,12 @@ use Spatie\Activitylog\Traits\LogsActivity;
 )]
 /**
  * @property-read Project|null $project
+
+ * @property string|null $name
+ * @property int|null $project_id
+ * @property string|null $type
+ * @property bool $requires_approval
+ * @property int|null $default_server_id
  */
 class Environment extends BaseModel
 {

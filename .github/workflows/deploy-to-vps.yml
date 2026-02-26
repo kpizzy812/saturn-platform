@@ -38,6 +38,9 @@
 #   - BACKUP_S3_KEY       - S3 access key
 #   - BACKUP_S3_SECRET    - S3 secret key
 #   - BACKUP_S3_REGION    - S3 region (default: us-east-1)
+#   - MONITORING_TELEGRAM_TOKEN   - Telegram bot token for uptime alerts (from @BotFather)
+#   - MONITORING_TELEGRAM_CHAT_ID - Telegram chat/channel ID for uptime alerts
+#   - SENTRY_DSN          - Sentry DSN (leave empty to disable error tracking)
 # =============================================================================
 
 name: Deploy to VPS
@@ -253,6 +256,7 @@ jobs:
           rsync -avz -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no" \
             --include='docker-compose.env.yml' \
             --include='docker-compose.proxy.yml' \
+            --include='docker-compose.monitoring.yml' \
             --include='deploy/***' \
             --exclude='*' \
             ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/saturn/
@@ -307,7 +311,7 @@ jobs:
               _APP_ENV=staging
               _APP_DEBUG=false
               _LOG_LEVEL=info
-              _LOG_CHANNEL=stack
+              _LOG_CHANNEL=production-stack
               _PHP_MEM=512M
               _PHP_FPM_START=2
               _PHP_FPM_MIN=1
@@ -325,7 +329,7 @@ jobs:
               _APP_ENV=production
               _APP_DEBUG=false
               _LOG_LEVEL=info
-              _LOG_CHANNEL=production
+              _LOG_CHANNEL=production-stack
               _PHP_MEM=1G
               _PHP_FPM_START=4
               _PHP_FPM_MIN=2
@@ -469,6 +473,42 @@ jobs:
           # Logout from GHCR
           docker logout ghcr.io || true
           DEPLOY_SCRIPT
+
+      - name: Start monitoring stack
+        # Runs on every deploy — idempotent (docker compose up -d is safe to re-run)
+        env:
+          MONITORING_TELEGRAM_TOKEN: ${{ secrets.MONITORING_TELEGRAM_TOKEN }}
+          MONITORING_TELEGRAM_CHAT_ID: ${{ secrets.MONITORING_TELEGRAM_CHAT_ID }}
+        run: |
+          # Copy Gatus config to shared directory on VPS
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p /data/saturn/shared/gatus"
+
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
+            deploy/gatus/config.yaml \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/data/saturn/shared/gatus/config.yaml
+
+          # Start Gatus (idempotent — restarts container only if config changed)
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << MONITORING_SCRIPT
+          set -e
+          cd ~/saturn
+
+          # Write Telegram credentials to monitoring env file (not committed to git)
+          cat > /data/saturn/shared/gatus/.env << EOF
+          MONITORING_TELEGRAM_TOKEN=${MONITORING_TELEGRAM_TOKEN}
+          MONITORING_TELEGRAM_CHAT_ID=${MONITORING_TELEGRAM_CHAT_ID}
+          EOF
+
+          docker compose -f docker-compose.monitoring.yml \
+            --env-file /data/saturn/shared/gatus/.env \
+            up -d --pull always
+
+          # Update Traefik routing config
+          bash deploy/scripts/setup-proxy.sh
+          MONITORING_SCRIPT
+
+          echo "✓ Monitoring stack started at https://status.saturn.ac"
 
       - name: Clean up SSH key
         if: always()

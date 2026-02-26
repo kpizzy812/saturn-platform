@@ -9,6 +9,17 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property-read Team|null $team
+
+ * @property string|null $email
+ * @property string|null $invited_by
+ * @property array $allowed_projects
+ * @property int|null $permission_set_id
+ * @property array $custom_permissions
+ * @property int|null $team_id
+ * @property string|null $role
+ * @property \Carbon\Carbon|null $created_at
+ * @property string|null $link
+ * @property string|null $uuid
  */
 class TeamInvitation extends Model
 {
