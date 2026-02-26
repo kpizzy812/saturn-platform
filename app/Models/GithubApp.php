@@ -31,6 +31,11 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property-read string|null $type
  * @property-read PrivateKey|null $privateKey
  * @property-read \Illuminate\Database\Eloquent\Collection<int, Application> $applications
+
+ * @property string|null $contents
+ * @property string|null $metadata
+ * @property string|null $pull_requests
+ * @property string|null $administration
  */
 class GithubApp extends BaseModel
 {

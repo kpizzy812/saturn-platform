@@ -65,6 +65,11 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, PrivateKey> $privateKeys
  * @property-read Subscription|null $subscription
  * @property-read \App\Models\TeamUser|null $pivot
+
+ * @property int|null $max_servers
+ * @property int|null $max_applications
+ * @property int|null $max_databases
+ * @property int|null $max_projects
  */
 class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, SendsSlack
 {

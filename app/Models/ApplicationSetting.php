@@ -10,6 +10,29 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * @property-read Application|null $application
+
+ * @property bool $is_pr_deployments_public_enabled
+ * @property bool $disable_build_cache
+ * @property bool $is_preserve_repository_enabled
+ * @property string|null $custom_internal_name
+ * @property bool $is_consistent_container_name_enabled
+ * @property bool $include_source_commit_in_build
+ * @property bool $is_static
+ * @property bool $use_build_secrets
+ * @property bool $auto_rollback_enabled
+ * @property bool $rollback_on_crash_loop
+ * @property bool $rollback_on_health_check_fail
+ * @property bool $is_auto_deploy_enabled
+ * @property bool $is_preview_deployments_enabled
+ * @property bool $inject_build_args_to_dockerfile
+ * @property bool $is_git_submodules_enabled
+ * @property bool $is_git_lfs_enabled
+ * @property bool $is_raw_compose_deployment_enabled
+ * @property bool $is_env_sorting_enabled
+ * @property bool $is_container_label_readonly_enabled
+ * @property bool $is_container_label_escape_enabled
+ * @property bool $is_gpu_enabled
+ * @property bool $is_spa
  */
 class ApplicationSetting extends Model
 {
