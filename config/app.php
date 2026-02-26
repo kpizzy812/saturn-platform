@@ -60,6 +60,11 @@ return [
 
     'asset_url' => env('ASSET_URL'),
 
+    // Trusted reverse proxy CIDRs (comma-separated).
+    // Defaults cover Docker bridge (172.16.0.0/12) and overlay (10.0.0.0/8) networks.
+    // Override via TRUSTED_PROXIES env var. Never use '*' in production.
+    'trusted_proxies' => env('TRUSTED_PROXIES', '127.0.0.1,172.16.0.0/12,10.0.0.0/8'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

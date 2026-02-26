@@ -8,3 +8,4 @@ php artisan event:cache --ansi 2>/dev/null || true
 # Ensure public storage is world-writable (volume may be owned by a different UID on the host)
 chmod -R 777 /var/www/html/storage/app/public 2>/dev/null || true
 mkdir -p /var/www/html/storage/app/public/avatars 2>/dev/null || true
+mkdir -p /var/www/html/storage/app/public/logos 2>/dev/null || true
