@@ -51,6 +51,20 @@ SATURN_DATA="/data/saturn/${SATURN_ENV}"
 # Docker image
 SATURN_IMAGE="${SATURN_IMAGE:-ghcr.io/kpizzy812/saturn-platform:latest}"
 
+# Previous image tag — captured before pull, used for auto-rollback on health check failure
+PREVIOUS_IMAGE=""
+
+# Last backup file path — set by backup_database(), used by rollback_to_previous()
+LAST_BACKUP_FILE=""
+
+# S3 backup config (read from .env file or environment)
+# Set BACKUP_S3_BUCKET in /data/saturn/{env}/source/.env to enable offsite backup.
+BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-}"
+BACKUP_S3_ENDPOINT="${BACKUP_S3_ENDPOINT:-}"  # MinIO / S3-compatible: https://s3.example.com
+BACKUP_S3_KEY="${BACKUP_S3_KEY:-}"
+BACKUP_S3_SECRET="${BACKUP_S3_SECRET:-}"
+BACKUP_S3_REGION="${BACKUP_S3_REGION:-us-east-1}"
+
 # Container names
 CONTAINER_APP="saturn-${SATURN_ENV}"
 CONTAINER_DB="saturn-db-${SATURN_ENV}"
@@ -142,14 +156,20 @@ backup_database() {
     log_step "Creating database backup..."
 
     local backup_dir="${SATURN_DATA}/backups"
-    local timestamp=$(date +%Y%m%d_%H%M%S)
+    local timestamp
+    timestamp=$(date +%Y%m%d_%H%M%S)
 
     mkdir -p "$backup_dir"
 
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_DB}$"; then
-        docker exec "${CONTAINER_DB}" pg_dump -U saturn -d saturn \
-            > "${backup_dir}/pre_deploy_${timestamp}.sql" 2>/dev/null || true
+        local backup_file="${backup_dir}/pre_deploy_${timestamp}.sql"
+        # --clean --if-exists: dump includes DROP statements → safe full restore on rollback
+        docker exec "${CONTAINER_DB}" pg_dump -U saturn -d saturn --clean --if-exists \
+            > "$backup_file" 2>/dev/null || true
+        LAST_BACKUP_FILE="$backup_file"
         log_success "Backup: pre_deploy_${timestamp}.sql"
+
+        upload_backup_to_s3 "$backup_file"
     else
         log_warn "Database container not running, skipping backup"
     fi
@@ -315,17 +335,125 @@ rollback() {
     log_step "Rolling back..."
 
     local backup_dir="${SATURN_DATA}/backups"
-    local latest_backup=$(ls -t "${backup_dir}"/pre_deploy_*.sql 2>/dev/null | head -1)
+    local latest_backup
+    latest_backup=$(ls -t "${backup_dir}"/pre_deploy_*.sql 2>/dev/null | head -1)
 
     if [[ -z "$latest_backup" ]]; then
         log_error "No backup found"
         exit 1
     fi
 
-    log_info "Restoring from: $(basename $latest_backup)"
+    log_info "Restoring from: $(basename "$latest_backup")"
     docker exec -i "${CONTAINER_DB}" psql -U saturn -d saturn < "$latest_backup"
 
     log_success "Rollback completed"
+}
+
+# =============================================================================
+# S3 Backup Upload
+# =============================================================================
+load_backup_config() {
+    # Read S3 backup vars from the environment .env file (if not already set via env).
+    # Vars: BACKUP_S3_BUCKET, BACKUP_S3_ENDPOINT, BACKUP_S3_KEY, BACKUP_S3_SECRET, BACKUP_S3_REGION
+    local env_file="${SATURN_DATA}/source/.env"
+    [[ -f "$env_file" ]] || return 0
+
+    _read_env_var() { grep -E "^$1=" "$env_file" 2>/dev/null | head -1 | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//"; }
+
+    BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-$(_read_env_var BACKUP_S3_BUCKET)}"
+    BACKUP_S3_ENDPOINT="${BACKUP_S3_ENDPOINT:-$(_read_env_var BACKUP_S3_ENDPOINT)}"
+    BACKUP_S3_KEY="${BACKUP_S3_KEY:-$(_read_env_var BACKUP_S3_KEY)}"
+    BACKUP_S3_SECRET="${BACKUP_S3_SECRET:-$(_read_env_var BACKUP_S3_SECRET)}"
+    BACKUP_S3_REGION="${BACKUP_S3_REGION:-$(_read_env_var BACKUP_S3_REGION)}"
+}
+
+upload_backup_to_s3() {
+    local backup_file="$1"
+
+    if [[ -z "$BACKUP_S3_BUCKET" || -z "$BACKUP_S3_KEY" || -z "$BACKUP_S3_SECRET" ]]; then
+        log_warn "S3 backup not configured — set BACKUP_S3_BUCKET, BACKUP_S3_KEY, BACKUP_S3_SECRET in .env"
+        return 0
+    fi
+
+    log_step "Uploading backup to S3 (${BACKUP_S3_BUCKET})..."
+
+    local s3_key="saturn-backups/${SATURN_ENV}/$(basename "$backup_file")"
+    local endpoint_arg=()
+    [[ -n "$BACKUP_S3_ENDPOINT" ]] && endpoint_arg=(--endpoint-url "$BACKUP_S3_ENDPOINT")
+
+    # Uses official aws-cli Docker image — no host installation required.
+    # Supports AWS S3, Hetzner Object Storage, MinIO, and any S3-compatible API.
+    if docker run --rm \
+        -v "${backup_file}:${backup_file}:ro" \
+        -e AWS_ACCESS_KEY_ID="${BACKUP_S3_KEY}" \
+        -e AWS_SECRET_ACCESS_KEY="${BACKUP_S3_SECRET}" \
+        -e AWS_DEFAULT_REGION="${BACKUP_S3_REGION}" \
+        amazon/aws-cli:2 s3 cp "${backup_file}" "s3://${BACKUP_S3_BUCKET}/${s3_key}" \
+        "${endpoint_arg[@]}" --no-progress 2>&1; then
+        log_success "Backup uploaded: s3://${BACKUP_S3_BUCKET}/${s3_key}"
+    else
+        log_warn "S3 upload failed — backup still available locally: ${backup_file}"
+    fi
+}
+
+# =============================================================================
+# Auto-rollback on Deployment Failure
+# =============================================================================
+rollback_to_previous() {
+    set +e  # Do not exit on error during rollback — we want to attempt recovery
+
+    log_warn "============================================"
+    log_warn "  HEALTH CHECK FAILED — INITIATING ROLLBACK"
+    log_warn "============================================"
+
+    if [[ -z "${PREVIOUS_IMAGE:-}" ]]; then
+        log_error "No previous image captured — cannot auto-rollback (first deploy?)"
+        log_error "Check logs: docker logs ${CONTAINER_APP}"
+        exit 1
+    fi
+
+    log_warn "Failed image:    ${SATURN_IMAGE}"
+    log_warn "Restoring image: ${PREVIOUS_IMAGE}"
+
+    # 1. Stop failed deployment
+    compose_cmd down 2>/dev/null || true
+
+    # 2. Restore database from pre-deploy backup (dump includes DROP statements via --clean)
+    local backup_file="${LAST_BACKUP_FILE:-}"
+    if [[ -z "$backup_file" ]]; then
+        # Fallback: find the most recent backup
+        backup_file=$(ls -t "${SATURN_DATA}/backups"/pre_deploy_*.sql 2>/dev/null | head -1)
+    fi
+
+    if [[ -n "$backup_file" && -f "$backup_file" ]]; then
+        log_info "Restoring DB from: $(basename "$backup_file")"
+        compose_cmd up -d --wait postgres
+        if docker exec -i "${CONTAINER_DB}" psql -U saturn -d saturn < "$backup_file"; then
+            log_success "Database restored to pre-deploy state"
+        else
+            log_error "DB restore failed — database may be in inconsistent state!"
+            log_error "Manual restore: docker exec -i ${CONTAINER_DB} psql -U saturn -d saturn < ${backup_file}"
+        fi
+    else
+        log_warn "No pre-deploy backup found — DB retains new schema (proceed with caution)"
+    fi
+
+    # 3. Start previous image (PgBouncer + Redis + Soketi will start via depends_on)
+    export SATURN_IMAGE="${PREVIOUS_IMAGE}"
+    compose_cmd up -d
+
+    log_info "Waiting for previous version to become healthy..."
+    sleep 10
+
+    if health_check; then
+        log_success "Rollback successful — previous version is running"
+        log_success "Investigate the failed deploy before pushing a fix."
+    else
+        log_error "Previous version also failed health check — manual intervention required!"
+        log_error "Logs: docker logs ${CONTAINER_APP}"
+    fi
+
+    exit 1
 }
 
 # =============================================================================
@@ -342,10 +470,18 @@ deploy() {
     echo ""
 
     validate_prerequisites
+    load_backup_config
 
     if [[ "$ACTION" == "--rollback" ]]; then
         rollback
         exit 0
+    fi
+
+    # Capture the currently running image before pulling a new one.
+    # Used by rollback_to_previous() to restore the old version on health check failure.
+    PREVIOUS_IMAGE=$(docker inspect --format='{{.Config.Image}}' "${CONTAINER_APP}" 2>/dev/null || echo "")
+    if [[ -n "$PREVIOUS_IMAGE" ]]; then
+        log_info "Previous image: ${PREVIOUS_IMAGE}"
     fi
 
     backup_database
@@ -373,9 +509,7 @@ deploy() {
         echo "  DB:    docker exec -it ${CONTAINER_DB} psql -U saturn"
         echo ""
     else
-        log_error "Deployment done but health check failed"
-        log_error "Check: docker logs ${CONTAINER_APP}"
-        exit 1
+        rollback_to_previous
     fi
 }
 
