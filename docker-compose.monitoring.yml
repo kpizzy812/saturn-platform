@@ -1,0 +1,51 @@
+# =============================================================================
+# Saturn Platform - Monitoring Stack
+# =============================================================================
+# Uptime Kuma: self-hosted uptime monitoring with alerts.
+# Accessible at https://status.saturn.ac (Traefik routes traffic).
+#
+# Usage (first time):
+#   docker compose -f docker-compose.monitoring.yml up -d
+#
+# After start, open https://status.saturn.ac and:
+#   1. Create admin account
+#   2. Add monitors:
+#      - https://saturn.ac/api/health       (production)
+#      - https://uat.saturn.ac/api/health   (staging)
+#      - https://dev.saturn.ac/api/health   (dev)
+#   3. Configure notifications (Telegram, email, Slack, etc.)
+#
+# Data persists in named volume 'saturn-uptime-data'.
+# =============================================================================
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: saturn-uptime
+    restart: always
+    volumes:
+      - saturn-uptime-data:/app/data
+    expose:
+      - "3001"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
+      interval: 30s
+      retries: 5
+      timeout: 10s
+    networks:
+      # Shared proxy network: Traefik routes status.saturn.ac → this container
+      saturn:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+volumes:
+  saturn-uptime-data:
+    name: saturn-uptime-data
+
+networks:
+  saturn:
+    name: saturn
+    external: true
