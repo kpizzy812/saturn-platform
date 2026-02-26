@@ -198,9 +198,11 @@ stop_services() {
 }
 
 start_infrastructure() {
-    log_step "Starting infrastructure (postgres, redis, soketi)..."
+    log_step "Starting infrastructure (postgres, pgbouncer, redis, soketi)..."
 
-    compose_cmd up -d --wait postgres redis soketi
+    # pgbouncer must be included: app uses DB_HOST=saturn-db which resolves to
+    # the pgbouncer alias. Without it, migrations fail with "could not translate host name".
+    compose_cmd up -d --wait postgres pgbouncer redis soketi
 
     log_success "Infrastructure healthy"
 }
