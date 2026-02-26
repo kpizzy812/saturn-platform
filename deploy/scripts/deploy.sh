@@ -202,13 +202,16 @@ stop_services() {
 }
 
 start_infrastructure() {
-    log_step "Starting infrastructure (postgres, pgbouncer, redis, soketi)..."
+    log_step "Starting postgres, redis, soketi (NOT pgbouncer yet)..."
 
-    # pgbouncer must be included: app uses DB_HOST=saturn-db which resolves to
-    # the pgbouncer alias. Without it, migrations fail with "could not translate host name".
-    compose_cmd up -d --wait postgres pgbouncer redis soketi
+    # Start postgres first and wait for it to be healthy.
+    # PgBouncer is started separately AFTER sync_db_password — this is critical:
+    # the postgres volume may retain a password from a previous initdb, while .env
+    # may have a different password. PgBouncer would fail auth if started before the
+    # password is synced. Correct order: postgres → sync password → pgbouncer.
+    compose_cmd up -d --wait postgres redis soketi
 
-    log_success "Infrastructure healthy"
+    log_success "Core infrastructure healthy"
 }
 
 sync_db_password() {
@@ -216,7 +219,7 @@ sync_db_password() {
 
     # PostgreSQL only sets POSTGRES_PASSWORD on first initdb.
     # If the .env password was changed, the DB volume still has the old one.
-    # This ensures they always match.
+    # This ensures they always match BEFORE PgBouncer starts.
     local db_password
     db_password=$(grep '^DB_PASSWORD=' "${SATURN_DATA}/source/.env" | cut -d= -f2-)
 
@@ -225,6 +228,16 @@ sync_db_password() {
             -c "ALTER USER saturn PASSWORD '${db_password}';" > /dev/null 2>&1 || true
         log_success "Database password synced"
     fi
+}
+
+start_pgbouncer() {
+    log_step "Starting PgBouncer (after password sync)..."
+
+    # PgBouncer starts here — AFTER postgres has the correct password from .env.
+    # First backend connection attempt will succeed → no server_login_retry quarantine.
+    compose_cmd up -d --wait pgbouncer
+
+    log_success "PgBouncer healthy"
 }
 
 run_migrations() {
@@ -494,8 +507,9 @@ deploy() {
     backup_database
     pull_images
     stop_services
-    start_infrastructure
-    sync_db_password
+    start_infrastructure   # postgres, redis, soketi
+    sync_db_password        # ensure postgres has the password from .env
+    start_pgbouncer         # now PgBouncer can connect to postgres successfully
     run_migrations
     start_app
     run_seeders
