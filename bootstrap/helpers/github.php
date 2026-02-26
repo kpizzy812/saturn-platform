@@ -1,7 +1,9 @@
 <?php
 
+use App\Exceptions\RateLimitException;
 use App\Models\GithubApp;
 use App\Models\GitlabApp;
+use App\Services\CircuitBreaker;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
@@ -29,14 +31,15 @@ function generateGithubToken(GithubApp $source, string $type)
         );
     }
 
+    /** @phpstan-ignore property.notFound */
     $signingKey = InMemory::plainText($source->privateKey->private_key);
     $algorithm = new Sha256;
     $tokenBuilder = (new Builder(new JoseEncoder, ChainedFormatter::default()));
     $now = CarbonImmutable::now()->setTimezone('UTC');
-    $now = $now->setTime($now->format('H'), $now->format('i'), $now->format('s'));
+    $now = $now->setTime((int) $now->format('H'), (int) $now->format('i'), (int) $now->format('s'));
 
     $jwt = $tokenBuilder
-        ->issuedBy($source->app_id)
+        ->issuedBy((string) $source->app_id)
         ->issuedAt($now->modify('-1 minute'))
         ->expiresAt($now->modify('+8 minutes'))
         ->getToken($algorithm, $signingKey)
@@ -84,6 +87,10 @@ function githubApi(GithubApp|GitlabApp|null $source, string $endpoint, string $m
         throw new \InvalidArgumentException("Unsupported source type: {$source->getMorphClass()}");
     }
 
+    if (CircuitBreaker::isOpen('github')) {
+        throw new \Exception('GitHub API circuit breaker is open — too many recent failures. Please retry later.');
+    }
+
     if ($source->is_public) {
         $response = Http::GitHub($source->api_url)->$method($endpoint);
     } else {
@@ -95,18 +102,40 @@ function githubApi(GithubApp|GitlabApp|null $source, string $endpoint, string $m
         }
     }
 
-    if (! $response->successful() && $throwError) {
-        $resetTime = Carbon::parse((int) $response->header('X-RateLimit-Reset'))->format('Y-m-d H:i:s');
-        $errorMessage = data_get($response->json(), 'message', 'no error message found');
-        $remainingCalls = $response->header('X-RateLimit-Remaining', '0');
+    if (! $response->successful()) {
+        // Throw RateLimitException on 429 so callers can handle backoff properly
+        if ($response->status() === 429) {
+            $retryAfter = $response->header('Retry-After');
+            if ($retryAfter === null) {
+                $resetTime = $response->header('X-RateLimit-Reset');
+                $retryAfter = $resetTime ? max(0, (int) $resetTime - time()) : null;
+            }
 
-        throw new \Exception(
-            'GitHub API call failed:<br>'.
-            "Error: {$errorMessage}<br>".
-            'Rate Limit Status:<br>'.
-            "- Remaining Calls: {$remainingCalls}<br>".
-            "- Reset Time: {$resetTime} UTC"
-        );
+            CircuitBreaker::recordFailure('github');
+
+            throw new RateLimitException(
+                'GitHub API rate limit exceeded. Please try again later.',
+                $retryAfter !== null ? (int) $retryAfter : null
+            );
+        }
+
+        CircuitBreaker::recordFailure('github');
+
+        if ($throwError) {
+            $resetTime = Carbon::parse((int) $response->header('X-RateLimit-Reset'))->format('Y-m-d H:i:s');
+            $errorMessage = data_get($response->json(), 'message', 'no error message found');
+            $remainingCalls = $response->header('X-RateLimit-Remaining', '0');
+
+            throw new \Exception(
+                'GitHub API call failed:<br>'.
+                "Error: {$errorMessage}<br>".
+                'Rate Limit Status:<br>'.
+                "- Remaining Calls: {$remainingCalls}<br>".
+                "- Reset Time: {$resetTime} UTC"
+            );
+        }
+    } else {
+        CircuitBreaker::recordSuccess('github');
     }
 
     return [

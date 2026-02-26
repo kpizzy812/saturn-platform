@@ -6,5 +6,5 @@ php artisan package:discover --ansi 2>/dev/null || true
 php artisan event:cache --ansi 2>/dev/null || true
 
 # Ensure required storage directories exist with correct permissions
-mkdir -p /var/www/html/storage/app/public/avatars
+mkdir -p /var/www/html/storage/app/public/avatars 2>/dev/null || true
 chown -R www-data:www-data /var/www/html/storage 2>/dev/null || true
