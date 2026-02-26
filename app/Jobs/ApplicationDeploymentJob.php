@@ -60,8 +60,13 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     private const NIXPACKS_PLAN_PATH = '/artifacts/thegameplan.json';
 
     /**
-     * Number of times the job may be attempted.
-     * FIX: Changed from 1 to 3 to handle temporary network failures.
+     * Max queue-level attempts. Only relevant when the job calls $this->release()
+     * (e.g. waiting for a concurrent deployment to finish — see lines ~328 and ~381).
+     * SSH-level retries are handled inside ExecuteRemoteCommand trait, NOT here.
+     *
+     * $maxExceptions = 1 means any uncaught exception permanently fails the job
+     * without using these queue-level retries — so the backoff only applies to
+     * intentional release() calls, not to SSH/network errors.
      */
     public $tries = 3;
 
