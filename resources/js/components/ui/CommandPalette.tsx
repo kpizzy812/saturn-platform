@@ -64,9 +64,9 @@ const commands: CommandItem[] = [
 
     // Actions
     { id: 'new-project', name: 'New Project', description: 'Create a new project', icon: <Plus className="h-4 w-4" />, href: '/projects/create', group: 'actions' },
-    { id: 'new-service', name: 'New Service', description: 'Add a new service to a project', icon: <Plus className="h-4 w-4" />, group: 'actions' },
-    { id: 'new-database', name: 'New Database', description: 'Create a new database', icon: <Database className="h-4 w-4" />, group: 'actions' },
-    { id: 'deploy', name: 'Deploy', description: 'Trigger a deployment', icon: <Terminal className="h-4 w-4" />, group: 'actions' },
+    { id: 'new-service', name: 'New Service', description: 'Add a new service to a project', icon: <Plus className="h-4 w-4" />, href: '/services/create', group: 'actions' },
+    { id: 'new-database', name: 'New Database', description: 'Create a new database', icon: <Database className="h-4 w-4" />, href: '/databases/create', group: 'actions' },
+    { id: 'deploy', name: 'Deploy', description: 'Trigger a deployment', icon: <Terminal className="h-4 w-4" />, href: '/activity', group: 'actions' },
 
     // Settings
     { id: 'settings', name: 'Settings', icon: <Settings className="h-4 w-4" />, href: '/settings', group: 'settings' },
@@ -77,10 +77,22 @@ const commands: CommandItem[] = [
 
 const RESOURCE_ICONS: Record<string, React.ReactNode> = {
     project: <FolderKanban className="h-4 w-4" />,
+    environment: <Layers className="h-4 w-4" />,
     server: <Server className="h-4 w-4" />,
     application: <Layers className="h-4 w-4" />,
     database: <Database className="h-4 w-4" />,
     service: <Box className="h-4 w-4" />,
+};
+
+/** Maps drill-down level type to resource types shown in that section's favorites */
+const DRILL_FAVORITE_TYPES: Record<string, string[]> = {
+    projects: ['project'],
+    environments: ['environment'],
+    env_resources: ['application', 'database', 'service'],
+    servers: ['server'],
+    applications: ['application'],
+    databases: ['database'],
+    services: ['service'],
 };
 
 const groupLabels: Record<string, string> = {
@@ -157,9 +169,29 @@ export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite
         fetchBrowse(current.type, current.parentUuid);
     }, [open, stack, fetchBrowse]);
 
-    // Build favorite items from explicit favorites
+    // Build favorite items from explicit favorites.
+    // In drill-down mode: show only favorites relevant to the current section.
     const favoriteCommandItems: CommandItem[] = React.useMemo(() => {
-        if (query !== '' || isInDrillDown || favorites.length === 0) return [];
+        if (query !== '' || favorites.length === 0) return [];
+
+        if (isInDrillDown) {
+            const currentLevel = stack[stack.length - 1];
+            const relevantTypes = DRILL_FAVORITE_TYPES[currentLevel?.type ?? ''] ?? [];
+            if (relevantTypes.length === 0) return [];
+            return favorites
+                .filter((f) => relevantTypes.includes(f.type))
+                .map((item) => ({
+                    id: `fav-${item.type}-${item.id}`,
+                    name: item.name,
+                    icon: RESOURCE_ICONS[item.type] || <Star className="h-4 w-4" />,
+                    href: item.href,
+                    group: 'favorites',
+                    description: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+                    resourceType: item.type,
+                    resourceId: item.id,
+                }));
+        }
+
         return favorites.map((item) => ({
             id: `fav-${item.type}-${item.id}`,
             name: item.name,
@@ -170,7 +202,7 @@ export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite
             resourceType: item.type,
             resourceId: item.id,
         }));
-    }, [query, favorites, isInDrillDown]);
+    }, [query, favorites, isInDrillDown, stack]);
 
     // Build search results as CommandItems
     const searchCommandItems: CommandItem[] = React.useMemo(() => {
@@ -211,12 +243,15 @@ export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite
 
     // Combine all items into groups
     const allItems = isInDrillDown
-        ? drillDownCommandItems
+        ? [...favoriteCommandItems, ...drillDownCommandItems]
         : [...favoriteCommandItems, ...searchCommandItems, ...filteredCommands];
 
     // Build grouped commands maintaining order
     const groupedCommands = isInDrillDown
-        ? (drillDownCommandItems.length > 0 ? [{ group: 'navigation', items: drillDownCommandItems }] : [])
+        ? [
+            ...(favoriteCommandItems.length > 0 ? [{ group: 'favorites', items: favoriteCommandItems }] : []),
+            ...(drillDownCommandItems.length > 0 ? [{ group: 'navigation', items: drillDownCommandItems }] : []),
+          ]
         : groupOrder.reduce((acc, group) => {
             const items = allItems.filter((c) => c.group === group);
             if (items.length > 0) {
@@ -349,7 +384,7 @@ export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite
     const hasQuery = query.length >= 2;
     const isLoadingAny = isSearching || isBrowsing;
     const noResults = isInDrillDown
-        ? !isBrowsing && drillDownCommandItems.length === 0
+        ? !isBrowsing && drillDownCommandItems.length === 0 && favoriteCommandItems.length === 0
         : hasQuery && !isSearching && searchCommandItems.length === 0 && filteredCommands.length === 0;
 
     return (
@@ -432,7 +467,7 @@ export function CommandPalette({ open, onClose, favorites = [], onToggleFavorite
                                 const startIndex = globalIndex;
                                 const rendered = (
                                     <div key={group} className="mb-2">
-                                        {!isInDrillDown && (
+                                        {(!isInDrillDown || groupedCommands.length > 1) && (
                                             <div className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-foreground-subtle">
                                                 {groupLabels[group]}
                                             </div>
