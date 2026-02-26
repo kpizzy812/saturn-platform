@@ -30,7 +30,7 @@ export function TemplateCard({ template, featured = false }: TemplateCardProps) 
         <Link
             href={`/templates/${template.id}`}
             className={cn(
-                'group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-black/20',
+                'group relative flex flex-col rounded-xl border border-border/50 bg-gradient-to-br from-background-secondary to-background-secondary/50 p-5 transition-all duration-300 hover:-translate-y-1 hover:border-border hover:shadow-xl hover:shadow-purple-500/20',
                 featured && 'md:col-span-2'
             )}
         >
