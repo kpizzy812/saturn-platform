@@ -149,6 +149,8 @@ create_directories() {
     for env in "${ENVIRONMENTS[@]}"; do
         log_info "  Creating directories for '${env}'..."
         mkdir -p "${SATURN_DATA}/${env}"/{source,ssh/keys,applications,databases,services,backups,uploads}
+        # uploads is written by the container (www-data, uid 9999) — make it world-writable
+        chmod -R 777 "${SATURN_DATA}/${env}/uploads"
     done
 
     # Shared directories (proxy, caddy)
