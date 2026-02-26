@@ -358,7 +358,8 @@ load_backup_config() {
     local env_file="${SATURN_DATA}/source/.env"
     [[ -f "$env_file" ]] || return 0
 
-    _read_env_var() { grep -E "^$1=" "$env_file" 2>/dev/null | head -1 | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//"; }
+    # grep returns exit code 1 when key is absent — || true prevents set -e from killing the script
+    _read_env_var() { grep -E "^$1=" "$env_file" 2>/dev/null | head -1 | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//" || true; }
 
     BACKUP_S3_BUCKET="${BACKUP_S3_BUCKET:-$(_read_env_var BACKUP_S3_BUCKET)}"
     BACKUP_S3_ENDPOINT="${BACKUP_S3_ENDPOINT:-$(_read_env_var BACKUP_S3_ENDPOINT)}"
