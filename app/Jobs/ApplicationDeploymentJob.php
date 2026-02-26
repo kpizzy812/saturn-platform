@@ -91,6 +91,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     private bool $restart_only;
 
+    private bool $is_promotion = false;
+
+    private ?string $promoted_from_image = null;
+
     private ?string $dockerImage = null;
 
     private ?string $dockerImageTag = null;
@@ -251,6 +255,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->restart_only = $this->application_deployment_queue->restart_only;
         $this->restart_only = $this->restart_only && $this->application->build_pack !== 'dockerimage' && $this->application->build_pack !== 'dockerfile';
         $this->only_this_server = $this->application_deployment_queue->only_this_server;
+        $this->is_promotion = $this->application_deployment_queue->is_promotion ?? false;
+        $this->promoted_from_image = $this->application_deployment_queue->promoted_from_image;
 
         $this->git_type = data_get($this->application_deployment_queue, 'git_type');
 
@@ -641,6 +647,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->generate_image_names();
         $this->clone_repository();
         if (! $this->force_rebuild) {
+            $this->handle_promotion_image();
             $this->check_image_locally_or_remotely();
             if ($this->should_skip_build()) {
                 return;
@@ -674,6 +681,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->check_git_if_build_needed();
         $this->generate_image_names();
         if (! $this->force_rebuild) {
+            $this->handle_promotion_image();
             $this->check_image_locally_or_remotely();
             if ($this->should_skip_build()) {
                 return;
@@ -714,6 +722,18 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         if (str($this->saved_outputs->get('local_image_found'))->isNotEmpty()) {
             if ($this->is_this_additional_server) {
                 $this->application_deployment_queue->addLogEntry("Image found ({$this->production_image_name}) with the same Git Commit SHA. Build step skipped.");
+                $this->generate_compose_file();
+
+                // Save runtime environment variables even when skipping build
+                $this->save_runtime_environment_variables();
+
+                $this->push_to_docker_registry();
+                $this->rolling_update();
+
+                return true;
+            }
+            if ($this->is_promotion) {
+                $this->application_deployment_queue->addLogEntry("Promotion deploy — image reused from source environment ({$this->production_image_name}). Build step skipped.");
                 $this->generate_compose_file();
 
                 // Save runtime environment variables even when skipping build

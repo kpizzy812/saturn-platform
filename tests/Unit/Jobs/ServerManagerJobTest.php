@@ -2,12 +2,7 @@
 
 namespace Tests\Unit\Jobs;
 
-use App\Jobs\CheckAndStartSentinelJob;
-use App\Jobs\ServerCheckJob;
-use App\Jobs\ServerConnectionCheckJob;
 use App\Jobs\ServerManagerJob;
-use App\Jobs\ServerPatchCheckJob;
-use App\Jobs\ServerStorageCheckJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 use Mockery;

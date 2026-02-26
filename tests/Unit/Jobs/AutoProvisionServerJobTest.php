@@ -7,7 +7,6 @@ use App\Models\Server;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
-use Illuminate\Support\Facades\Log;
 use Mockery;
 use ReflectionClass;
 
@@ -182,7 +181,7 @@ it('returns early when cooldown cache key is active', function () {
 
     expect($source)
         ->toContain('auto-provision-cooldown-')
-        ->toContain("Cache::has(\$cooldownKey)")
+        ->toContain('Cache::has($cooldownKey)')
         ->toContain('Auto-provisioning cooldown active for server');
 });
 
@@ -232,7 +231,7 @@ it('prefers the trigger server private key over team keys', function () {
 
     expect($source)
         ->toContain('$this->triggerServer->private_key_id')
-        ->toContain("PrivateKey::find(\$this->triggerServer->private_key_id)");
+        ->toContain('PrivateKey::find($this->triggerServer->private_key_id)');
 });
 
 it('falls back to first non-git team private key', function () {
@@ -313,7 +312,7 @@ it('only supports hetzner as cloud provider (match expression)', function () {
 
     expect($source)
         ->toContain("'hetzner' => \$this->createHetznerServer(")
-        ->toContain("Unsupported provider:");
+        ->toContain('Unsupported provider:');
 });
 
 // ===========================================================================
