@@ -127,9 +127,13 @@ validate_prerequisites() {
     mkdir -p "${SATURN_DATA}/services"
     mkdir -p "${SATURN_DATA}/backups"
     mkdir -p "${SATURN_DATA}/uploads"
+    mkdir -p "${SATURN_DATA}/logs"
 
     # Fix SSH directory ownership for www-data (uid 9999 inside container)
     fix_ssh_permissions
+
+    # Logs must be writable by www-data (uid 9999) inside the container
+    chown -R 9999:9999 "${SATURN_DATA}/logs"
 
     log_success "Prerequisites OK"
 }
