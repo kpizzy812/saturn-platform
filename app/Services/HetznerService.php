@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\RateLimitException;
+use App\Services\CircuitBreaker;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -19,52 +20,69 @@ class HetznerService
 
     private function request(string $method, string $endpoint, array $data = [])
     {
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer '.$this->token,
-        ])
-            ->timeout(30)
-            ->retry(3, function (int $attempt, \Exception $exception) {
-                // Handle rate limiting (429 Too Many Requests)
-                if ($exception instanceof \Illuminate\Http\Client\RequestException) {
-                    $response = $exception->response;
-
-                    if ($response->status() === 429) {
-                        // Get rate limit reset timestamp from headers
-                        $resetTime = $response->header('RateLimit-Reset');
-
-                        if ($resetTime) {
-                            // Calculate wait time until rate limit resets
-                            $waitSeconds = max(0, (int) $resetTime - time());
-
-                            // Cap wait time at 60 seconds for safety
-                            return min($waitSeconds, 60) * 1000;
-                        }
-                    }
-                }
-
-                // Exponential backoff for other retriable errors: 100ms, 200ms, 400ms
-                return $attempt * 100;
-            })
-            ->{$method}($this->baseUrl.$endpoint, $data);
-
-        if (! $response->successful()) {
-            if ($response->status() === 429) {
-                $retryAfter = $response->header('Retry-After');
-                if ($retryAfter === null) {
-                    $resetTime = $response->header('RateLimit-Reset');
-                    $retryAfter = $resetTime ? max(0, (int) $resetTime - time()) : null;
-                }
-
-                throw new RateLimitException(
-                    'Rate limit exceeded. Please try again later.',
-                    $retryAfter !== null ? (int) $retryAfter : null
-                );
-            }
-
-            throw new \Exception('Hetzner API error: '.$response->json('error.message', 'Unknown error'));
+        if (CircuitBreaker::isOpen('hetzner')) {
+            throw new \Exception('Hetzner API circuit breaker is open — too many recent failures. Please retry later.');
         }
 
-        return $response->json();
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer '.$this->token,
+            ])
+                ->timeout(30)
+                ->retry(3, function (int $attempt, \Exception $exception) {
+                    // Handle rate limiting (429 Too Many Requests)
+                    if ($exception instanceof \Illuminate\Http\Client\RequestException) {
+                        $response = $exception->response;
+
+                        if ($response->status() === 429) {
+                            // Get rate limit reset timestamp from headers
+                            $resetTime = $response->header('RateLimit-Reset');
+
+                            if ($resetTime) {
+                                // Calculate wait time until rate limit resets
+                                $waitSeconds = max(0, (int) $resetTime - time());
+
+                                // Cap wait time at 60 seconds for safety
+                                return min($waitSeconds, 60) * 1000;
+                            }
+                        }
+                    }
+
+                    // Exponential backoff for other retriable errors: 100ms, 200ms, 400ms
+                    return $attempt * 100;
+                })
+                ->{$method}($this->baseUrl.$endpoint, $data);
+
+            if (! $response->successful()) {
+                if ($response->status() === 429) {
+                    $retryAfter = $response->header('Retry-After');
+                    if ($retryAfter === null) {
+                        $resetTime = $response->header('RateLimit-Reset');
+                        $retryAfter = $resetTime ? max(0, (int) $resetTime - time()) : null;
+                    }
+
+                    CircuitBreaker::recordFailure('hetzner');
+
+                    throw new RateLimitException(
+                        'Rate limit exceeded. Please try again later.',
+                        $retryAfter !== null ? (int) $retryAfter : null
+                    );
+                }
+
+                CircuitBreaker::recordFailure('hetzner');
+
+                throw new \Exception('Hetzner API error: '.$response->json('error.message', 'Unknown error'));
+            }
+
+            CircuitBreaker::recordSuccess('hetzner');
+
+            return $response->json();
+        } catch (RateLimitException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            CircuitBreaker::recordFailure('hetzner');
+            throw $e;
+        }
     }
 
     private function requestPaginated(string $method, string $endpoint, string $resourceKey, array $data = []): array

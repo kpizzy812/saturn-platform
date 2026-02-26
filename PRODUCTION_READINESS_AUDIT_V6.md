@@ -163,9 +163,9 @@ Backups exist but are not encrypted before upload to S3. Acceptable risk for int
 
 ## Priority Fix Plan
 
-### Near-term (P1 — Stability, ~8h)
+### Near-term (P1 — Stability) — DONE
 1. [x] CI test job re-enabled — DONE (`ccb887c`)
-2. [ ] Write tests for ServerManagerJob, AutoProvisionServerJob — 8h
+2. [x] Tests for ServerManagerJob, AutoProvisionServerJob, ValidateAndInstallServerJob — DONE (`aaca352`) — 107 tests, 0 failures
 
 ### Long-term (P2)
 3. [ ] Circuit breakers for Hetzner, GitHub APIs
