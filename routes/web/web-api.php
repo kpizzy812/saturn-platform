@@ -1277,6 +1277,7 @@ Route::get('/web-api/command-palette/browse', function (Request $request) {
                     'href' => "/projects/{$p->uuid}",
                     'has_children' => true,
                     'child_type' => 'environments',
+                    'meta' => ['type' => 'project'],
                 ]);
             break;
 
@@ -1297,9 +1298,10 @@ Route::get('/web-api/command-palette/browse', function (Request $request) {
                     'id' => $e->uuid,
                     'name' => $e->name,
                     'description' => $project->name,
-                    'href' => "/projects/{$project->uuid}/{$e->uuid}",
+                    'href' => "/projects/{$project->uuid}?env=".rawurlencode($e->name),
                     'has_children' => true,
                     'child_type' => 'env_resources',
+                    'meta' => ['type' => 'environment'],
                 ]);
             break;
 
@@ -1368,6 +1370,7 @@ Route::get('/web-api/command-palette/browse', function (Request $request) {
                     'href' => "/servers/{$s->uuid}",
                     'has_children' => false,
                     'child_type' => null,
+                    'meta' => ['type' => 'server'],
                 ]);
             break;
 
