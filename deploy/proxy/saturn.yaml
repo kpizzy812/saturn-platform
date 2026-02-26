@@ -28,6 +28,18 @@ http:
       headers:
         customResponseHeaders:
           Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+    # Rate limiting: 300 req/min per IP, burst 100.
+    # Protects PHP/Laravel layer from flood and brute-force before the request reaches the app.
+    # WebSocket routers (realtime, terminal) are intentionally excluded —
+    # they perform a single HTTP upgrade and then hold a long-lived connection.
+    rate-limit:
+      rateLimit:
+        average: 300
+        period: 1m
+        burst: 100
+        sourceCriterion:
+          ipStrategy:
+            depth: 1
 
   # ===========================================================================
   # Development — dev.saturn.ac → saturn-dev
@@ -51,6 +63,7 @@ http:
       middlewares:
         - security-headers
         - gzip
+        - rate-limit
       tls:
         certresolver: letsencrypt
 
@@ -91,6 +104,7 @@ http:
       middlewares:
         - security-headers
         - gzip
+        - rate-limit
       tls:
         certresolver: letsencrypt
 
@@ -130,6 +144,7 @@ http:
         - security-headers
         - hsts-headers
         - gzip
+        - rate-limit
       tls:
         certresolver: letsencrypt
 
