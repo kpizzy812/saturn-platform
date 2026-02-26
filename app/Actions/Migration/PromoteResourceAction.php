@@ -312,6 +312,10 @@ class PromoteResourceAction
 
     /**
      * Trigger deployment for the promoted resource.
+     *
+     * When a source application has a prior successful deployment, we pass its commit SHA
+     * and image name so the deployment job can reuse the already-built image instead of
+     * rebuilding from scratch.
      */
     protected function triggerDeployment(Model $resource, EnvironmentMigration $migration): void
     {
@@ -321,11 +325,37 @@ class PromoteResourceAction
             // Require deployment approval when deploying to production
             $requiresApproval = $migration->targetEnvironment?->isProduction() ?? false;
 
+            // Attempt to reuse the image from the last successful source deployment
+            $sourceApp = $migration->source;
+            $is_promotion = false;
+            $promoted_from_image = null;
+            $source_commit = 'HEAD';
+
+            if ($sourceApp instanceof Application) {
+                $lastDeploy = \App\Models\ApplicationDeploymentQueue::where('application_id', $sourceApp->id)
+                    ->where('status', \App\Enums\ApplicationDeploymentStatus::FINISHED->value)
+                    ->whereNotNull('commit')
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                if ($lastDeploy?->commit) {
+                    $is_promotion = true;
+                    $source_commit = $lastDeploy->commit;
+                    $promoted_from_image = $sourceApp->docker_registry_image_name
+                        ? "{$sourceApp->docker_registry_image_name}:{$source_commit}"
+                        : "{$sourceApp->uuid}:{$source_commit}";
+                    $migration->appendLog("Promotion: Will attempt to reuse image {$promoted_from_image}");
+                }
+            }
+
             queue_application_deployment(
                 application: $resource,
                 deployment_uuid: (string) $deployment_uuid,
+                commit: $source_commit,
                 no_questions_asked: true,
                 requires_approval: $requiresApproval,
+                is_promotion: $is_promotion,
+                promoted_from_image: $promoted_from_image,
             );
         }
 

@@ -35,6 +35,8 @@ use OpenApi\Attributes as OA;
  * @property string|null $destination_id
  * @property bool $only_this_server
  * @property bool $rollback
+ * @property bool $is_promotion
+ * @property string|null $promoted_from_image
  * @property string|null $commit_message
  * @property string|null $horizon_job_id
  * @property \Carbon\Carbon|null $created_at
@@ -68,6 +70,8 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'destination_id', type: 'string'),
         new OA\Property(property: 'only_this_server', type: 'boolean'),
         new OA\Property(property: 'rollback', type: 'boolean'),
+        new OA\Property(property: 'is_promotion', type: 'boolean'),
+        new OA\Property(property: 'promoted_from_image', type: 'string'),
         new OA\Property(property: 'commit_message', type: 'string'),
     ],
 )]
@@ -114,6 +118,8 @@ class ApplicationDeploymentQueue extends Model
         'destination_id',
         'only_this_server',
         'rollback',
+        'is_promotion',
+        'promoted_from_image',
         'commit_message',
         'horizon_job_id',
         'started_at',
@@ -131,6 +137,7 @@ class ApplicationDeploymentQueue extends Model
         'application_id' => 'integer',
         'requires_approval' => 'boolean',
         'approved_at' => 'datetime',
+        'is_promotion' => 'boolean',
     ];
 
     // Current deployment stage (not persisted, used for log entries)
