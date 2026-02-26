@@ -31,6 +31,28 @@ use Visus\Cuid2\Cuid2;
  * @property-read Environment|null $environment
  * @property-read \Illuminate\Database\Eloquent\Collection<int, ServiceApplication> $applications
  * @property-read \Illuminate\Database\Eloquent\Collection<int, EnvironmentVariable> $environment_variables
+
+ * @property string|null $docker_compose_raw
+ * @property int|null $environment_id
+ * @property int|null $server_id
+ * @property int|null $destination_id
+ * @property string|null $destination_type
+ * @property string|null $name
+ * @property string|null $description
+ * @property bool $connect_to_docker_network
+ * @property int|null $limits_cpu_shares
+ * @property string|null $limits_cpus
+ * @property string|null $limits_cpuset
+ * @property string|null $limits_memory
+ * @property string|null $limits_memory_reservation
+ * @property string|null $limits_memory_swap
+ * @property string|null $limits_memory_swappiness
+ * @property string|null $docker_compose
+ * @property string|null $service_type
+ * @property string|null $created_at
+ * @property string|null $updated_at
+ * @property string|null $config_hash
+ * @property string|null $compose_parsing_version
  */
 #[OA\Schema(
     description: 'Service model',

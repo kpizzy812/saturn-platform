@@ -10,6 +10,12 @@ use Visus\Cuid2\Cuid2;
 
 /**
  * @property-read Application|null $application
+
+ * @property string|null $status
+ * @property string|null $fqdn
+ * @property int|null $pull_request_issue_comment_id
+ * @property int|null $pull_request_id
+ * @property string|null $docker_compose_domains
  */
 class ApplicationPreview extends BaseModel
 {

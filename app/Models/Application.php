@@ -64,6 +64,71 @@ use Visus\Cuid2\Cuid2;
  * @property-read string $image
  * @property-read string|null $internal_app_url
  * @property-read string $server_status
+
+ * @property string|null $dockerfile
+ * @property string|null $docker_compose_domains
+ * @property int|null $private_key_id
+ * @property string|null $source_type
+ * @property int|null $source_id
+ * @property int|null $repository_project_id
+ * @property string|null $base_directory
+ * @property bool $health_check_enabled
+ * @property string|null $docker_registry_image_name
+ * @property string|null $description
+ * @property string|null $watch_paths
+ * @property string|null $dockerfile_location
+ * @property string|null $dockerfile_target_build
+ * @property string|null $docker_registry_image_tag
+ * @property string|null $auto_inject_database_url
+ * @property int|null $health_check_port
+ * @property string|null $health_check_host
+ * @property string|null $health_check_scheme
+ * @property string|null $health_check_method
+ * @property string|null $health_check_path
+ * @property \Carbon\Carbon|null $last_restart_at
+ * @property string|null $application_type
+ * @property string|null $build_command
+ * @property string|null $custom_network_aliases
+ * @property string|null $custom_nginx_configuration
+ * @property string|null $git_commit_sha
+ * @property string|null $install_command
+ * @property string|null $publish_directory
+ * @property string|null $redirect
+ * @property string|null $start_command
+ * @property string|null $static_image
+ * @property string|null $config_hash
+ * @property string|null $compose_parsing_version
+ * @property string|null $docker_compose_location
+ * @property bool|null $custom_healthcheck_found
+ * @property int|null $health_check_interval
+ * @property int|null $health_check_timeout
+ * @property int|null $health_check_retries
+ * @property int|null $health_check_start_period
+ * @property string|null $limits_memory
+ * @property string|null $limits_memory_swap
+ * @property string|null $limits_memory_swappiness
+ * @property string|null $limits_memory_reservation
+ * @property string|null $limits_cpus
+ * @property string|null $limits_cpuset
+ * @property int|null $limits_cpu_shares
+ * @property string $monorepo_group_id
+ * @property string|null $preview_url_template
+ * @property string|null $docker_compose
+ * @property string|null $post_deployment_command
+ * @property string|null $post_deployment_command_container
+ * @property string|null $pre_deployment_command
+ * @property string|null $pre_deployment_command_container
+ * @property string|null $docker_compose_custom_start_command
+ * @property string|null $docker_compose_custom_build_command
+ * @property int|null $health_check_return_code
+ * @property string|null $health_check_response_text
+ * @property string $manual_webhook_secret_github
+ * @property string $manual_webhook_secret_gitlab
+ * @property string $manual_webhook_secret_bitbucket
+ * @property string $manual_webhook_secret_gitea
+ * @property int|null $swarm_replicas
+ * @property string|null $swarm_placement_constraints
+ * @property bool $build_pack_explicitly_set
  */
 #[OA\Schema(
     description: 'Application model',

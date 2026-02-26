@@ -12,6 +12,48 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Url\Url;
 
+/**
+ * @property string $update_check_frequency
+ * @property string|null $instance_timezone
+ * @property bool $is_auto_update_enabled
+ * @property string $auto_update_frequency
+ * @property bool $resource_monitoring_enabled
+ * @property bool $do_not_track
+ * @property string|null $auto_provision_server_type
+ * @property string|null $auto_provision_location
+ * @property int $resource_critical_cpu_threshold
+ * @property int $resource_warning_cpu_threshold
+ * @property int $resource_critical_memory_threshold
+ * @property int $resource_warning_memory_threshold
+ * @property int $resource_critical_disk_threshold
+ * @property int $resource_warning_disk_threshold
+ * @property bool $auto_provision_enabled
+ * @property int $auto_provision_max_servers_per_day
+ * @property bool $is_cloudflare_protection_enabled
+ * @property bool $app_default_auto_deploy
+ * @property bool $app_default_force_https
+ * @property bool $app_default_preview_deployments
+ * @property bool $app_default_pr_deployments_public
+ * @property bool $app_default_git_submodules
+ * @property bool $app_default_git_lfs
+ * @property bool $app_default_git_shallow_clone
+ * @property bool $app_default_use_build_secrets
+ * @property bool $app_default_inject_build_args
+ * @property bool $app_default_include_commit_in_build
+ * @property int $app_default_docker_images_to_keep
+ * @property bool $app_default_auto_rollback
+ * @property int $app_default_rollback_validation_sec
+ * @property int $app_default_rollback_max_restarts
+ * @property bool $app_default_rollback_on_health_fail
+ * @property bool $app_default_rollback_on_crash_loop
+ * @property bool $app_default_debug
+ * @property string|null $app_default_build_pack
+ * @property string|null $instance_name
+ * @property string $cloudflare_api_token
+ * @property int|null $cloudflare_account_id
+ * @property int|null $cloudflare_tunnel_id
+ * @property int|null $cloudflare_zone_id
+ */
 class InstanceSettings extends Model
 {
     use Auditable, HasFactory, LogsActivity;
