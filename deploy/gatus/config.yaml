@@ -1,0 +1,111 @@
+# =============================================================================
+# Gatus - Saturn Platform Uptime Monitoring
+# =============================================================================
+# Config-driven monitoring. No UI setup needed — auto-starts via CI/CD.
+# Alerts via Telegram when monitors go down or recover.
+#
+# Health endpoint response format:
+#   { "status": "healthy"|"degraded", "checks": { "database": "ok"|"failing",
+#     "redis": "ok"|"failing", "queue": { "status": "ok"|"failing", "failed": N } } }
+#
+# Required GitHub Secrets (repository-level, shared across envs):
+#   MONITORING_TELEGRAM_TOKEN   - Telegram bot token (from @BotFather)
+#   MONITORING_TELEGRAM_CHAT_ID - Chat/channel ID to receive alerts
+#
+# Status page: https://status.saturn.ac
+# =============================================================================
+
+web:
+  port: 8080
+
+ui:
+  title: "Saturn Platform Status"
+  description: "Real-time monitoring for Saturn Platform environments"
+  header: "Saturn Status"
+
+storage:
+  type: sqlite
+  path: /data/gatus.db
+
+# ---------------------------------------------------------------------------
+# Alerting: Telegram
+# Set MONITORING_TELEGRAM_TOKEN and MONITORING_TELEGRAM_CHAT_ID secrets.
+# If not set, Gatus still runs — just without notifications.
+# ---------------------------------------------------------------------------
+alerting:
+  telegram:
+    token: "${MONITORING_TELEGRAM_TOKEN}"
+    id: "${MONITORING_TELEGRAM_CHAT_ID}"
+    default-alert:
+      send-on-resolved: true
+      failure-threshold: 2
+      success-threshold: 1
+
+# ---------------------------------------------------------------------------
+# Monitors
+# ---------------------------------------------------------------------------
+endpoints:
+  # --- App availability ---
+  - name: "Production"
+    group: "Availability"
+    url: "https://saturn.ac/api/health"
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == healthy"
+      - "[RESPONSE_TIME] < 10000"
+    alerts:
+      - type: telegram
+        description: "Production is down or degraded"
+        send-on-resolved: true
+
+  - name: "Staging (UAT)"
+    group: "Availability"
+    url: "https://uat.saturn.ac/api/health"
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == healthy"
+      - "[RESPONSE_TIME] < 15000"
+    alerts:
+      - type: telegram
+        description: "Staging is down or degraded"
+        send-on-resolved: true
+
+  - name: "Dev"
+    group: "Availability"
+    url: "https://dev.saturn.ac/api/health"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == healthy"
+      - "[RESPONSE_TIME] < 20000"
+    alerts:
+      - type: telegram
+        description: "Dev is down or degraded"
+        send-on-resolved: true
+
+  # --- Infrastructure (production only) ---
+  - name: "Production DB"
+    group: "Infrastructure"
+    url: "https://saturn.ac/api/health"
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].checks.database == ok"
+    alerts:
+      - type: telegram
+        description: "Production database is failing"
+        send-on-resolved: true
+
+  - name: "Production Redis"
+    group: "Infrastructure"
+    url: "https://saturn.ac/api/health"
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].checks.redis == ok"
+    alerts:
+      - type: telegram
+        description: "Production Redis is failing"
+        send-on-resolved: true

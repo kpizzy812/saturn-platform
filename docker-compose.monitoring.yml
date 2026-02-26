@@ -1,34 +1,32 @@
 # =============================================================================
-# Saturn Platform - Monitoring Stack
+# Saturn Platform - Monitoring Stack (Gatus)
 # =============================================================================
-# Uptime Kuma: self-hosted uptime monitoring with alerts.
-# Accessible at https://status.saturn.ac (Traefik routes traffic).
+# Config-driven uptime monitoring. No UI setup needed.
+# Starts automatically on production deploy via CI/CD.
 #
-# Usage (first time):
+# Config: deploy/gatus/config.yaml (copied to VPS by deploy workflow)
+# Status page: https://status.saturn.ac
+#
+# Manual start (if needed):
 #   docker compose -f docker-compose.monitoring.yml up -d
-#
-# After start, open https://status.saturn.ac and:
-#   1. Create admin account
-#   2. Add monitors:
-#      - https://saturn.ac/api/health       (production)
-#      - https://uat.saturn.ac/api/health   (staging)
-#      - https://dev.saturn.ac/api/health   (dev)
-#   3. Configure notifications (Telegram, email, Slack, etc.)
-#
-# Data persists in named volume 'saturn-uptime-data'.
 # =============================================================================
 
 services:
-  uptime-kuma:
-    image: louislam/uptime-kuma:1
-    container_name: saturn-uptime
+  gatus:
+    image: twinproduction/gatus:v5
+    container_name: saturn-gatus
     restart: always
     volumes:
-      - saturn-uptime-data:/app/data
+      - /data/saturn/shared/gatus/config.yaml:/config/config.yaml:ro
+      - saturn-gatus-data:/data
+    environment:
+      # Telegram alerts — set as GitHub Secrets (MONITORING_TELEGRAM_TOKEN, MONITORING_TELEGRAM_CHAT_ID)
+      MONITORING_TELEGRAM_TOKEN: "${MONITORING_TELEGRAM_TOKEN:-}"
+      MONITORING_TELEGRAM_CHAT_ID: "${MONITORING_TELEGRAM_CHAT_ID:-}"
     expose:
-      - "3001"
+      - "8080"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       retries: 5
       timeout: 10s
@@ -38,12 +36,12 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
-          cpus: '0.5'
+          memory: 128M
+          cpus: '0.25'
 
 volumes:
-  saturn-uptime-data:
-    name: saturn-uptime-data
+  saturn-gatus-data:
+    name: saturn-gatus-data
 
 networks:
   saturn:

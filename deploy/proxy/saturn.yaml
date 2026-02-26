@@ -190,11 +190,11 @@ http:
   # Services
   # ===========================================================================
   services:
-    # Monitoring
+    # Monitoring (Gatus)
     uptime-kuma:
       loadBalancer:
         servers:
-          - url: 'http://saturn-uptime:3001'
+          - url: 'http://saturn-gatus:8080'
 
     # Dev
     dev-app:
