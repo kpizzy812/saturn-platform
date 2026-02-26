@@ -13,7 +13,7 @@
 
 services:
   gatus:
-    image: twinproduction/gatus:v5
+    image: twinproduction/gatus:latest
     container_name: saturn-gatus
     restart: always
     volumes:
