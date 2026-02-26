@@ -59,6 +59,14 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Recommended for production: JSON to file + Docker stdout.
+        // Set LOG_CHANNEL=production-stack in production .env.
+        'production-stack' => [
+            'driver' => 'stack',
+            'channels' => ['production', 'stderr'],
+            'ignore_exceptions' => false,
+        ],
+
         'production' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
@@ -104,7 +112,9 @@ return [
             'driver' => 'monolog',
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
-            'formatter' => env('LOG_STDERR_FORMATTER'),
+            // Defaults to JsonFormatter so Docker log driver captures structured JSON.
+            // Override with LOG_STDERR_FORMATTER=null for plain text in development.
+            'formatter' => env('LOG_STDERR_FORMATTER', JsonFormatter::class),
             'with' => [
                 'stream' => 'php://stderr',
             ],
