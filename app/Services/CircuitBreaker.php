@@ -21,20 +21,20 @@ class CircuitBreaker
     /** Per-service configuration. */
     private const CONFIGS = [
         'hetzner' => [
-            'threshold'        => 5,  // failures within window before opening
-            'window_seconds'   => 60, // sliding window for counting failures
+            'threshold' => 5,  // failures within window before opening
+            'window_seconds' => 60, // sliding window for counting failures
             'cooldown_seconds' => 60, // how long the circuit stays open
         ],
         'github' => [
-            'threshold'        => 5,
-            'window_seconds'   => 60,
+            'threshold' => 5,
+            'window_seconds' => 60,
             'cooldown_seconds' => 30,
         ],
     ];
 
     private const DEFAULT_CONFIG = [
-        'threshold'        => 5,
-        'window_seconds'   => 60,
+        'threshold' => 5,
+        'window_seconds' => 60,
         'cooldown_seconds' => 60,
     ];
 
@@ -64,8 +64,8 @@ class CircuitBreaker
         if ($failures >= $config['threshold'] && ! self::isOpen($service)) {
             Cache::put(self::openKey($service), true, now()->addSeconds($config['cooldown_seconds']));
             Log::warning('Circuit breaker OPEN', [
-                'service'          => $service,
-                'failures'         => $failures,
+                'service' => $service,
+                'failures' => $failures,
                 'cooldown_seconds' => $config['cooldown_seconds'],
             ]);
         }

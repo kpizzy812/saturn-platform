@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Exceptions\RateLimitException;
-use App\Services\CircuitBreaker;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
