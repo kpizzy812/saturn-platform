@@ -116,6 +116,60 @@ trait HandlesImageRegistry
     }
 
     /**
+     * Handle image reuse for promotion deployments (dev → staging → prod).
+     *
+     * Tries to find the source environment's image and tag it for this deployment.
+     * On success, marks local_image_found so should_skip_build() skips the build step.
+     * On failure, logs a message and allows fallback to a full rebuild.
+     */
+    private function handle_promotion_image(): void
+    {
+        if (! $this->is_promotion || ! $this->promoted_from_image) {
+            return;
+        }
+
+        // Try to pull source image — works when a registry is configured or image is on a remote server
+        $this->execute_remote_command([
+            "docker pull {$this->promoted_from_image} 2>/dev/null",
+            'ignore_errors' => true,
+            'hidden' => true,
+        ]);
+
+        // Check if the source image is now available locally
+        $this->execute_remote_command([
+            "docker images -q {$this->promoted_from_image} 2>/dev/null",
+            'hidden' => true,
+            'save' => 'promotion_source_found',
+        ]);
+
+        if (str($this->saved_outputs->get('promotion_source_found'))->isEmpty()) {
+            $this->application_deployment_queue->addLogEntry(
+                "Promotion: Source image {$this->promoted_from_image} not found. Falling back to full build."
+            );
+
+            return;
+        }
+
+        // Tag source image as this deployment's production image when names differ
+        if ($this->promoted_from_image !== $this->production_image_name) {
+            $this->execute_remote_command([
+                "docker tag {$this->promoted_from_image} {$this->production_image_name}",
+                'hidden' => true,
+            ]);
+            $this->application_deployment_queue->addLogEntry(
+                "Promotion: Image reused from {$this->promoted_from_image} → tagged as {$this->production_image_name}."
+            );
+        } else {
+            $this->application_deployment_queue->addLogEntry(
+                "Promotion: Image {$this->production_image_name} already available (shared registry)."
+            );
+        }
+
+        // Mark as found so should_skip_build() returns true and skips the build step
+        $this->saved_outputs->put('local_image_found', 'promoted');
+    }
+
+    /**
      * Check if Docker image exists locally or in remote registry.
      */
     private function check_image_locally_or_remotely()

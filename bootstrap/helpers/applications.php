@@ -14,7 +14,7 @@ use App\Models\StandaloneDocker;
 use Spatie\Url\Url;
 use Visus\Cuid2\Cuid2;
 
-function queue_application_deployment(Application $application, string $deployment_uuid, ?int $pull_request_id = 0, string $commit = 'HEAD', bool $force_rebuild = false, bool $is_webhook = false, bool $is_api = false, bool $restart_only = false, ?string $git_type = null, bool $no_questions_asked = false, ?Server $server = null, ?StandaloneDocker $destination = null, bool $only_this_server = false, bool $rollback = false, ?int $user_id = null, bool $requires_approval = false)
+function queue_application_deployment(Application $application, string $deployment_uuid, ?int $pull_request_id = 0, string $commit = 'HEAD', bool $force_rebuild = false, bool $is_webhook = false, bool $is_api = false, bool $restart_only = false, ?string $git_type = null, bool $no_questions_asked = false, ?Server $server = null, ?StandaloneDocker $destination = null, bool $only_this_server = false, bool $rollback = false, ?int $user_id = null, bool $requires_approval = false, bool $is_promotion = false, ?string $promoted_from_image = null)
 {
     $application_id = $application->id;
     $deployment_link = Url::fromString($application->link()."/deployment/{$deployment_uuid}");
@@ -99,6 +99,8 @@ function queue_application_deployment(Application $application, string $deployme
         'only_this_server' => $only_this_server,
         'requires_approval' => $requires_approval,
         'approval_status' => $requires_approval ? 'pending' : null,
+        'is_promotion' => $is_promotion,
+        'promoted_from_image' => $promoted_from_image,
     ]);
 
     // Send notification if deployment requires approval - ONLY to approvers
