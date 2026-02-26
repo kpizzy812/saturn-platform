@@ -53,6 +53,25 @@ class GitController extends Controller
     }
 
     /**
+     * Sort branches so the default branch comes first, then alphabetically.
+     */
+    private function sortBranchesByDefault(array $branches): array
+    {
+        usort($branches, function ($a, $b) {
+            if ($a['is_default'] && ! $b['is_default']) {
+                return -1;
+            }
+            if (! $a['is_default'] && $b['is_default']) {
+                return 1;
+            }
+
+            return strcasecmp($a['name'], $b['name']);
+        });
+
+        return $branches;
+    }
+
+    /**
      * Fetch branches from GitHub API.
      * When $githubAppId is provided, uses the GitHub App installation token for private repos.
      */
@@ -111,17 +130,7 @@ class GitController extends Controller
             }
         }
 
-        // Sort: default branch first, then alphabetically
-        usort($branches, function ($a, $b) {
-            if ($a['is_default'] && ! $b['is_default']) {
-                return -1;
-            }
-            if (! $a['is_default'] && $b['is_default']) {
-                return 1;
-            }
-
-            return strcasecmp($a['name'], $b['name']);
-        });
+        $branches = $this->sortBranchesByDefault($branches);
 
         return [
             'success' => true,
@@ -168,17 +177,7 @@ class GitController extends Controller
             'is_default' => $branch['name'] === $defaultBranch,
         ])->toArray();
 
-        // Sort: default branch first, then alphabetically
-        usort($branches, function ($a, $b) {
-            if ($a['is_default'] && ! $b['is_default']) {
-                return -1;
-            }
-            if (! $a['is_default'] && $b['is_default']) {
-                return 1;
-            }
-
-            return strcasecmp($a['name'], $b['name']);
-        });
+        $branches = $this->sortBranchesByDefault($branches);
 
         return [
             'success' => true,
@@ -223,17 +222,7 @@ class GitController extends Controller
             'is_default' => $branch['name'] === $defaultBranch,
         ])->toArray();
 
-        // Sort: default branch first, then alphabetically
-        usort($branches, function ($a, $b) {
-            if ($a['is_default'] && ! $b['is_default']) {
-                return -1;
-            }
-            if (! $a['is_default'] && $b['is_default']) {
-                return 1;
-            }
-
-            return strcasecmp($a['name'], $b['name']);
-        });
+        $branches = $this->sortBranchesByDefault($branches);
 
         return [
             'success' => true,

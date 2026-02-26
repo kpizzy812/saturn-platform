@@ -16,6 +16,8 @@ class CheckTraefikVersionJob implements ShouldQueue
 
     public $tries = 3;
 
+    public $timeout = 60;
+
     public function handle(): void
     {
         // Load versions from cached data
