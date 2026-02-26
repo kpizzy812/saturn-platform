@@ -60,7 +60,9 @@ export function TeamSwitcher({ className }: TeamSwitcherProps) {
                     className={`flex items-center gap-2 rounded-lg border border-border bg-background-secondary px-3 py-2 text-sm transition-all duration-200 hover:border-border/80 hover:bg-background-tertiary ${className}`}
                     disabled={isLoading}
                 >
-                    {currentTeam?.personal_team ? (
+                    {currentTeam?.logo ? (
+                        <img src={currentTeam.logo} alt={currentTeam.name} className="h-4 w-4 rounded object-cover" />
+                    ) : currentTeam?.personal_team ? (
                         <User className="h-4 w-4 text-foreground-muted" />
                     ) : (
                         <Building2 className="h-4 w-4 text-foreground-muted" />
@@ -86,7 +88,9 @@ export function TeamSwitcher({ className }: TeamSwitcherProps) {
                             className="flex items-center justify-between"
                         >
                             <div className="flex items-center gap-2">
-                                {team.personal_team ? (
+                                {team.logo ? (
+                                    <img src={team.logo} alt={team.name} className="h-4 w-4 rounded object-cover" />
+                                ) : team.personal_team ? (
                                     <User className="h-4 w-4 text-foreground-muted" />
                                 ) : (
                                     <Building2 className="h-4 w-4 text-foreground-muted" />
