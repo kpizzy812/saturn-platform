@@ -16,6 +16,10 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+
+    public $timeout = 60;
+
     public function handle()
     {
         // Single query for all servers, reused across both cleanup methods to avoid redundant DB queries

@@ -412,6 +412,9 @@ Route::post('/settings/account/avatar', function (Request $request) {
         Storage::disk('public')->delete($user->avatar);
     }
 
+    // Ensure avatars directory exists before storing
+    Storage::disk('public')->makeDirectory('avatars');
+
     // Store new avatar
     $path = $request->file('avatar')->store('avatars', 'public');
     $user->update(['avatar' => $path]);

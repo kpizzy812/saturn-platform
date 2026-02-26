@@ -15,6 +15,8 @@ class CheckAndStartSentinelJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+
     public $timeout = 120;
 
     public function __construct(public Server $server) {}

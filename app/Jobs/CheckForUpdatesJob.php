@@ -16,6 +16,10 @@ class CheckForUpdatesJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+
+    public $timeout = 60;
+
     public function handle(): void
     {
         try {

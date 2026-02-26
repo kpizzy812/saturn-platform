@@ -17,6 +17,8 @@ class GithubAppPermissionJob implements ShouldBeEncrypted, ShouldQueue
 
     public $tries = 4;
 
+    public $timeout = 30;
+
     public function backoff(): int
     {
         return isDev() ? 1 : 3;
