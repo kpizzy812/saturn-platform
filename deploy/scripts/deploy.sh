@@ -220,14 +220,48 @@ sync_db_password() {
     # PostgreSQL only sets POSTGRES_PASSWORD on first initdb.
     # If the .env password was changed, the DB volume still has the old one.
     # This ensures they always match BEFORE PgBouncer starts.
-    local db_password
+    local db_user db_password db_name
+    db_user=$(grep '^DB_USERNAME=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
     db_password=$(grep '^DB_PASSWORD=' "${SATURN_DATA}/source/.env" | cut -d= -f2-)
+    db_name=$(grep '^DB_DATABASE=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
 
     if [[ -n "$db_password" ]]; then
-        docker exec "${CONTAINER_DB}" psql -U saturn -d saturn \
-            -c "ALTER USER saturn PASSWORD '${db_password}';" > /dev/null 2>&1 || true
+        docker exec "${CONTAINER_DB}" psql -U "${db_user}" -d "${db_name}" \
+            -c "ALTER USER \"${db_user}\" PASSWORD '${db_password}';" > /dev/null 2>&1 || true
         log_success "Database password synced"
     fi
+}
+
+wait_for_db() {
+    log_step "Waiting for PgBouncer backend pool to be ready..."
+
+    local retries=20
+    local pgbouncer_container="saturn-pgbouncer-${SATURN_ENV}"
+    local db_user db_password db_name
+
+    db_user=$(grep '^DB_USERNAME=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
+    db_password=$(grep '^DB_PASSWORD=' "${SATURN_DATA}/source/.env" | cut -d= -f2-)
+    db_name=$(grep '^DB_DATABASE=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
+
+    while [[ $retries -gt 0 ]]; do
+        # Run psql INSIDE pgbouncer container — tests actual backend connectivity.
+        # env sets PGPASSWORD at runtime (not via docker exec -e which Docker Compose
+        # might substitute from host env). Connects through PgBouncer → postgres.
+        if docker exec "$pgbouncer_container" \
+            env PGPASSWORD="$db_password" \
+            psql -h 127.0.0.1 -p 5432 -U "$db_user" -d "$db_name" \
+            -c 'SELECT 1' -q > /dev/null 2>&1; then
+            log_success "PgBouncer backend pool ready"
+            return 0
+        fi
+        log_info "Waiting for backend pool... ($retries retries left)"
+        sleep 2
+        ((retries--))
+    done
+
+    log_error "PgBouncer backend pool failed to initialize"
+    log_error "Diagnostics: docker logs $pgbouncer_container"
+    exit 1
 }
 
 start_pgbouncer() {
@@ -510,6 +544,7 @@ deploy() {
     start_infrastructure   # postgres, redis, soketi
     sync_db_password        # ensure postgres has the password from .env
     start_pgbouncer         # now PgBouncer can connect to postgres successfully
+    wait_for_db             # block until PgBouncer backend pool is established
     run_migrations
     start_app
     run_seeders
