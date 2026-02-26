@@ -14,12 +14,30 @@
 #   - staging (staging branch)     - auto deploy, no approval
 #   - production (main branch)     - requires manual approval
 #
-# Required Secrets (per environment):
-#   - VPS_HOST        - Server IP
-#   - VPS_USER        - SSH username
-#   - VPS_SSH_KEY     - Private SSH key
-#   - VPS_PORT        - SSH port
-#   - PRODUCTION_ENV  - Full .env file contents
+# Required Secrets (per GitHub Environment: development / staging / production):
+#   - VPS_HOST            - Server IP
+#   - VPS_USER            - SSH username
+#   - VPS_SSH_KEY         - Private SSH key
+#   - VPS_PORT            - SSH port
+#   - APP_KEY             - Laravel app key  (php artisan key:generate --show)
+#   - SERVER_UUID         - Unique instance UUID  (uuidgen)
+#   - DB_PASSWORD         - PostgreSQL password
+#   - REDIS_PASSWORD      - Redis password
+#   - PUSHER_APP_ID       - Soketi app ID
+#   - PUSHER_APP_KEY      - Soketi app key
+#   - PUSHER_APP_SECRET   - Soketi app secret
+#
+# Optional Secrets (can be shared at repository level):
+#   - SENTRY_DSN          - Sentry DSN (leave empty to disable)
+#   - MAIL_HOST           - SMTP host
+#   - MAIL_USERNAME       - SMTP username
+#   - MAIL_PASSWORD       - SMTP password
+#   - TRUSTED_PROXIES     - Proxy CIDRs (default: 172.16.0.0/12,10.0.0.0/8)
+#   - BACKUP_S3_BUCKET    - S3 bucket for offsite DB backups
+#   - BACKUP_S3_ENDPOINT  - S3 endpoint URL (Hetzner/MinIO; empty = AWS)
+#   - BACKUP_S3_KEY       - S3 access key
+#   - BACKUP_S3_SECRET    - S3 secret key
+#   - BACKUP_S3_REGION    - S3 region (default: us-east-1)
 # =============================================================================
 
 name: Deploy to VPS
@@ -239,18 +257,194 @@ jobs:
             --exclude='*' \
             ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/saturn/
 
-      - name: Deploy .env file
+      - name: Build and deploy .env file
         env:
-          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
           SATURN_ENV: ${{ needs.prepare.outputs.saturn_env }}
+          DOMAIN: ${{ needs.prepare.outputs.domain }}
+          # --- Per-environment secrets (set in each GitHub Environment) ---
+          APP_KEY: ${{ secrets.APP_KEY }}
+          SERVER_UUID: ${{ secrets.SERVER_UUID }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          PUSHER_APP_ID: ${{ secrets.PUSHER_APP_ID }}
+          PUSHER_APP_KEY: ${{ secrets.PUSHER_APP_KEY }}
+          PUSHER_APP_SECRET: ${{ secrets.PUSHER_APP_SECRET }}
+          # --- Optional secrets (can be at repository level) ---
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          MAIL_HOST: ${{ secrets.MAIL_HOST }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          TRUSTED_PROXIES: ${{ secrets.TRUSTED_PROXIES }}
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+          BACKUP_S3_KEY: ${{ secrets.BACKUP_S3_KEY }}
+          BACKUP_S3_SECRET: ${{ secrets.BACKUP_S3_SECRET }}
+          BACKUP_S3_REGION: ${{ secrets.BACKUP_S3_REGION }}
         run: |
+          # Resolve per-environment static (non-sensitive) values
+          case "$SATURN_ENV" in
+            dev)
+              _APP_ID=saturn-dev
+              _APP_NAME="Saturn Platform (Dev)"
+              _APP_ENV=development
+              _APP_DEBUG=true
+              _LOG_LEVEL=debug
+              _LOG_CHANNEL=stack
+              _PHP_MEM=512M
+              _PHP_FPM_START=2
+              _PHP_FPM_MIN=1
+              _PHP_FPM_MAX=5
+              _REGISTRATION=true
+              _SENTRY_TRACING=false
+              _SOKETI_DEBUG=true
+              _IMAGE_TAG=dev
+              _MAIL_MAILER=log
+              _MAIL_FROM="dev@saturn.local"
+              ;;
+            staging)
+              _APP_ID=saturn-staging
+              _APP_NAME="Saturn Platform (Staging)"
+              _APP_ENV=staging
+              _APP_DEBUG=false
+              _LOG_LEVEL=info
+              _LOG_CHANNEL=stack
+              _PHP_MEM=512M
+              _PHP_FPM_START=2
+              _PHP_FPM_MIN=1
+              _PHP_FPM_MAX=5
+              _REGISTRATION=true
+              _SENTRY_TRACING=true
+              _SOKETI_DEBUG=false
+              _IMAGE_TAG=staging
+              _MAIL_MAILER=smtp
+              _MAIL_FROM="staging@saturn.ac"
+              ;;
+            production)
+              _APP_ID=saturn-prod
+              _APP_NAME="Saturn Platform"
+              _APP_ENV=production
+              _APP_DEBUG=false
+              _LOG_LEVEL=info
+              _LOG_CHANNEL=production
+              _PHP_MEM=1G
+              _PHP_FPM_START=4
+              _PHP_FPM_MIN=2
+              _PHP_FPM_MAX=10
+              _REGISTRATION=false
+              _SENTRY_TRACING=true
+              _SOKETI_DEBUG=false
+              _IMAGE_TAG=main
+              _MAIL_MAILER=smtp
+              _MAIL_FROM="noreply@saturn.ac"
+              ;;
+          esac
+
+          _PROXIES="${TRUSTED_PROXIES:-172.16.0.0/12,10.0.0.0/8}"
+
+          # Build .env — secrets live in env vars, never printed to runner logs
+          {
+            printf '# Auto-generated by CI/CD — do not edit manually\n'
+            printf '# Generated: %s | Environment: %s\n\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$SATURN_ENV"
+
+            printf 'APP_ID=%s\n'        "$_APP_ID"
+            printf 'APP_NAME="%s"\n'    "$_APP_NAME"
+            printf 'APP_ENV=%s\n'       "$_APP_ENV"
+            printf 'APP_DEBUG=%s\n'     "$_APP_DEBUG"
+            printf 'APP_URL=https://%s\n' "$DOMAIN"
+            printf 'SATURN_ENV=%s\n'    "$SATURN_ENV"
+            printf 'APP_KEY=%s\n'       "$APP_KEY"
+            printf 'SERVER_UUID=%s\n\n' "$SERVER_UUID"
+
+            printf '# Database\n'
+            printf 'DB_CONNECTION=pgsql\n'
+            printf 'DB_HOST=saturn-db\n'
+            printf 'DB_PORT=5432\n'
+            printf 'DB_DATABASE=saturn\n'
+            printf 'DB_USERNAME=saturn\n'
+            printf 'DB_PASSWORD=%s\n\n' "$DB_PASSWORD"
+
+            printf '# Redis\n'
+            printf 'REDIS_HOST=saturn-redis\n'
+            printf 'REDIS_PORT=6379\n'
+            printf 'REDIS_PASSWORD=%s\n' "$REDIS_PASSWORD"
+            printf 'CACHE_DRIVER=redis\n'
+            printf 'SESSION_DRIVER=redis\n'
+            printf 'QUEUE_CONNECTION=redis\n'
+            printf 'SESSION_SECURE_COOKIE=true\n\n'
+
+            printf '# WebSocket (Soketi)\n'
+            printf 'BROADCAST_CONNECTION=pusher\n'
+            printf 'PUSHER_BACKEND_HOST=saturn-realtime\n'
+            printf 'PUSHER_BACKEND_PORT=6001\n'
+            printf 'PUSHER_APP_ID=%s\n'     "$PUSHER_APP_ID"
+            printf 'PUSHER_APP_KEY=%s\n'    "$PUSHER_APP_KEY"
+            printf 'PUSHER_APP_SECRET=%s\n' "$PUSHER_APP_SECRET"
+            printf 'PUSHER_SCHEME=http\n'
+            printf 'VITE_PUSHER_APP_KEY=%s\n' "$PUSHER_APP_KEY"
+            printf 'VITE_PUSHER_HOST=\n'
+            printf 'VITE_PUSHER_PORT=443\n'
+            printf 'VITE_PUSHER_SCHEME=wss\n\n'
+
+            printf '# Mail\n'
+            printf 'MAIL_MAILER=%s\n'         "$_MAIL_MAILER"
+            printf 'MAIL_HOST=%s\n'           "${MAIL_HOST:-}"
+            printf 'MAIL_PORT=587\n'
+            printf 'MAIL_USERNAME=%s\n'       "${MAIL_USERNAME:-}"
+            printf 'MAIL_PASSWORD=%s\n'       "${MAIL_PASSWORD:-}"
+            printf 'MAIL_ENCRYPTION=tls\n'
+            printf 'MAIL_FROM_ADDRESS="%s"\n' "$_MAIL_FROM"
+            printf 'MAIL_FROM_NAME="%s"\n\n'  "$_APP_NAME"
+
+            printf '# Logging\n'
+            printf 'LOG_CHANNEL=%s\n' "$_LOG_CHANNEL"
+            printf 'LOG_LEVEL=%s\n\n' "$_LOG_LEVEL"
+
+            printf '# Security\n'
+            printf 'SANCTUM_STATEFUL_DOMAINS=%s\n'  "$DOMAIN"
+            printf 'CORS_ALLOWED_ORIGINS=https://%s\n' "$DOMAIN"
+            printf 'TRUSTED_PROXIES=%s\n\n'  "$_PROXIES"
+
+            printf '# Instance\n'
+            printf 'IS_REGISTRATION_ENABLED=%s\n' "$_REGISTRATION"
+            printf 'IS_API_ENABLED=true\n\n'
+
+            printf '# Docker\n'
+            printf 'REGISTRY_URL=ghcr.io\n'
+            printf 'SATURN_IMAGE_TAG=%s\n\n' "$_IMAGE_TAG"
+
+            printf '# PHP\n'
+            printf 'PHP_MEMORY_LIMIT=%s\n'             "$_PHP_MEM"
+            printf 'PHP_FPM_PM_CONTROL=dynamic\n'
+            printf 'PHP_FPM_PM_START_SERVERS=%s\n'     "$_PHP_FPM_START"
+            printf 'PHP_FPM_PM_MIN_SPARE_SERVERS=%s\n' "$_PHP_FPM_MIN"
+            printf 'PHP_FPM_PM_MAX_SPARE_SERVERS=%s\n\n' "$_PHP_FPM_MAX"
+
+            printf '# Error Tracking (Sentry)\n'
+            printf 'SENTRY_DSN=%s\n'           "${SENTRY_DSN:-}"
+            printf 'SENTRY_ENABLE_TRACING=%s\n' "$_SENTRY_TRACING"
+            printf 'VITE_SENTRY_DSN=%s\n'       "${SENTRY_DSN:-}"
+            printf 'VITE_SENTRY_ENABLE_DEV=false\n\n'
+
+            printf '# S3 Offsite Backup\n'
+            printf 'BACKUP_S3_BUCKET=%s\n'   "${BACKUP_S3_BUCKET:-}"
+            printf 'BACKUP_S3_ENDPOINT=%s\n' "${BACKUP_S3_ENDPOINT:-}"
+            printf 'BACKUP_S3_KEY=%s\n'      "${BACKUP_S3_KEY:-}"
+            printf 'BACKUP_S3_SECRET=%s\n'   "${BACKUP_S3_SECRET:-}"
+            printf 'BACKUP_S3_REGION=%s\n\n' "${BACKUP_S3_REGION:-us-east-1}"
+
+            printf '# Debug\n'
+            printf 'SOKETI_DEBUG=%s\n'       "$_SOKETI_DEBUG"
+            printf 'TELESCOPE_ENABLED=false\n'
+          } > /tmp/saturn.env
+
+          # Create remote directory and deploy .env via SCP
           ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "mkdir -p /data/saturn/${SATURN_ENV}/source"
 
-          # Write .env file securely
-          echo "$PRODUCTION_ENV" | ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
-            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "cat > /data/saturn/${SATURN_ENV}/source/.env"
+          scp -i ~/.ssh/deploy_key -P ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
+            /tmp/saturn.env ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/data/saturn/${SATURN_ENV}/source/.env
 
+          rm -f /tmp/saturn.env
           echo "✓ .env deployed to /data/saturn/${SATURN_ENV}/source/.env"
 
       - name: Deploy to VPS
