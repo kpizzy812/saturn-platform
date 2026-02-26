@@ -412,11 +412,20 @@ Route::post('/settings/account/avatar', function (Request $request) {
         Storage::disk('public')->delete($user->avatar);
     }
 
-    // Ensure avatars directory exists before storing
-    Storage::disk('public')->makeDirectory('avatars');
+    // Ensure avatars directory exists (ignore if already exists or if permissions prevent creation —
+    // the entrypoint script ensures it's created at container start with correct permissions)
+    try {
+        Storage::disk('public')->makeDirectory('avatars');
+    } catch (\Exception) {
+        // Directory already exists or will be created by store() — continue
+    }
 
     // Store new avatar
     $path = $request->file('avatar')->store('avatars', 'public');
+    if ($path === false) {
+        return redirect()->back()->withErrors(['avatar' => 'Failed to save avatar. Storage may not be writable.']);
+    }
+
     $user->update(['avatar' => $path]);
 
     return redirect()->back()->with('success', 'Avatar updated successfully');
