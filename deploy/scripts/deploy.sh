@@ -138,6 +138,17 @@ validate_prerequisites() {
     # Logs must be writable by www-data (uid 9999) inside the container
     chown -R 9999:9999 "${SATURN_DATA}/logs"
 
+    # Warn if Sentry DSN is not configured in production.
+    # Errors will not be tracked until SENTRY_DSN is set in .env.
+    if [[ "${SATURN_ENV}" == "production" ]]; then
+        local sentry_dsn
+        sentry_dsn=$(grep -E '^SENTRY_DSN=' "${SATURN_DATA}/source/.env" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'" || true)
+        if [[ -z "${sentry_dsn}" ]]; then
+            log_warn "SENTRY_DSN is not set — production errors will not be tracked!"
+            log_warn "Set SENTRY_DSN in ${SATURN_DATA}/source/.env to enable error monitoring."
+        fi
+    fi
+
     log_success "Prerequisites OK"
 }
 
