@@ -1019,3 +1019,53 @@ export interface MigrationTargets {
         ip: string;
     }>;
 }
+
+// Cloud Provider types
+export interface CloudProviderToken {
+    uuid: string;
+    name: string;
+    provider: 'hetzner' | 'digitalocean';
+    team_id: number;
+    servers_count: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface HetznerLocation {
+    id: number;
+    name: string;
+    description: string;
+    country: string;
+    city: string;
+}
+
+export interface HetznerServerType {
+    id: number;
+    name: string;
+    description: string;
+    cores: number;
+    memory: number;
+    disk: number;
+}
+
+export interface HetznerImage {
+    id: number;
+    name: string;
+    description: string;
+    os_flavor: string;
+    os_version: string | null;
+}
+
+export interface AutoProvisioningSettings {
+    auto_provision_enabled: boolean;
+    auto_provision_max_servers_per_day: number;
+    auto_provision_cooldown_minutes: number;
+    auto_provision_server_type: string | null;
+    auto_provision_location: string | null;
+    resource_monitoring_enabled: boolean;
+    resource_warning_cpu_threshold: number;
+    resource_critical_cpu_threshold: number;
+    resource_warning_memory_threshold: number;
+    resource_critical_memory_threshold: number;
+    cloud_provider_token_uuid?: string | null;
+}

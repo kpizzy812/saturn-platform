@@ -961,9 +961,10 @@ class ServersController extends Controller
                 'message' => 'Server reboot initiated.',
             ], 200);
         } catch (\Throwable $e) {
+            \Log::error('Server reboot failed', ['server' => $server->uuid, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to reboot server.',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }

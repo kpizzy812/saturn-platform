@@ -53,7 +53,8 @@ Route::group([
     Route::get('/health', [OtherController::class, 'healthcheck']);
 });
 
-Route::post('/feedback', [OtherController::class, 'feedback'])->middleware('throttle:5,1');
+// Requires authentication: feedback goes to Discord webhook, public access enables spam.
+Route::post('/feedback', [OtherController::class, 'feedback'])->middleware(['auth:sanctum', 'throttle:5,1']);
 
 // CLI Device Auth Flow (public, no auth required)
 Route::prefix('v1/cli/auth')->middleware('throttle:10,1')->group(function () {

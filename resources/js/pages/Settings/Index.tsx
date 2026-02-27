@@ -2,7 +2,7 @@ import * as React from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { User, Users, Key, Plug, Building2, FileText, Bell, Shield } from 'lucide-react';
+import { User, Users, Key, Plug, Building2, FileText, Bell, Shield, Cloud, Zap } from 'lucide-react';
 
 interface SettingSection {
     id: string;
@@ -16,6 +16,8 @@ const settingSections: SettingSection[] = [
     { id: 'team', label: 'Team', icon: Users, href: '/settings/team' },
     { id: 'tokens', label: 'API Tokens', icon: Key, href: '/settings/tokens' },
     { id: 'integrations', label: 'Integrations', icon: Plug, href: '/settings/integrations' },
+    { id: 'cloud-providers', label: 'Cloud Providers', icon: Cloud, href: '/settings/cloud-providers' },
+    { id: 'auto-provisioning', label: 'Auto-Provisioning', icon: Zap, href: '/settings/auto-provisioning' },
     { id: 'notifications', label: 'Notifications', icon: Bell, href: '/settings/notifications' },
     { id: 'workspace', label: 'Workspace', icon: Building2, href: '/settings/workspace' },
     { id: 'audit-log', label: 'Audit Log', icon: FileText, href: '/settings/audit-log' },

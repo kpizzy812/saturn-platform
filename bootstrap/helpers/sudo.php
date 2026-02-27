@@ -129,7 +129,7 @@ function parseCommandsByLineForSudo(Collection $commands, Server $server): array
 }
 function parseLineForSudo(string $command, Server $server): string
 {
-    if (! str($command)->startSwith('cd') && ! str($command)->startSwith('command')) {
+    if (! str($command)->startsWith('cd') && ! str($command)->startsWith('command')) {
         $command = "sudo $command";
     }
     if (Str::startsWith($command, 'sudo mkdir -p')) {

@@ -26,11 +26,22 @@ Route::get('/servers', function () {
 
 Route::get('/servers/create', function () {
     $privateKeys = \App\Models\PrivateKey::ownedByCurrentTeam()->get();
+    $cloudTokens = \App\Models\CloudProviderToken::ownedByCurrentTeam()
+        ->where('provider', 'hetzner')
+        ->get();
 
     return Inertia::render('Servers/Create', [
         'privateKeys' => $privateKeys,
+        'cloudTokens' => $cloudTokens,
     ]);
 })->name('servers.create');
+
+// Hetzner wizard routes (must be before /servers/{uuid})
+Route::get('/servers/hetzner/options', [\App\Http\Controllers\Web\WebHetznerController::class, 'options'])
+    ->name('servers.hetzner.options');
+
+Route::post('/servers/hetzner', [\App\Http\Controllers\Web\WebHetznerController::class, 'store'])
+    ->name('servers.hetzner.store');
 
 Route::post('/servers', function (Request $request) {
     Gate::authorize('create', \App\Models\Server::class);

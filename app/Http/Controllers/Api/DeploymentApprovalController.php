@@ -92,7 +92,9 @@ class DeploymentApprovalController extends Controller
                 'status' => $approval->status,
             ]);
         } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 400);
+            \Log::error('Request deployment approval failed', ['deployment' => $uuid, 'error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to create approval request.'], 400);
         }
     }
 
@@ -184,9 +186,16 @@ class DeploymentApprovalController extends Controller
                 'status' => 'approved',
             ]);
         } catch (\Exception $e) {
-            $statusCode = str_contains($e->getMessage(), 'permission') ? 403 : 400;
+            $isPermissionDenied = str_contains($e->getMessage(), 'permission');
+            if (! $isPermissionDenied) {
+                \Log::error('Approve deployment failed', ['deployment' => $uuid, 'error' => $e->getMessage()]);
+            }
 
-            return response()->json(['message' => $e->getMessage()], $statusCode);
+            return response()->json([
+                'message' => $isPermissionDenied
+                    ? 'Not authorized to approve this deployment.'
+                    : 'Failed to approve deployment.',
+            ], $isPermissionDenied ? 403 : 400);
         }
     }
 
@@ -278,9 +287,16 @@ class DeploymentApprovalController extends Controller
                 'status' => 'rejected',
             ]);
         } catch (\Exception $e) {
-            $statusCode = str_contains($e->getMessage(), 'permission') ? 403 : 400;
+            $isPermissionDenied = str_contains($e->getMessage(), 'permission');
+            if (! $isPermissionDenied) {
+                \Log::error('Reject deployment failed', ['deployment' => $uuid, 'error' => $e->getMessage()]);
+            }
 
-            return response()->json(['message' => $e->getMessage()], $statusCode);
+            return response()->json([
+                'message' => $isPermissionDenied
+                    ? 'Not authorized to reject this deployment.'
+                    : 'Failed to reject deployment.',
+            ], $isPermissionDenied ? 403 : 400);
         }
     }
 
