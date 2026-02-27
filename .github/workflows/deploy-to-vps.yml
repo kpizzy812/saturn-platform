@@ -120,6 +120,7 @@ jobs:
   # =============================================================================
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -140,6 +141,13 @@ jobs:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
+
+      - name: Cache PHPStan results
+        uses: actions/cache@v4
+        with:
+          path: /tmp/phpstan-cache
+          key: ${{ runner.os }}-phpstan-${{ hashFiles('**/*.php') }}
+          restore-keys: ${{ runner.os }}-phpstan-
 
       - name: Create CI .env
         run: |
@@ -165,7 +173,7 @@ jobs:
         run: ./vendor/bin/pint --test
 
       - name: Run PHPStan (static analysis)
-        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress --cache-path=/tmp/phpstan-cache
 
       - name: ShellCheck (bash script analysis)
         uses: ludeeus/action-shellcheck@master
