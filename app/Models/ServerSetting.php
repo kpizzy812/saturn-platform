@@ -186,6 +186,7 @@ class ServerSetting extends Model
     {
         $data = [
             'server_uuid' => $this->server->uuid,
+            'team_id' => $this->server->team_id,
         ];
         $token = json_encode($data);
         $encrypted = encrypt($token);

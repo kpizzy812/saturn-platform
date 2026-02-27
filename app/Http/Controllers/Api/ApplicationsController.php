@@ -82,9 +82,14 @@ class ApplicationsController extends Controller
         }
 
         $perPage = (int) $request->query('per_page', 0);
+        // Eager-load relations required by serverStatus() accessor and API serialization.
+        // Without this, each Application triggers separate queries for destination/server.
+        $baseQuery = Application::ownedByCurrentTeamAPI($teamId)
+            ->with(['environment.project', 'destination.server.settings']);
+
         if ($perPage > 0) {
             $perPage = min($perPage, 100);
-            $paginator = Application::ownedByCurrentTeamAPI($teamId)->paginate($perPage);
+            $paginator = $baseQuery->paginate($perPage);
 
             return response()->json([
                 'data' => $paginator->getCollection()->map(fn ($app) => $this->removeSensitiveData($app))->values(),
@@ -97,7 +102,7 @@ class ApplicationsController extends Controller
             ]);
         }
 
-        $applications = Application::ownedByCurrentTeamAPI($teamId)
+        $applications = $baseQuery
             ->limit(500)
             ->get()
             ->map(fn ($app) => $this->removeSensitiveData($app));

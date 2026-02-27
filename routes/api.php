@@ -664,6 +664,14 @@ Route::group([
         if ($server->settings->sentinel_token !== $naked_token) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
+
+        // Validate team_id from token payload if present (backward-compatible:
+        // tokens generated before this check lack team_id and are still accepted).
+        $token_team_id = data_get($decrypted_token, 'team_id');
+        if ($token_team_id !== null && (int) $token_team_id !== (int) $server->team_id) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
         $data = request()->all();
 
         // \App\Jobs\ServerCheckNewJob::dispatch($server, $data);

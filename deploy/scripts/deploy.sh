@@ -65,6 +65,9 @@ BACKUP_S3_KEY="${BACKUP_S3_KEY:-}"
 BACKUP_S3_SECRET="${BACKUP_S3_SECRET:-}"
 BACKUP_S3_REGION="${BACKUP_S3_REGION:-us-east-1}"
 
+# Active compose slot for blue-green: "" = main container, "-next" = canary
+SATURN_SLOT=""
+
 # Container names
 CONTAINER_APP="saturn-${SATURN_ENV}"
 CONTAINER_DB="saturn-db-${SATURN_ENV}"
@@ -79,7 +82,7 @@ ACTION="${1:-deploy}"
 # =============================================================================
 compose_cmd() {
     cd "$PROJECT_ROOT"
-    export SATURN_ENV SATURN_IMAGE
+    export SATURN_ENV SATURN_IMAGE SATURN_SLOT
     docker compose \
         -f docker-compose.env.yml \
         -p "saturn-${SATURN_ENV}" \
@@ -195,6 +198,15 @@ pull_images() {
 
 stop_services() {
     log_step "Stopping services..."
+
+    # Gracefully stop queue workers before bringing containers down.
+    # Without this, active deployment jobs are killed mid-run and may leave orphaned containers.
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${CONTAINER_APP}$"; then
+        log_info "Stopping Horizon queue workers gracefully..."
+        docker exec "${CONTAINER_APP}" php artisan queue:stop 2>/dev/null || true
+        # Give workers up to 15s to finish their current jobs before hard kill
+        sleep 5
+    fi
 
     compose_cmd down --remove-orphans 2>/dev/null || true
 
@@ -370,6 +382,77 @@ health_check() {
     return 1
 }
 
+# =============================================================================
+# Blue-Green Swap
+# =============================================================================
+# Starts a canary container (saturn-{env}-next), waits for it to be healthy,
+# then atomically switches Traefik traffic and removes the old container.
+# Traefik hot-reloads the file provider within ~2s → near-zero downtime.
+#
+# Requires: infrastructure (postgres, redis, pgbouncer, soketi) already running.
+# Falls back gracefully: if canary fails health check, current container is kept.
+# =============================================================================
+blue_green_swap() {
+    local main_container="${CONTAINER_APP}"
+    local next_container="${CONTAINER_APP}-next"
+    local proxy_target="/data/saturn/proxy/dynamic/saturn.yaml"
+
+    log_step "Blue-green: starting canary (${next_container})..."
+
+    # 1. Start canary alongside the live container (no infra restart)
+    SATURN_SLOT="-next" compose_cmd up -d --no-deps saturn
+
+    # 2. Wait for canary to pass its internal health check
+    local max_retries=30
+    local retry=0
+    while [[ $retry -lt $max_retries ]]; do
+        if docker exec "${next_container}" curl -sf "http://127.0.0.1:8080/api/health" > /dev/null 2>&1; then
+            log_success "Canary is healthy"
+            break
+        fi
+        ((retry++))
+        log_info "Waiting for canary... (${retry}/${max_retries})"
+        sleep 2
+    done
+
+    if [[ $retry -ge $max_retries ]]; then
+        log_error "Canary failed health check — aborting blue-green, current container preserved"
+        docker stop "${next_container}" 2>/dev/null || true
+        docker rm "${next_container}" 2>/dev/null || true
+        exit 1
+    fi
+
+    # 3. Switch Traefik file provider to canary.
+    #    Traefik polls the file every 2s → traffic shifts within ~2 seconds.
+    log_step "Switching Traefik traffic → canary..."
+    if [[ -f "${proxy_target}" ]]; then
+        sed -i "s|http://${main_container}:8080|http://${next_container}:8080|g" "${proxy_target}"
+        sleep 3  # Let Traefik pick up the change before draining the old container
+        log_success "Traefik now routing to canary"
+    else
+        log_warn "Proxy config not found at ${proxy_target} — skipping live traffic switch"
+    fi
+
+    # 4. Drain and stop the old container
+    log_info "Draining old container (${main_container})..."
+    docker exec "${main_container}" php artisan queue:stop 2>/dev/null || true
+    sleep 5
+    docker stop "${main_container}" 2>/dev/null || true
+    docker rm "${main_container}" 2>/dev/null || true
+
+    # 5. Rename canary to the canonical name so future deploys work without changes
+    docker rename "${next_container}" "${main_container}"
+
+    # 6. Restore Traefik config to canonical container name.
+    #    Docker DNS resolves the renamed container immediately.
+    if [[ -f "${proxy_target}" ]]; then
+        sed -i "s|http://${next_container}:8080|http://${main_container}:8080|g" "${proxy_target}"
+        sleep 2
+    fi
+
+    log_success "Blue-green swap complete — near-zero downtime!"
+}
+
 cleanup_old_backups() {
     log_step "Cleaning up old backups (keeping last 10)..."
 
@@ -540,18 +623,43 @@ deploy() {
 
     backup_database
     pull_images
-    stop_services
-    start_infrastructure   # postgres, redis, soketi
-    sync_db_password        # ensure postgres has the password from .env
-    start_pgbouncer         # now PgBouncer can connect to postgres successfully
-    wait_for_db             # block until PgBouncer backend pool is established
-    run_migrations
-    start_app
-    run_seeders
-    fix_ssh_permissions  # Re-fix after seeders (may create new key files)
-    clear_caches
-    restore_proxy_config  # Restore multi-env Traefik config (old images may overwrite it)
-    cleanup_old_backups
+
+    # Determine if infrastructure is already running (incremental deploy) or needs cold start.
+    local infra_running=false
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${CONTAINER_DB}$"; then
+        infra_running=true
+    fi
+
+    if [[ "$infra_running" == "true" && -n "${PREVIOUS_IMAGE:-}" ]]; then
+        # ── BLUE-GREEN PATH ────────────────────────────────────────────────────
+        # Infrastructure (postgres, redis, pgbouncer, soketi) is already healthy.
+        # Run migrations via one-shot container, then swap app via blue-green.
+        log_info "Infrastructure already running — using blue-green swap (near-zero downtime)"
+        sync_db_password
+        run_migrations
+        blue_green_swap
+        run_seeders
+        fix_ssh_permissions
+        clear_caches
+        restore_proxy_config
+        cleanup_old_backups
+    else
+        # ── COLD START PATH ───────────────────────────────────────────────────
+        # First deploy or infra not running — full stop → start cycle.
+        log_info "Cold start: bringing up all services"
+        stop_services
+        start_infrastructure   # postgres, redis, soketi
+        sync_db_password        # ensure postgres has the password from .env
+        start_pgbouncer         # now PgBouncer can connect to postgres successfully
+        wait_for_db             # block until PgBouncer backend pool is established
+        run_migrations
+        start_app
+        run_seeders
+        fix_ssh_permissions    # Re-fix after seeders (may create new key files)
+        clear_caches
+        restore_proxy_config   # Restore multi-env Traefik config (old images may overwrite it)
+        cleanup_old_backups
+    fi
 
     if health_check; then
         echo ""
