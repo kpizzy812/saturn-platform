@@ -410,8 +410,18 @@ blue_green_swap() {
 
     log_step "Blue-green: starting canary (${next_container})..."
 
-    # 1. Start canary alongside the live container (no infra restart)
-    SATURN_SLOT="-next" compose_cmd up -d --no-deps saturn
+    # 1. Start canary alongside the live container using a SEPARATE project name.
+    #    Using the same project name (saturn-dev) would cause Docker Compose to
+    #    reconcile the 'saturn' service: seeing container_name changed from
+    #    saturn-dev to saturn-dev-next, it would STOP the live container before
+    #    starting the canary — defeating the purpose of blue-green.
+    #    A separate project (saturn-dev-canary) is isolated from saturn-dev,
+    #    so Docker Compose creates saturn-dev-next without touching saturn-dev.
+    SATURN_SLOT="-next" docker compose \
+        -f "${PROJECT_ROOT}/docker-compose.env.yml" \
+        -p "saturn-${SATURN_ENV}-canary" \
+        --env-file "${SATURN_DATA}/source/.env" \
+        up -d --no-deps saturn
 
     # 2. Wait for canary to pass its internal health check
     local max_retries=30
@@ -428,8 +438,14 @@ blue_green_swap() {
 
     if [[ $retry -ge $max_retries ]]; then
         log_error "Canary failed health check — aborting blue-green, current container preserved"
+        # Remove canary container and tear down the temporary canary compose project
         docker stop "${next_container}" 2>/dev/null || true
         docker rm "${next_container}" 2>/dev/null || true
+        SATURN_SLOT="-next" docker compose \
+            -f "${PROJECT_ROOT}/docker-compose.env.yml" \
+            -p "saturn-${SATURN_ENV}-canary" \
+            --env-file "${SATURN_DATA}/source/.env" \
+            down --remove-orphans 2>/dev/null || true
         exit 1
     fi
 
@@ -460,6 +476,14 @@ blue_green_swap() {
         sed -i "s|http://${next_container}:8080|http://${main_container}:8080|g" "${proxy_target}"
         sleep 2
     fi
+
+    # 7. Remove the temporary canary compose project (no containers remain after rename).
+    #    This prevents orphan network entries from accumulating across deploys.
+    SATURN_SLOT="-next" docker compose \
+        -f "${PROJECT_ROOT}/docker-compose.env.yml" \
+        -p "saturn-${SATURN_ENV}-canary" \
+        --env-file "${SATURN_DATA}/source/.env" \
+        down --remove-orphans 2>/dev/null || true
 
     log_success "Blue-green swap complete — near-zero downtime!"
 }

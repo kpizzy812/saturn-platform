@@ -422,3 +422,160 @@ it('SlackMessage infoColor matches the default constructor color', function () {
 
     expect($message->color)->toBe(SlackMessage::infoColor());
 });
+
+// ---------------------------------------------------------------------------
+// SendMessageToPushoverJob
+// ---------------------------------------------------------------------------
+
+it('pushover job has correct tries and maxExceptions', function () {
+    $reflection = new ReflectionClass(\App\Jobs\SendMessageToPushoverJob::class);
+    $defaults = $reflection->getDefaultProperties();
+
+    expect($defaults['tries'])->toBe(5)
+        ->and($defaults['maxExceptions'])->toBe(5);
+});
+
+it('pushover job implements ShouldBeEncrypted and ShouldQueue', function () {
+    $message = new \App\Notifications\Dto\PushoverMessage('Title', 'Body');
+    $job = new \App\Jobs\SendMessageToPushoverJob($message, 'app-token', 'user-key');
+
+    expect($job)->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldBeEncrypted::class)
+        ->and($job)->toBeInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class);
+});
+
+it('pushover job is dispatched to the high queue', function () {
+    $message = new \App\Notifications\Dto\PushoverMessage('Title', 'Body');
+    $job = new \App\Jobs\SendMessageToPushoverJob($message, 'app-token', 'user-key');
+
+    expect($job->queue)->toBe('high');
+});
+
+it('pushover job handle posts to the Pushover API URL', function () {
+    Http::fake(['https://api.pushover.net/*' => Http::response(['status' => 1], 200)]);
+
+    $message = new \App\Notifications\Dto\PushoverMessage('Deploy OK', 'App deployed successfully', [], 'success');
+    $job = new \App\Jobs\SendMessageToPushoverJob($message, 'test-token', 'test-user');
+
+    $job->handle();
+
+    Http::assertSent(fn (\Illuminate\Http\Client\Request $request) => str_contains($request->url(), 'pushover.net'));
+});
+
+it('pushover job payload includes token and user', function () {
+    Http::fake(['https://api.pushover.net/*' => Http::response(['status' => 1], 200)]);
+
+    $token = 'my-app-token';
+    $user = 'my-user-key';
+    $message = new \App\Notifications\Dto\PushoverMessage('Alert', 'Something happened');
+    $job = new \App\Jobs\SendMessageToPushoverJob($message, $token, $user);
+
+    $job->handle();
+
+    Http::assertSent(function (\Illuminate\Http\Client\Request $request) use ($token, $user) {
+        $body = $request->data();
+
+        return ($body['token'] ?? null) === $token
+            && ($body['user'] ?? null) === $user;
+    });
+});
+
+it('pushover job payload includes html flag set to 1', function () {
+    Http::fake(['https://api.pushover.net/*' => Http::response(['status' => 1], 200)]);
+
+    $message = new \App\Notifications\Dto\PushoverMessage('Title', 'Body with <b>html</b>');
+    $job = new \App\Jobs\SendMessageToPushoverJob($message, 'tok', 'usr');
+
+    $job->handle();
+
+    Http::assertSent(function (\Illuminate\Http\Client\Request $request) {
+        return ($request->data()['html'] ?? 0) === 1;
+    });
+});
+
+it('pushover job throws RuntimeException when API returns failed response', function () {
+    Http::fake(['*' => Http::response(['status' => 0], 400)]);
+
+    $message = new \App\Notifications\Dto\PushoverMessage('Title', 'Body');
+    $job = new \App\Jobs\SendMessageToPushoverJob($message, 'token', 'user');
+
+    expect(fn () => $job->handle())->toThrow(RuntimeException::class);
+});
+
+// ---------------------------------------------------------------------------
+// PushoverMessage DTO
+// ---------------------------------------------------------------------------
+
+it('PushoverMessage constructor sets title, message, buttons, and level', function () {
+    $message = new \App\Notifications\Dto\PushoverMessage('My Title', 'My message', [], 'error');
+
+    expect($message->title)->toBe('My Title')
+        ->and($message->message)->toBe('My message')
+        ->and($message->buttons)->toBe([])
+        ->and($message->level)->toBe('error');
+});
+
+it('PushoverMessage default level is info', function () {
+    $message = new \App\Notifications\Dto\PushoverMessage('T', 'M');
+
+    expect($message->level)->toBe('info');
+});
+
+it('PushoverMessage getLevelIcon returns correct icon for each level', function () {
+    $icons = [
+        'error' => "\xE2\x9D\x8C",
+        'success' => "\xE2\x9C\x85",
+        'warning' => "\xE2\x9A\xA0\xEF\xB8\x8F",
+        'info' => "\xE2\x84\xB9\xEF\xB8\x8F",
+        'unknown' => "\xE2\x84\xB9\xEF\xB8\x8F", // defaults to info icon
+    ];
+
+    foreach ($icons as $level => $expectedIcon) {
+        $message = new \App\Notifications\Dto\PushoverMessage('T', 'M', [], $level);
+        expect($message->getLevelIcon())->toBe($expectedIcon, "Failed for level: {$level}");
+    }
+});
+
+it('PushoverMessage toPayload includes token, user, title with icon, and message', function () {
+    $message = new \App\Notifications\Dto\PushoverMessage('Server Down', 'All containers stopped', [], 'error');
+    $payload = $message->toPayload('my-token', 'my-user');
+
+    expect($payload['token'])->toBe('my-token')
+        ->and($payload['user'])->toBe('my-user')
+        ->and($payload['message'])->toBe('All containers stopped')
+        ->and($payload['html'])->toBe(1);
+
+    // Title should contain the icon
+    $errorIcon = "\xE2\x9D\x8C";
+    expect($payload['title'])->toContain($errorIcon)
+        ->and($payload['title'])->toContain('Server Down');
+});
+
+it('PushoverMessage toPayload appends button links to message as HTML', function () {
+    $message = new \App\Notifications\Dto\PushoverMessage(
+        title: 'Deploy done',
+        message: 'View logs:',
+        buttons: [['text' => 'Open Logs', 'url' => 'https://saturn.ac/logs']],
+        level: 'success'
+    );
+
+    $payload = $message->toPayload('tok', 'usr');
+
+    expect($payload['message'])->toContain('Open Logs')
+        ->and($payload['message'])->toContain('https://saturn.ac/logs')
+        ->and($payload['message'])->toContain('<a href=');
+});
+
+it('PushoverMessage replaces localhost URLs in buttons with app URL', function () {
+    $appUrl = config('app.url');
+
+    $message = new \App\Notifications\Dto\PushoverMessage(
+        title: 'Alert',
+        message: 'Check this:',
+        buttons: [['text' => 'View', 'url' => 'http://localhost/dashboard']],
+    );
+
+    $payload = $message->toPayload('tok', 'usr');
+
+    expect($payload['message'])->not->toContain('http://localhost')
+        ->and($payload['message'])->toContain($appUrl);
+});

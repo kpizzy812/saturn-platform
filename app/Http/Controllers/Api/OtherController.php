@@ -215,6 +215,15 @@ class OtherController extends Controller
             $healthy = false;
         }
 
+        // Check Soketi (WebSocket server) via internal network alias.
+        // Failure is degraded, not critical — the app functions without WebSocket.
+        try {
+            $soketiReady = Http::timeout(2)->get('http://saturn-realtime:6001/ready');
+            $checks['soketi'] = $soketiReady->successful() ? 'ok' : 'failing';
+        } catch (\Throwable $e) {
+            $checks['soketi'] = 'failing';
+        }
+
         // Check Queue (pending/failed jobs count)
         try {
             $failedCount = DB::table('failed_jobs')->count();

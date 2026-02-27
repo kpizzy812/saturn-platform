@@ -6,7 +6,8 @@
 #
 # Health endpoint response format:
 #   { "status": "healthy"|"degraded", "checks": { "database": "ok"|"failing",
-#     "redis": "ok"|"failing", "queue": { "status": "ok"|"failing", "failed": N } } }
+#     "redis": "ok"|"failing", "soketi": "ok"|"failing",
+#     "queue": { "status": "ok"|"failing", "failed": N } } }
 #
 # Required GitHub Secrets (repository-level, shared across envs):
 #   MONITORING_TELEGRAM_TOKEN   - Telegram bot token (from @BotFather)
@@ -109,3 +110,45 @@ endpoints:
       - type: telegram
         description: "Production Redis is failing"
         send-on-resolved: true
+
+  - name: "Production Soketi (app view)"
+    group: "Infrastructure"
+    url: "https://saturn.ac/api/health"
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].checks.soketi == ok"
+    alerts:
+      - type: telegram
+        description: "Production Soketi unreachable from app container"
+        send-on-resolved: true
+
+  # --- WebSocket direct checks (Gatus is on the saturn network — can reach containers by name) ---
+  - name: "Production WebSocket"
+    group: "WebSocket"
+    url: "http://saturn-realtime-production:6001/ready"
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: telegram
+        description: "Production Soketi WebSocket is down"
+        send-on-resolved: true
+
+  - name: "Staging WebSocket"
+    group: "WebSocket"
+    url: "http://saturn-realtime-staging:6001/ready"
+    interval: 2m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: telegram
+        description: "Staging Soketi WebSocket is down"
+        send-on-resolved: true
+
+  - name: "Dev WebSocket"
+    group: "WebSocket"
+    url: "http://saturn-realtime-dev:6001/ready"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
