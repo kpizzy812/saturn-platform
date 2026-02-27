@@ -145,7 +145,7 @@ Route::group([
     Route::post('/projects/{uuid}/environments', [ProjectController::class, 'create_environment'])->middleware(['api.ability:write']);
     Route::delete('/projects/{uuid}/environments/{environment_name_or_uuid}', [ProjectController::class, 'delete_environment'])->middleware(['api.ability:write']);
 
-    Route::post('/projects', [ProjectController::class, 'create_project'])->middleware(['api.ability:read']);
+    Route::post('/projects', [ProjectController::class, 'create_project'])->middleware(['api.ability:write']);
     Route::patch('/projects/{uuid}', [ProjectController::class, 'update_project'])->middleware(['api.ability:write']);
     Route::delete('/projects/{uuid}', [ProjectController::class, 'delete_project'])->middleware(['api.ability:write']);
     Route::get('/projects/{uuid}/pending-approvals', [DeploymentApprovalController::class, 'pendingForProject'])->middleware(['api.ability:read']);
@@ -582,8 +582,8 @@ Route::group([
             return response()->json(['message' => 'Service not found'], 404);
         }
 
-        $take = $request->get('take', 20);
-        $skip = $request->get('skip', 0);
+        $take = min(500, max(1, (int) $request->get('take', 20)));
+        $skip = max(0, (int) $request->get('skip', 0));
 
         // Get activity log entries for this service
         $deployments = \Spatie\Activitylog\Models\Activity::where('properties->type_uuid', $service->uuid)
