@@ -145,7 +145,7 @@ jobs:
       - name: Cache PHPStan results
         uses: actions/cache@v4
         with:
-          path: /tmp/phpstan-cache
+          path: .phpstan-cache
           key: ${{ runner.os }}-phpstan-${{ hashFiles('**/*.php') }}
           restore-keys: ${{ runner.os }}-phpstan-
 
@@ -173,7 +173,7 @@ jobs:
         run: ./vendor/bin/pint --test
 
       - name: Run PHPStan (static analysis)
-        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress --cache-path=/tmp/phpstan-cache
+        run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
       - name: ShellCheck (bash script analysis)
         uses: ludeeus/action-shellcheck@master
