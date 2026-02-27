@@ -491,13 +491,13 @@ blue_green_swap() {
         sleep 2
     fi
 
-    # 7. Remove the temporary canary compose project (no containers remain after rename).
-    #    This prevents orphan network entries from accumulating across deploys.
-    SATURN_SLOT="-next" docker compose \
-        -f "${PROJECT_ROOT}/docker-compose.env.yml" \
-        -p "saturn-${SATURN_ENV}-canary" \
-        --env-file "${SATURN_DATA}/source/.env" \
-        down --remove-orphans 2>/dev/null || true
+    # NOTE: Do NOT run 'compose down' for the canary project here.
+    # After 'docker rename', the container (now named ${main_container}) still carries
+    # the compose label com.docker.compose.project=saturn-{env}-canary.
+    # Running 'compose -p saturn-{env}-canary down' would find this container by label
+    # and STOP it — killing the freshly promoted app container.
+    # The orphaned project entry is harmless: Docker Compose projects are just labels,
+    # not daemon state. The container runs fine under its canonical name.
 
     log_success "Blue-green swap complete — near-zero downtime!"
 }
