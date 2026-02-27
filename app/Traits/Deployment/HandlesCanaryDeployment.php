@@ -4,7 +4,9 @@ namespace App\Traits\Deployment;
 
 use App\Jobs\MonitorCanaryDeploymentJob;
 use App\Models\ApplicationRollbackEvent;
+use App\Models\Server;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 /**
  * Trait for canary deployment management.
@@ -69,23 +71,34 @@ trait HandlesCanaryDeployment
     }
 
     /**
-     * Write Traefik weighted routing config to the server.
+     * Write Traefik weighted routing config to the master server's dynamic config directory.
      *
      * Generates a YAML file for Traefik's file provider that splits traffic
      * between the stable and canary containers using weighted services.
+     * The config must be written to the master server where Traefik is running,
+     * not to the application deployment server.
      */
     private function update_canary_traffic(int $canaryPercent, string $canaryContainer, string $stableContainer): void
     {
         $stablePercent = $this->calcStableWeight($canaryPercent);
         $yaml = $this->generate_canary_traefik_yaml($canaryPercent, $stablePercent, $canaryContainer, $stableContainer);
 
-        $configPath = "/tmp/saturn-canary-{$this->application->uuid}.yaml";
-        $yamlEscaped = escapeshellarg($yaml);
+        $masterServer = Server::masterServer();
+        if (! $masterServer) {
+            throw new \RuntimeException('Canary deployment requires a master server with Traefik proxy configured.');
+        }
+
+        $configPath = $this->get_canary_config_path($masterServer);
+        $dynamicDir = dirname($configPath);
+        $base64 = base64_encode($yaml);
 
         try {
             instant_remote_process(
-                ["echo {$yamlEscaped} > {$configPath}"],
-                $this->server,
+                [
+                    "mkdir -p {$dynamicDir}",
+                    "echo '{$base64}' | base64 -d > {$configPath}",
+                ],
+                $masterServer,
                 throwError: true
             );
 
@@ -94,6 +107,16 @@ trait HandlesCanaryDeployment
             Log::error("Failed to write canary Traefik config for {$this->application->name}: {$e->getMessage()}");
             throw $e;
         }
+    }
+
+    /**
+     * Get the canary Traefik config file path on the master server's dynamic config directory.
+     */
+    private function get_canary_config_path(Server $masterServer): string
+    {
+        $dynamicPath = rtrim($masterServer->proxyPath(), '/').'/dynamic';
+
+        return "{$dynamicPath}/saturn-canary-{$this->application->uuid}.yaml";
     }
 
     /**
@@ -106,7 +129,8 @@ trait HandlesCanaryDeployment
         // Send 100% traffic to canary
         $this->update_canary_traffic(100, $canaryContainer, $stableContainer);
 
-        sleep(5);
+        // Brief pause to let Traefik reload the dynamic config before removing the stable container
+        Sleep::for(5)->seconds();
 
         // Remove old stable container
         $escapedStable = escapeshellarg($stableContainer);
@@ -142,7 +166,8 @@ trait HandlesCanaryDeployment
         // Shift all traffic back to stable
         $this->update_canary_traffic(0, $canaryContainer, $stableContainer);
 
-        sleep(5);
+        // Brief pause to let Traefik reload before removing the canary container
+        Sleep::for(5)->seconds();
 
         // Remove canary container
         $escapedCanary = escapeshellarg($canaryContainer);
@@ -188,14 +213,21 @@ trait HandlesCanaryDeployment
     }
 
     /**
-     * Remove the temporary Traefik canary config file from the server.
+     * Remove the Traefik canary config file from the master server's dynamic config directory.
      */
     private function remove_canary_config(): void
     {
-        $configPath = "/tmp/saturn-canary-{$this->application->uuid}.yaml";
+        $masterServer = Server::masterServer();
+        if (! $masterServer) {
+            Log::warning("Canary: cannot remove config for {$this->application->name} — master server not found");
+
+            return;
+        }
+
+        $configPath = $this->get_canary_config_path($masterServer);
         instant_remote_process(
             ["rm -f {$configPath}"],
-            $this->server,
+            $masterServer,
             throwError: false
         );
     }
