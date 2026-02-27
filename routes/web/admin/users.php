@@ -128,7 +128,7 @@ Route::get('/users/{id}', function (int $id) {
             'teams' => $teams,
         ],
     ]);
-})->name('admin.users.show');
+})->name('admin.users.show')->whereNumber('id');
 
 Route::post('/users/{id}/impersonate', function (int $id) {
     $adminUser = Auth::user();
