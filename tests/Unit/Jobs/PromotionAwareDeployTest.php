@@ -83,7 +83,7 @@ test('promoted_from_image uses registry name when docker_registry_image_name is 
         : "{$app->uuid}:{$commit}";
 
     expect($promoted_from_image)->toBe("registry.example.com/myapp:{$commit}");
-})->throws(null);
+});
 
 test('promoted_from_image uses uuid when no docker_registry_image_name', function () {
     $appUuid = 'test-app-uuid-999';
