@@ -13,6 +13,7 @@ use App\Rules\ValidCloudInitYaml;
 use App\Rules\ValidHostname;
 use App\Services\HetznerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 class HetznerController extends Controller
@@ -121,7 +122,9 @@ class HetznerController extends Controller
 
             return response()->json($locations);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch locations: '.$e->getMessage()], 500);
+            Log::error('Failed to fetch Hetzner locations', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to fetch locations.'], 500);
         }
     }
 
@@ -220,7 +223,9 @@ class HetznerController extends Controller
 
             return response()->json($serverTypes);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch server types: '.$e->getMessage()], 500);
+            Log::error('Failed to fetch Hetzner server types', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to fetch server types.'], 500);
         }
     }
 
@@ -332,7 +337,9 @@ class HetznerController extends Controller
 
             return response()->json(array_values($filtered));
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch images: '.$e->getMessage()], 500);
+            Log::error('Failed to fetch Hetzner images', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to fetch images.'], 500);
         }
     }
 
@@ -428,7 +435,9 @@ class HetznerController extends Controller
 
             return response()->json($sshKeys);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to fetch SSH keys: '.$e->getMessage()], 500);
+            Log::error('Failed to fetch Hetzner SSH keys', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to fetch SSH keys.'], 500);
         }
     }
 
@@ -731,7 +740,9 @@ class HetznerController extends Controller
 
             return $response;
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to create server: '.$e->getMessage()], 500);
+            Log::error('Failed to create Hetzner server', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to create server.'], 500);
         }
     }
 }

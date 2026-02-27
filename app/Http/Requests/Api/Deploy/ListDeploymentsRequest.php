@@ -15,7 +15,7 @@ class ListDeploymentsRequest extends FormRequest
     {
         return [
             'skip' => ['nullable', 'integer', 'min:0'],
-            'take' => ['nullable', 'integer', 'min:1'],
+            'take' => ['nullable', 'integer', 'min:1', 'max:500'],
         ];
     }
 }
