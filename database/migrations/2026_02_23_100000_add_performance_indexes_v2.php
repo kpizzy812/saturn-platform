@@ -6,6 +6,13 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
+     * Disable transaction wrapping: CREATE INDEX CONCURRENTLY cannot run inside a transaction in PostgreSQL.
+     * Without CONCURRENTLY, CREATE INDEX takes an AccessExclusiveLock and blocks all reads/writes
+     * for the entire duration — this caused an 11-minute deploy freeze on production.
+     */
+    public $withinTransaction = false;
+
+    /**
      * Index definitions: [table, columns, index_name]
      *
      * Phase 1 (CRITICAL): applications, environment_variables, scheduled_tasks
@@ -57,7 +64,8 @@ return new class extends Migration
         foreach ($this->indexes as [$table, $columns, $indexName]) {
             if (! $this->indexExists($indexName)) {
                 $columnList = implode(', ', array_map(fn ($col) => "\"{$col}\"", $columns));
-                DB::statement("CREATE INDEX \"{$indexName}\" ON \"{$table}\" ({$columnList})");
+                // CONCURRENTLY: no AccessExclusiveLock — reads/writes continue during index build.
+                DB::unprepared("CREATE INDEX CONCURRENTLY \"{$indexName}\" ON \"{$table}\" ({$columnList})");
             }
         }
     }
@@ -65,7 +73,7 @@ return new class extends Migration
     public function down(): void
     {
         foreach ($this->indexes as [, , $indexName]) {
-            DB::statement("DROP INDEX IF EXISTS \"{$indexName}\"");
+            DB::unprepared("DROP INDEX CONCURRENTLY IF EXISTS \"{$indexName}\"");
         }
     }
 
