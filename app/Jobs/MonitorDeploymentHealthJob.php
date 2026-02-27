@@ -18,6 +18,10 @@ use Illuminate\Support\Facades\Log;
  * Uses self-dispatching pattern: each invocation performs ONE health check,
  * then dispatches itself again with delay for the next check. This avoids
  * blocking a queue worker with sleep() for the entire validation period.
+ *
+ * Default monitoring window: 1800 seconds (30 minutes).
+ * Rollback requires `rollback_consecutive_failures` (default: 2) consecutive
+ * failed checks to avoid false positives from transient blips.
  */
 class MonitorDeploymentHealthJob implements ShouldQueue
 {
@@ -25,14 +29,15 @@ class MonitorDeploymentHealthJob implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 60;
+    public int $timeout = 90;
 
     public function __construct(
         public ApplicationDeploymentQueue $deployment,
         public int $checkIntervalSeconds = 30,
-        public int $totalChecks = 10,
+        public int $totalChecks = 60,
         public int $currentCheck = 0,
-        public int $initialRestartCount = -1
+        public int $initialRestartCount = -1,
+        public int $consecutiveFailures = 0,
     ) {}
 
     public function handle(): void
@@ -57,7 +62,8 @@ class MonitorDeploymentHealthJob implements ShouldQueue
         }
 
         if ($this->currentCheck === 0) {
-            Log::info("Starting health monitoring for deployment {$this->deployment->deployment_uuid} ({$this->totalChecks} checks)");
+            $windowMinutes = round(($this->totalChecks * $this->checkIntervalSeconds) / 60);
+            Log::info("Starting health monitoring for deployment {$this->deployment->deployment_uuid} ({$this->totalChecks} checks over {$windowMinutes} minutes)");
         }
 
         // Refresh application to get latest status
@@ -66,28 +72,40 @@ class MonitorDeploymentHealthJob implements ShouldQueue
         // Capture metrics
         $metricsSnapshot = $this->captureMetrics($application);
 
-        // Check if rollback is needed
-        $rollbackReason = $this->checkForRollback($application);
+        // Check if rollback conditions are met this cycle
+        $failureReason = $this->checkForFailure($application);
 
-        if ($rollbackReason !== null) {
-            $this->triggerAutoRollback($application, $rollbackReason, $metricsSnapshot);
+        if ($failureReason !== null) {
+            $requiredConsecutive = $application->settings->rollback_consecutive_failures ?? 2;
+            $newConsecutiveCount = $this->consecutiveFailures + 1;
+
+            if ($newConsecutiveCount >= $requiredConsecutive) {
+                // Enough consecutive failures — trigger rollback
+                $this->triggerAutoRollback($application, $failureReason, $metricsSnapshot);
+
+                return;
+            }
+
+            Log::warning("Health check failure #{$newConsecutiveCount}/{$requiredConsecutive} for {$application->name}: {$failureReason} (waiting for consecutive threshold)");
+
+            // Schedule next check with incremented consecutive counter
+            $this->scheduleNextCheck($newConsecutiveCount);
 
             return;
         }
 
+        // No failure — reset consecutive counter and schedule next check
+        if ($this->consecutiveFailures > 0) {
+            Log::info("Health check recovered for {$application->name} after {$this->consecutiveFailures} failures");
+        }
+
         $this->currentCheck++;
 
-        // Schedule next check or complete monitoring
         if ($this->currentCheck < $this->totalChecks) {
-            self::dispatch(
-                deployment: $this->deployment,
-                checkIntervalSeconds: $this->checkIntervalSeconds,
-                totalChecks: $this->totalChecks,
-                currentCheck: $this->currentCheck,
-                initialRestartCount: $this->initialRestartCount
-            )->delay(now()->addSeconds($this->checkIntervalSeconds));
+            $this->scheduleNextCheck(0);
         } else {
-            Log::info("Health monitoring complete for {$this->deployment->deployment_uuid} - all checks passed");
+            $windowMinutes = round(($this->totalChecks * $this->checkIntervalSeconds) / 60);
+            Log::info("Health monitoring complete for {$this->deployment->deployment_uuid} — all {$this->totalChecks} checks passed over {$windowMinutes} minutes");
         }
     }
 
@@ -110,14 +128,16 @@ class MonitorDeploymentHealthJob implements ShouldQueue
             'last_restart_at' => $application->last_restart_at?->toIso8601String(),
             'check_number' => $this->currentCheck + 1,
             'total_checks' => $this->totalChecks,
+            'consecutive_failures' => $this->consecutiveFailures,
             'captured_at' => now()->toIso8601String(),
         ];
     }
 
     /**
-     * Check if rollback should be triggered. Returns reason string or null.
+     * Check if any rollback condition is met this cycle.
+     * Returns a reason string on failure, null if everything is healthy.
      */
-    protected function checkForRollback(Application $application): ?string
+    protected function checkForFailure(Application $application): ?string
     {
         $settings = $application->settings;
 
@@ -141,15 +161,64 @@ class MonitorDeploymentHealthJob implements ShouldQueue
             return ApplicationRollbackEvent::REASON_CONTAINER_EXITED;
         }
 
-        // Check 3: Health check failures
+        // Check 3: Docker health check failures
         if ($settings->rollback_on_health_check_fail && $application->health_check_enabled) {
             $healthStatus = str($status)->after(':')->value();
 
             if ($healthStatus === 'unhealthy') {
-                Log::warning("Health check failed for {$application->name}");
+                Log::warning("Docker health check failed for {$application->name}");
 
                 return ApplicationRollbackEvent::REASON_HEALTH_CHECK_FAILED;
             }
+        }
+
+        // Check 4: Error rate via docker logs (requires curl on server, optional)
+        if ($settings->rollback_on_error_rate ?? false) {
+            $errorRateReason = $this->checkErrorRateFromLogs($application);
+            if ($errorRateReason !== null) {
+                return $errorRateReason;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check error rate by scanning recent container logs for HTTP 5xx patterns.
+     *
+     * Runs `docker logs --since=Xs` on the deployment server via SSH and counts
+     * lines matching common error patterns. Returns null if check cannot be
+     * performed (server unreachable, no container, etc.) to fail open.
+     */
+    protected function checkErrorRateFromLogs(Application $application): ?string
+    {
+        try {
+            $server = $application->destination?->server;
+            if (! $server || ! $server->isFunctional()) {
+                return null;
+            }
+
+            $containerName = $application->uuid;
+            $threshold = $application->settings->rollback_error_rate_threshold ?? 10;
+            $since = $this->checkIntervalSeconds;
+
+            // Count lines matching HTTP 5xx pattern or common error keywords in logs
+            $output = instant_remote_process(
+                ["docker logs --since={$since}s --no-log-prefix {$containerName} 2>&1 | grep -cEi 'HTTP/1\\.[01][[:space:]]+5[0-9]{2}|\" 5[0-9]{2} | 5[0-9]{2} [0-9]+ \"-\"' 2>/dev/null || echo 0"],
+                $server,
+                throwError: false
+            );
+
+            $errorCount = (int) trim($output ?? '0');
+
+            if ($errorCount >= $threshold) {
+                Log::warning("Error rate threshold exceeded for {$application->name}: {$errorCount} HTTP 5xx errors in last {$since}s (threshold: {$threshold})");
+
+                return ApplicationRollbackEvent::REASON_ERROR_RATE;
+            }
+        } catch (\Throwable $e) {
+            // Fail open: log but do NOT trigger rollback on monitoring errors
+            Log::debug("Could not check error rate for {$application->name}: {$e->getMessage()}");
         }
 
         return null;
@@ -157,7 +226,7 @@ class MonitorDeploymentHealthJob implements ShouldQueue
 
     protected function triggerAutoRollback(Application $application, string $reason, array $metricsSnapshot): void
     {
-        Log::warning("Triggering auto-rollback for {$application->name} due to: {$reason}");
+        Log::warning("Triggering auto-rollback for {$application->name} due to: {$reason} (after {$this->consecutiveFailures} consecutive failures)");
 
         // Find last successful deployment (before the current one)
         $lastSuccessful = ApplicationDeploymentQueue::where('application_id', $application->id)
@@ -232,5 +301,17 @@ class MonitorDeploymentHealthJob implements ShouldQueue
         }
 
         Log::warning("Auto-rollback triggered for {$application->name}: {$event->getReasonLabel()}");
+    }
+
+    private function scheduleNextCheck(int $consecutiveFailures): void
+    {
+        self::dispatch(
+            deployment: $this->deployment,
+            checkIntervalSeconds: $this->checkIntervalSeconds,
+            totalChecks: $this->totalChecks,
+            currentCheck: $this->currentCheck,
+            initialRestartCount: $this->initialRestartCount,
+            consecutiveFailures: $consecutiveFailures,
+        )->delay(now()->addSeconds($this->checkIntervalSeconds));
     }
 }

@@ -22,6 +22,9 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property bool $auto_rollback_enabled
  * @property bool $rollback_on_crash_loop
  * @property bool $rollback_on_health_check_fail
+ * @property bool $rollback_on_error_rate
+ * @property int $rollback_error_rate_threshold
+ * @property int $rollback_consecutive_failures
  * @property bool $is_auto_deploy_enabled
  * @property bool $is_preview_deployments_enabled
  * @property bool $inject_build_args_to_dockerfile
@@ -67,6 +70,9 @@ class ApplicationSetting extends Model
         'rollback_max_restarts',
         'rollback_on_health_check_fail',
         'rollback_on_crash_loop',
+        'rollback_on_error_rate',
+        'rollback_error_rate_threshold',
+        'rollback_consecutive_failures',
     ];
 
     protected $casts = [
@@ -94,6 +100,9 @@ class ApplicationSetting extends Model
         'rollback_max_restarts' => 'integer',
         'rollback_on_health_check_fail' => 'boolean',
         'rollback_on_crash_loop' => 'boolean',
+        'rollback_on_error_rate' => 'boolean',
+        'rollback_error_rate_threshold' => 'integer',
+        'rollback_consecutive_failures' => 'integer',
     ];
 
     public function getActivitylogOptions(): LogOptions
