@@ -379,12 +379,12 @@ class StartDatabaseActionsTest extends TestCase
     {
         return [
             'StartPostgresql' => [StartPostgresql::class],
-            'StartMysql'      => [StartMysql::class],
-            'StartMariadb'    => [StartMariadb::class],
-            'StartMongodb'    => [StartMongodb::class],
-            'StartRedis'      => [StartRedis::class],
-            'StartKeydb'      => [StartKeydb::class],
-            'StartDragonfly'  => [StartDragonfly::class],
+            'StartMysql' => [StartMysql::class],
+            'StartMariadb' => [StartMariadb::class],
+            'StartMongodb' => [StartMongodb::class],
+            'StartRedis' => [StartRedis::class],
+            'StartKeydb' => [StartKeydb::class],
+            'StartDragonfly' => [StartDragonfly::class],
         ];
     }
 

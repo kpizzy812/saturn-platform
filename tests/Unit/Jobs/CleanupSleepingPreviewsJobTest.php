@@ -115,8 +115,8 @@ class CleanupSleepingPreviewsJobTest extends TestCase
 
         // SECURITY: Must use parameterized interval multiplication, not raw column.
         // The source contains escaped single quotes because it is inside a PHP string.
-        $this->assertStringContainsString("auto_sleep_after_minutes * interval", $source);
-        $this->assertStringContainsString("1 minute", $source);
+        $this->assertStringContainsString('auto_sleep_after_minutes * interval', $source);
+        $this->assertStringContainsString('1 minute', $source);
         // Must NOT use raw unparameterized column reference like: INTERVAL auto_sleep_after_minutes MINUTE
         $this->assertStringNotContainsString('INTERVAL auto_sleep_after_minutes', $source);
     }
@@ -146,8 +146,8 @@ class CleanupSleepingPreviewsJobTest extends TestCase
 
         // SECURITY: Must use parameterized interval multiplication.
         // The source contains escaped single quotes because it is inside a PHP string.
-        $this->assertStringContainsString("auto_delete_after_days * interval", $source);
-        $this->assertStringContainsString("1 day", $source);
+        $this->assertStringContainsString('auto_delete_after_days * interval', $source);
+        $this->assertStringContainsString('1 day', $source);
         $this->assertStringNotContainsString('INTERVAL auto_delete_after_days', $source);
     }
 

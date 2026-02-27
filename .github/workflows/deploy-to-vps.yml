@@ -167,6 +167,15 @@ jobs:
       - name: Run PHPStan (static analysis)
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
 
+      - name: ShellCheck (bash script analysis)
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './deploy/scripts'
+          severity: error
+
+      - name: Run Unit tests
+        run: ./vendor/bin/pest tests/Unit --no-coverage --no-progress
+
   # =============================================================================
   # Job 3: Build and push Docker image (runs parallel with test)
   # =============================================================================
