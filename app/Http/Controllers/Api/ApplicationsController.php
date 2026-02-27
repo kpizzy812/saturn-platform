@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Jobs\DeleteResourceJob;
 use App\Models\Application;
-use App\Models\Project;
 use App\Models\Server;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
@@ -81,30 +80,29 @@ class ApplicationsController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        $projects = Project::where('team_id', $teamId)->with('applications')->get();
-        $applications = $projects->pluck('applications')->flatten();
-        $applications = $applications->map(function ($application) {
-            return $this->removeSensitiveData($application);
-        });
 
         $perPage = (int) $request->query('per_page', 0);
         if ($perPage > 0) {
             $perPage = min($perPage, 100);
-            $page = max(1, (int) $request->query('page', 1));
-            $total = $applications->count();
+            $paginator = Application::ownedByCurrentTeamAPI($teamId)->paginate($perPage);
 
             return response()->json([
-                'data' => $applications->forPage($page, $perPage)->values(),
+                'data' => $paginator->getCollection()->map(fn ($app) => $this->removeSensitiveData($app))->values(),
                 'meta' => [
-                    'total' => $total,
-                    'per_page' => $perPage,
-                    'current_page' => $page,
-                    'last_page' => (int) ceil($total / $perPage),
+                    'total' => $paginator->total(),
+                    'per_page' => $paginator->perPage(),
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
                 ],
             ]);
         }
 
-        return response()->json($applications->take(500)->values());
+        $applications = Application::ownedByCurrentTeamAPI($teamId)
+            ->limit(500)
+            ->get()
+            ->map(fn ($app) => $this->removeSensitiveData($app));
+
+        return response()->json($applications->values());
     }
 
     #[OA\Get(

@@ -85,6 +85,7 @@ return [
 
     'waits' => [
         'redis:default' => 60,
+        'redis:deployments' => 120, // Alert if deployment waits more than 2 minutes
     ],
 
     /*
@@ -180,6 +181,7 @@ return [
     */
 
     'defaults' => [
+        // General-purpose supervisor: handles all non-deployment queues
         's6' => [
             'connection' => 'redis',
             'balance' => env('HORIZON_BALANCE', 'false'),
@@ -187,6 +189,20 @@ return [
             'maxTime' => 3600,
             'maxJobs' => 400,
             'memory' => 128,
+            'tries' => 1,
+            'nice' => 0,
+            'sleep' => 3,
+            'timeout' => 3600,
+        ],
+        // Deployment supervisor: isolated queue so long-running deploy jobs
+        // (up to 1h each) cannot starve notifications, backups, or monitoring.
+        's6-deploy' => [
+            'connection' => 'redis',
+            'balance' => 'simple',
+            'queue' => 'deployments',
+            'maxTime' => 3600,
+            'maxJobs' => 50,
+            'memory' => 256,
             'tries' => 1,
             'nice' => 0,
             'sleep' => 3,
@@ -203,6 +219,13 @@ return [
                 'balanceMaxShift' => env('HORIZON_BALANCE_MAX_SHIFT', 1),
                 'balanceCooldown' => env('HORIZON_BALANCE_COOLDOWN', 1),
             ],
+            's6-deploy' => [
+                'autoScalingStrategy' => 'size',
+                'minProcesses' => env('HORIZON_DEPLOY_MIN_PROCESSES', 2),
+                'maxProcesses' => env('HORIZON_DEPLOY_MAX_PROCESSES', 4),
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
         ],
         'development' => [
             's6' => [
@@ -212,6 +235,13 @@ return [
                 'balanceMaxShift' => env('HORIZON_BALANCE_MAX_SHIFT', 1),
                 'balanceCooldown' => env('HORIZON_BALANCE_COOLDOWN', 1),
             ],
+            's6-deploy' => [
+                'autoScalingStrategy' => 'size',
+                'minProcesses' => env('HORIZON_DEPLOY_MIN_PROCESSES', 2),
+                'maxProcesses' => env('HORIZON_DEPLOY_MAX_PROCESSES', 4),
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
         ],
         'local' => [
             's6' => [
@@ -220,6 +250,13 @@ return [
                 'maxProcesses' => env('HORIZON_MAX_PROCESSES', 4),
                 'balanceMaxShift' => env('HORIZON_BALANCE_MAX_SHIFT', 1),
                 'balanceCooldown' => env('HORIZON_BALANCE_COOLDOWN', 1),
+            ],
+            's6-deploy' => [
+                'autoScalingStrategy' => 'size',
+                'minProcesses' => env('HORIZON_DEPLOY_MIN_PROCESSES', 1),
+                'maxProcesses' => env('HORIZON_DEPLOY_MAX_PROCESSES', 2),
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
             ],
         ],
     ],

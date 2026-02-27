@@ -137,9 +137,13 @@ trait HandlesHealthCheck
                         }
 
                         if (str($this->saved_outputs->get('health_check'))->replace('"', '')->value() === 'healthy') {
-                            $this->newVersionIsHealthy = true;
-                            $this->application->update(['status' => 'running']);
                             $this->application_deployment_queue->addLogEntry('New container is healthy.');
+                            if ($this->perform_smoke_test()) {
+                                $this->newVersionIsHealthy = true;
+                                $this->application->update(['status' => 'running']);
+                            } else {
+                                $this->newVersionIsHealthy = false;
+                            }
                             break;
                         } elseif (str($this->saved_outputs->get('health_check'))->replace('"', '')->value() === 'unhealthy') {
                             $this->newVersionIsHealthy = false;
@@ -229,6 +233,94 @@ trait HandlesHealthCheck
     }
 
     /**
+     * Perform an HTTP smoke test from the deployment server to the container.
+     *
+     * Uses docker inspect to get the container's internal IP, then runs curl
+     * from the server targeting that IP directly. This validates the app is
+     * reachable via the server's network stack — something docker healthcheck
+     * (which runs inside the container) cannot verify.
+     *
+     * Requires curl on the deployment server (standard on all Linux distros).
+     * Does NOT require curl inside the container.
+     *
+     * @return bool True if smoke test passed or is disabled.
+     */
+    private function perform_smoke_test(): bool
+    {
+        if (! $this->application->smoke_test_enabled) {
+            return true;
+        }
+
+        if (! $this->container_name) {
+            $this->application_deployment_queue->addLogEntry('Smoke test skipped: no container name available.', type: 'warning');
+
+            return true;
+        }
+
+        $port = $this->application->health_check_port
+            ?? ($this->application->ports_exposes_array[0] ?? 80);
+        $path = ltrim($this->application->smoke_test_path ?? '/', '/');
+        $timeout = max(5, (int) ($this->application->smoke_test_timeout ?? 30));
+        $connectTimeout = min(10, $timeout);
+
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        $this->application_deployment_queue->addLogEntry("Running smoke test (/{$path}, timeout: {$timeout}s)...");
+
+        // Get container IP from docker inspect (works from host without curl in container)
+        $this->execute_remote_command(
+            [
+                "docker inspect --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' {$this->container_name} 2>/dev/null | awk '{print $1}'",
+                'hidden' => true,
+                'save' => 'smoke_test_container_ip',
+                'ignore_errors' => true,
+            ],
+        );
+
+        $containerIp = trim($this->saved_outputs->get('smoke_test_container_ip', ''));
+
+        if (empty($containerIp)) {
+            $this->application_deployment_queue->addLogEntry('Smoke test skipped: could not determine container IP address.', type: 'warning');
+
+            return true;
+        }
+
+        $url = "http://{$containerIp}:{$port}/{$path}";
+
+        $this->execute_remote_command(
+            [
+                "curl -sf -o /dev/null -w '%{http_code}' --max-time {$timeout} --connect-timeout {$connectTimeout} '{$url}' 2>/dev/null || echo 'CURL_FAILED'",
+                'hidden' => true,
+                'save' => 'smoke_test_http_code',
+                'ignore_errors' => true,
+            ],
+        );
+
+        $result = trim($this->saved_outputs->get('smoke_test_http_code', ''));
+
+        if ($result === 'CURL_FAILED' || empty($result)) {
+            $this->application_deployment_queue->addLogEntry("Smoke test FAILED: could not reach {$url} (curl error or timeout).", type: 'error');
+            $this->application_deployment_queue->addLogEntry('The application container is running but not responding to HTTP requests.', type: 'error');
+
+            return false;
+        }
+
+        $httpCode = (int) $result;
+
+        if ($httpCode >= 200 && $httpCode < 500) {
+            $this->application_deployment_queue->addLogEntry("Smoke test passed (HTTP {$httpCode}).");
+            $this->application_deployment_queue->addLogEntry('----------------------------------------');
+
+            return true;
+        }
+
+        $this->application_deployment_queue->addLogEntry("Smoke test FAILED: HTTP {$httpCode} from {$url}.", type: 'error');
+        $this->application_deployment_queue->addLogEntry('The application is returning an unexpected HTTP status code.', type: 'error');
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+
+        return false;
+    }
+
+    /**
      * Verify container is stable and not crash-looping.
      * Performs 3 checks over 30 seconds to catch delayed crashes.
      */
@@ -285,9 +377,15 @@ trait HandlesHealthCheck
             }
         }
 
+        $this->application_deployment_queue->addLogEntry("Container is running stably ({$checks} checks over ".($checks * $intervalSeconds).'s passed).');
+
+        if (! $this->perform_smoke_test()) {
+            $this->newVersionIsHealthy = false;
+            throw new DeploymentException('Smoke test failed after container stability check. The application is not responding to HTTP requests.');
+        }
+
         $this->newVersionIsHealthy = true;
         $this->application->update(['status' => 'running']);
-        $this->application_deployment_queue->addLogEntry("Container is running stably ({$checks} checks over ".($checks * $intervalSeconds).'s passed).');
     }
 
     /**
