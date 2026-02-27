@@ -17,6 +17,7 @@ use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
 use App\Traits\Deployment\HandlesBuildSecrets;
 use App\Traits\Deployment\HandlesBuildtimeEnvGeneration;
+use App\Traits\Deployment\HandlesCanaryDeployment;
 use App\Traits\Deployment\HandlesComposeFileGeneration;
 use App\Traits\Deployment\HandlesContainerOperations;
 use App\Traits\Deployment\HandlesDeploymentCommands;
@@ -51,7 +52,7 @@ use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
-    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
 
     public const BUILD_TIME_ENV_PATH = '/artifacts/build-time.env';
 
@@ -79,6 +80,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
     public static int $batch_counter = 0;
 
     private bool $newVersionIsHealthy = false;
+
+    // Stable container name captured during rolling_update() for canary deployments.
+    // Set by HandlesCanaryDeployment::capture_stable_container_for_canary().
+    private ?string $stableContainerName = null;
 
     private ?ApplicationDeploymentQueue $application_deployment_queue = null;
 
@@ -547,7 +552,37 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // This ensures the deployment status is FINISHED even if subsequent operations fail
         $this->completeDeployment();
 
+        // Canary deployment: if canary is enabled and we have a stable container from rolling_update,
+        // initiate gradual traffic shifting instead of stopping the old container immediately.
+        if (
+            ($this->application->settings->canary_enabled ?? false)
+            && ! $this->rollback
+            && $this->pull_request_id === 0
+            && $this->stableContainerName !== null
+        ) {
+            try {
+                $this->initiate_canary($this->container_name, $this->stableContainerName);
+            } catch (\Throwable $e) {
+                Log::error("Failed to initiate canary deployment for {$this->application->name}: {$e->getMessage()}");
+                // Non-fatal: deployment is already marked finished, log and continue
+            }
+
+            // Side effects only (skip stop_running_container — canary manages old container)
+            $this->post_deployment_side_effects();
+
+            return;
+        }
+
         // Then handle side effects - these should not fail the deployment
+        $this->post_deployment_side_effects();
+    }
+
+    /**
+     * Run post-deployment side effects (status refresh, notifications, Cloudflare sync).
+     * Extracted so that the canary path can reuse them without duplicating code.
+     */
+    private function post_deployment_side_effects(): void
+    {
         try {
             GetContainersStatus::dispatch($this->server);
         } catch (\Exception $e) {

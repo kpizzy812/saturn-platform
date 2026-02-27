@@ -80,7 +80,6 @@ jobs:
     outputs:
       environment: ${{ steps.env.outputs.environment }}
       saturn_env: ${{ steps.env.outputs.saturn_env }}
-      image_tag: ${{ steps.env.outputs.image_tag }}
       domain: ${{ steps.env.outputs.domain }}
     steps:
       - name: Determine environment
@@ -90,19 +89,16 @@ jobs:
             dev)
               echo "environment=development" >> $GITHUB_OUTPUT
               echo "saturn_env=dev" >> $GITHUB_OUTPUT
-              echo "image_tag=dev" >> $GITHUB_OUTPUT
               echo "domain=dev.saturn.ac" >> $GITHUB_OUTPUT
               ;;
             staging)
               echo "environment=staging" >> $GITHUB_OUTPUT
               echo "saturn_env=staging" >> $GITHUB_OUTPUT
-              echo "image_tag=staging" >> $GITHUB_OUTPUT
               echo "domain=uat.saturn.ac" >> $GITHUB_OUTPUT
               ;;
             main)
               echo "environment=production" >> $GITHUB_OUTPUT
               echo "saturn_env=production" >> $GITHUB_OUTPUT
-              echo "image_tag=latest" >> $GITHUB_OUTPUT
               echo "domain=saturn.ac" >> $GITHUB_OUTPUT
               ;;
             *)
@@ -415,7 +411,7 @@ jobs:
 
             printf '# Docker\n'
             printf 'REGISTRY_URL=ghcr.io\n'
-            printf 'SATURN_IMAGE_TAG=%s\n\n' "$_IMAGE_TAG"
+            printf 'SATURN_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:%s\n\n' "$_IMAGE_TAG"
 
             printf '# PHP\n'
             printf 'PHP_MEMORY_LIMIT=%s\n'             "$_PHP_MEM"
@@ -475,8 +471,18 @@ jobs:
           docker logout ghcr.io || true
           DEPLOY_SCRIPT
 
+      - name: Update Traefik routing config
+        # Runs on every deploy — keeps Traefik dynamic config up to date.
+        # Traefik auto-reloads on file change (providers.file.watch=true).
+        run: |
+          ssh -i ~/.ssh/deploy_key -p ${{ secrets.VPS_PORT }} -o StrictHostKeyChecking=no \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "cd ~/saturn && bash deploy/scripts/setup-proxy.sh"
+
       - name: Start monitoring stack
-        # Runs on every deploy — idempotent (docker compose up -d is safe to re-run)
+        # Runs on every deploy — idempotent (docker compose up -d is safe to re-run).
+        # --pull missing: only pulls Gatus image when not cached, avoiding unnecessary
+        # image downloads and brief monitoring restarts on every dev/staging push.
         env:
           MONITORING_TELEGRAM_TOKEN: ${{ secrets.MONITORING_TELEGRAM_TOKEN }}
           MONITORING_TELEGRAM_CHAT_ID: ${{ secrets.MONITORING_TELEGRAM_CHAT_ID }}
@@ -496,17 +502,13 @@ jobs:
           cd ~/saturn
 
           # Write Telegram credentials to monitoring env file (not committed to git)
-          cat > /data/saturn/shared/gatus/.env << EOF
-          MONITORING_TELEGRAM_TOKEN=${MONITORING_TELEGRAM_TOKEN}
-          MONITORING_TELEGRAM_CHAT_ID=${MONITORING_TELEGRAM_CHAT_ID}
-          EOF
+          printf 'MONITORING_TELEGRAM_TOKEN=%s\nMONITORING_TELEGRAM_CHAT_ID=%s\n' \
+            "${MONITORING_TELEGRAM_TOKEN}" "${MONITORING_TELEGRAM_CHAT_ID}" \
+            > /data/saturn/shared/gatus/.env
 
           docker compose -f docker-compose.monitoring.yml \
             --env-file /data/saturn/shared/gatus/.env \
-            up -d --pull always
-
-          # Update Traefik routing config
-          bash deploy/scripts/setup-proxy.sh
+            up -d --pull missing
           MONITORING_SCRIPT
 
           echo "✓ Monitoring stack started at https://status.saturn.ac"
