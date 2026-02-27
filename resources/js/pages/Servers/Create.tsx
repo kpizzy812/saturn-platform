@@ -3,18 +3,23 @@ import { router, Link } from '@inertiajs/react';
 import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Textarea, Select } from '@/components/ui';
-import { ArrowLeft, Check, Server, Key } from 'lucide-react';
+import { ArrowLeft, Check, Server, Key, Cloud } from 'lucide-react';
 import { validateIPAddress, validatePort, validateSSHKey } from '@/lib/validation';
 import type { PrivateKey } from '@/types';
+import type { CloudProviderToken } from '@/types/models';
+import HetznerTab from './HetznerTab';
 
 type Step = 1 | 2;
 type KeyMode = 'existing' | 'new';
+type Tab = 'manual' | 'cloud';
 
 interface Props {
     privateKeys?: PrivateKey[];
+    cloudTokens?: CloudProviderToken[];
 }
 
-export default function ServerCreate({ privateKeys = [] }: Props) {
+export default function ServerCreate({ privateKeys = [], cloudTokens = [] }: Props) {
+    const [tab, setTab] = useState<Tab>('manual');
     const [step, setStep] = useState<Step>(1);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -102,15 +107,50 @@ export default function ServerCreate({ privateKeys = [] }: Props) {
                         </p>
                     </div>
 
-                    {/* Progress Indicator */}
+                    {/* Tab Switcher */}
+                    <div className="mb-6 flex rounded-lg border border-border bg-background-secondary p-1">
+                        <button
+                            type="button"
+                            onClick={() => setTab('manual')}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors ${
+                                tab === 'manual'
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-foreground-muted hover:text-foreground'
+                            }`}
+                        >
+                            <Server className="h-4 w-4" />
+                            Manual SSH
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTab('cloud')}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors ${
+                                tab === 'cloud'
+                                    ? 'bg-background text-foreground shadow-sm'
+                                    : 'text-foreground-muted hover:text-foreground'
+                            }`}
+                        >
+                            <Cloud className="h-4 w-4" />
+                            Cloud Provider
+                        </button>
+                    </div>
+
+                    {/* Cloud Provider Tab */}
+                    {tab === 'cloud' && (
+                        <HetznerTab cloudTokens={cloudTokens} privateKeys={privateKeys} />
+                    )}
+
+                    {/* Manual Tab — Progress Indicator */}
+                    {tab === 'manual' && (
                     <div className="mb-8 flex items-center justify-center gap-2">
                         <StepIndicator step={1} currentStep={step} label="Server Info" />
                         <div className="h-px w-12 bg-border" />
                         <StepIndicator step={2} currentStep={step} label="Review" />
                     </div>
+                    )}
 
                     {/* Step Content */}
-                    <div className="space-y-3">
+                    {tab === 'manual' && <div className="space-y-3">
                         {step === 1 && (
                             <Card>
                                 <CardContent className="p-6">
@@ -321,7 +361,7 @@ export default function ServerCreate({ privateKeys = [] }: Props) {
                                 </CardContent>
                             </Card>
                         )}
-                    </div>
+                    </div>}
                 </div>
             </div>
         </AppLayout>
