@@ -219,7 +219,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
     public function __construct(public int $application_deployment_queue_id)
     {
-        $this->onQueue('high');
+        // Isolated 'deployments' queue prevents long-running deploy jobs (up to 1h)
+        // from starving the 'high' queue used by notifications and monitoring.
+        $this->onQueue('deployments');
 
         $this->application_deployment_queue = ApplicationDeploymentQueue::find($this->application_deployment_queue_id);
 

@@ -27,6 +27,8 @@ class MonitorDeploymentHealthJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public string $queue = 'deployments';
+
     public int $tries = 1;
 
     public int $timeout = 90;
