@@ -33,6 +33,15 @@ parameters:
         -
             identifier: property.notFound
 
+        # ApiAbility::handle() intentionally widens return type to Symfony\Response (common base)
+        # to support both Illuminate\Http\Response and JsonResponse returned by $next().
+        # This is safe at runtime — PHP only validates the actual returned value type.
+        -
+            identifier: return.type
+            message: '#ApiAbility::handle\(\) should return Illuminate\\Http\\Response#'
+            paths:
+                - app/Http/Middleware/ApiAbility.php
+
         # Collection::map() and Paginator::through() closure types cannot be resolved
         # when the callback uses Inertia/array transforms. Larastan limitation — no runtime risk.
         -

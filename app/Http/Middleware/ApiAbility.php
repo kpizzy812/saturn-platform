@@ -64,7 +64,7 @@ class ApiAbility extends CheckForAnyAbility
         $next,
         $user,
         array $abilities
-    ): \Illuminate\Http\Response {
+    ): \Symfony\Component\HttpFoundation\Response {
         // Superadmins bypass all checks
         if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             return $next($request);
