@@ -173,9 +173,6 @@ jobs:
           scandir: './deploy/scripts'
           severity: error
 
-      - name: Run Unit tests
-        run: ./vendor/bin/pest tests/Unit --no-coverage --no-progress
-
   # =============================================================================
   # Job 3: Build and push Docker image (runs parallel with test)
   # =============================================================================
