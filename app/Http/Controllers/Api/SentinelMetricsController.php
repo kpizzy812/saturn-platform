@@ -199,9 +199,10 @@ class SentinelMetricsController extends Controller
 
             return response()->json($response);
         } catch (\Exception $e) {
+            \Log::error('Sentinel metrics fetch failed', ['server' => $server->uuid, 'error' => $e->getMessage()]);
+
             return response()->json([
                 'message' => 'Failed to fetch metrics from Sentinel.',
-                'error' => $e->getMessage(),
             ], 503);
         }
     }

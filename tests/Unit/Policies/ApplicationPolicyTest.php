@@ -34,15 +34,26 @@ it('allows viewing any applications', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows viewing application when environment is null', function () {
+it('allows viewing orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->view($user, $application))->toBeTrue();
+});
+
+it('denies viewing orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->view($user, $application))->toBeFalse();
 });
 
 it('allows viewing application when authorized', function () {
@@ -97,16 +108,26 @@ it('allows creating applications', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows updating application when environment is null', function () {
+it('allows updating orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
     $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    expect($this->policy->update($user, $application)->allowed())->toBeTrue();
+});
 
-    $result = $this->policy->update($user, $application);
-    expect($result->allowed())->toBeTrue();
+it('denies updating orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->update($user, $application)->allowed())->toBeFalse();
 });
 
 it('allows updating application when user can manage project', function () {
@@ -195,15 +216,26 @@ it('denies updating application when user has no permission', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows deleting application when environment is null', function () {
+it('allows deleting orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->delete($user, $application))->toBeTrue();
+});
+
+it('denies deleting orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->delete($user, $application))->toBeFalse();
 });
 
 it('allows deleting application when authorized', function () {
@@ -256,15 +288,26 @@ it('denies deleting application when not authorized', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows restoring application when environment is null', function () {
+it('allows restoring orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->restore($user, $application))->toBeTrue();
+});
+
+it('denies restoring orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->restore($user, $application))->toBeFalse();
 });
 
 it('allows restoring application when authorized', function () {
@@ -295,15 +338,26 @@ it('allows restoring application when authorized', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows force deleting application when environment is null', function () {
+it('allows force deleting orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->forceDelete($user, $application))->toBeTrue();
+});
+
+it('denies force deleting orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->forceDelete($user, $application))->toBeFalse();
 });
 
 it('allows force deleting application when authorized', function () {
@@ -334,15 +388,26 @@ it('allows force deleting application when authorized', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows deploying application when environment is null', function () {
+it('allows deploying orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->deploy($user, $application))->toBeTrue();
+});
+
+it('denies deploying orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->deploy($user, $application))->toBeFalse();
 });
 
 it('allows deploying application when authorized', function () {
@@ -385,15 +450,26 @@ it('denies deploying application when not authorized', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows managing deployments when environment is null', function () {
+it('allows managing deployments of orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->manageDeployments($user, $application))->toBeTrue();
+});
+
+it('denies managing deployments of orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->manageDeployments($user, $application))->toBeFalse();
 });
 
 it('allows managing deployments when authorized', function () {
@@ -424,15 +500,26 @@ it('allows managing deployments when authorized', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows managing environment when environment is null', function () {
+it('allows managing environment of orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->manageEnvironment($user, $application))->toBeTrue();
+});
+
+it('denies managing environment of orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->manageEnvironment($user, $application))->toBeFalse();
 });
 
 it('allows managing environment when user has developer role', function () {
@@ -485,15 +572,26 @@ it('denies managing environment when user lacks developer role', function () {
 |--------------------------------------------------------------------------
 */
 
-it('allows viewing sensitive environment when environment is null', function () {
+it('allows viewing sensitive environment of orphaned application when user is platform admin', function () {
     $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
-    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(true);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
 
-    $application->shouldReceive('getAttribute')
-        ->with('environment')
-        ->andReturn(null);
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
 
     expect($this->policy->viewSensitiveEnvironment($user, $application))->toBeTrue();
+});
+
+it('denies viewing sensitive environment of orphaned application when user is not admin', function () {
+    $user = Mockery::mock(User::class)->makePartial()->shouldIgnoreMissing();
+    $user->shouldReceive('isPlatformAdmin')->andReturn(false);
+    $user->shouldReceive('isSuperAdmin')->andReturn(false);
+
+    $application = Mockery::mock(Application::class)->makePartial()->shouldIgnoreMissing();
+    $application->shouldReceive('getAttribute')->with('environment')->andReturn(null);
+
+    expect($this->policy->viewSensitiveEnvironment($user, $application))->toBeFalse();
 });
 
 it('allows viewing sensitive environment when user has admin role', function () {

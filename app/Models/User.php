@@ -286,12 +286,17 @@ class User extends Authenticatable implements SendsEmail
             hash('crc32b', $tokenEntropy)
         );
 
+        $currentTeam = session('currentTeam');
+        if (! $currentTeam) {
+            throw new \RuntimeException('Cannot create token: no active team in session. Use createTokenForCli() to create tokens outside a browser session.');
+        }
+
         $token = $this->tokens()->create([
             'name' => $name,
             'token' => hash('sha256', $plainTextToken),
             'abilities' => $abilities,
             'expires_at' => $expiresAt,
-            'team_id' => session('currentTeam')->id,
+            'team_id' => $currentTeam->id,
         ]);
 
         return new NewAccessToken($token, $token->getKey().'|'.$plainTextToken);
