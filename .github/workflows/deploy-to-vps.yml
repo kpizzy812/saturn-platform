@@ -502,10 +502,9 @@ jobs:
           cd ~/saturn
 
           # Write Telegram credentials to monitoring env file (not committed to git)
-          cat > /data/saturn/shared/gatus/.env << EOF
-MONITORING_TELEGRAM_TOKEN=${MONITORING_TELEGRAM_TOKEN}
-MONITORING_TELEGRAM_CHAT_ID=${MONITORING_TELEGRAM_CHAT_ID}
-EOF
+          printf 'MONITORING_TELEGRAM_TOKEN=%s\nMONITORING_TELEGRAM_CHAT_ID=%s\n' \
+            "${MONITORING_TELEGRAM_TOKEN}" "${MONITORING_TELEGRAM_CHAT_ID}" \
+            > /data/saturn/shared/gatus/.env
 
           docker compose -f docker-compose.monitoring.yml \
             --env-file /data/saturn/shared/gatus/.env \
