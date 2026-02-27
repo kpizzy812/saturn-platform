@@ -8,6 +8,7 @@ use App\Models\S3Storage;
 use App\Models\ScheduledDatabaseBackup;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
 /**
@@ -637,8 +638,9 @@ class DatabaseBackupsController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to delete backup', ['backup_uuid' => $backup->uuid ?? null, 'error' => $e->getMessage()]);
 
-            return response()->json(['message' => 'Failed to delete backup: '.$e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to delete backup.'], 500);
         }
     }
 
@@ -861,7 +863,9 @@ class DatabaseBackupsController extends Controller
                 'message' => 'Backup execution deleted.',
             ]);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to delete backup execution: '.$e->getMessage()], 500);
+            Log::error('Failed to delete backup execution', ['execution_uuid' => $execution->uuid ?? null, 'error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to delete backup execution.'], 500);
         }
     }
 
