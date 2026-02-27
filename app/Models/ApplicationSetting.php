@@ -36,6 +36,11 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property bool $is_container_label_escape_enabled
  * @property bool $is_gpu_enabled
  * @property bool $is_spa
+ * @property bool $canary_enabled
+ * @property array|null $canary_steps
+ * @property int $canary_step_minutes
+ * @property bool $canary_auto_promote
+ * @property int $canary_error_rate_threshold
  */
 class ApplicationSetting extends Model
 {
@@ -73,6 +78,12 @@ class ApplicationSetting extends Model
         'rollback_on_error_rate',
         'rollback_error_rate_threshold',
         'rollback_consecutive_failures',
+        // Canary deployment settings
+        'canary_enabled',
+        'canary_steps',
+        'canary_step_minutes',
+        'canary_auto_promote',
+        'canary_error_rate_threshold',
     ];
 
     protected $casts = [
@@ -103,6 +114,12 @@ class ApplicationSetting extends Model
         'rollback_on_error_rate' => 'boolean',
         'rollback_error_rate_threshold' => 'integer',
         'rollback_consecutive_failures' => 'integer',
+        // Canary deployment settings
+        'canary_enabled' => 'boolean',
+        'canary_steps' => 'array',
+        'canary_step_minutes' => 'integer',
+        'canary_auto_promote' => 'boolean',
+        'canary_error_rate_threshold' => 'integer',
     ];
 
     public function getActivitylogOptions(): LogOptions

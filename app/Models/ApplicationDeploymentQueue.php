@@ -39,6 +39,7 @@ use OpenApi\Attributes as OA;
  * @property string|null $promoted_from_image
  * @property string|null $commit_message
  * @property string|null $horizon_job_id
+ * @property array|null $canary_state
  * @property \Carbon\Carbon|null $created_at
  * @property \Carbon\Carbon|null $updated_at
  * @property-read Application|null $application
@@ -130,6 +131,7 @@ class ApplicationDeploymentQueue extends Model
         'rejection_reason',
         'user_id',
         'build_server_id',
+        'canary_state',
     ];
 
     protected $casts = [
@@ -138,6 +140,7 @@ class ApplicationDeploymentQueue extends Model
         'requires_approval' => 'boolean',
         'approved_at' => 'datetime',
         'is_promotion' => 'boolean',
+        'canary_state' => 'array',
     ];
 
     // Current deployment stage (not persisted, used for log entries)

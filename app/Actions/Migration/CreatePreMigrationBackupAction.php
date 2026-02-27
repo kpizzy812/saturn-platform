@@ -13,6 +13,7 @@ use App\Models\StandalonePostgresql;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Lorisleiva\Actions\Concerns\AsAction;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 
 /**
  * Create an automatic backup of the target resource before production promotion.
@@ -25,7 +26,7 @@ class CreatePreMigrationBackupAction
     use AsAction;
 
     /**
-     * @return array{success: bool, backup_id?: int, message?: string, error?: string}
+     * @return array{success: bool, backup_id?: int, message?: string, error?: string, timed_out?: bool}
      */
     public function handle(Model $targetResource, EnvironmentMigration $migration): array
     {
@@ -37,9 +38,16 @@ class CreatePreMigrationBackupAction
             ];
         }
 
+        $timeoutSeconds = (int) config('migration.pre_backup_timeout_seconds', 300);
+
         try {
             // Find or create a backup configuration for this database
             $backup = $this->getOrCreateBackupConfig($targetResource);
+
+            // Set timeout in-memory so DatabaseBackupJob picks it up as its job timeout.
+            // Note: this does not affect individual SSH command timeouts, but it signals
+            // the intent and allows future SSH-level enforcement without further changes here.
+            $backup->timeout = $timeoutSeconds;
 
             // Create execution record to track this specific backup
             $execution = ScheduledDatabaseBackupExecution::create([
@@ -48,11 +56,35 @@ class CreatePreMigrationBackupAction
                 'message' => 'Pre-migration backup for migration '.$migration->uuid,
             ]);
 
-            // Dispatch backup job synchronously to ensure backup completes before migration
-            DatabaseBackupJob::dispatchSync($backup);
+            // Dispatch backup job synchronously to ensure backup completes before migration.
+            // dispatchSync ignores Horizon's job timeout, so we rely on SSH process timeouts
+            // and the orphan-execution check below.
+            DatabaseBackupJob::dispatchSync($backup, $execution->id);
 
             // Refresh execution to check result
             $execution->refresh();
+
+            // Guard: if execution is still 'running', the job silently abandoned it (orphan).
+            // This can happen when SSH hangs past the command_timeout and the process is killed.
+            if ($execution->status === 'running') {
+                Log::warning('Pre-migration backup execution is still running after dispatchSync — treating as timed out', [
+                    'migration_id' => $migration->id,
+                    'execution_id' => $execution->id,
+                    'timeout_seconds' => $timeoutSeconds,
+                ]);
+
+                $execution->update([
+                    'status' => 'failed',
+                    'message' => "Backup timed out after {$timeoutSeconds}s (orphan execution)",
+                ]);
+
+                return [
+                    'success' => false,
+                    'backup_id' => $execution->id,
+                    'error' => "Backup timed out after {$timeoutSeconds}s",
+                    'timed_out' => true,
+                ];
+            }
 
             if ($execution->status === 'failed') {
                 return [
@@ -68,13 +100,37 @@ class CreatePreMigrationBackupAction
                 'message' => 'Backup completed successfully',
             ];
 
+        } catch (ProcessTimedOutException $e) {
+            Log::warning('Pre-migration backup SSH process timed out', [
+                'migration_id' => $migration->id,
+                'resource_type' => get_class($targetResource),
+                'resource_id' => $targetResource->getAttribute('id'),
+                'timeout_seconds' => $timeoutSeconds,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => "Backup timed out after {$timeoutSeconds}s",
+                'timed_out' => true,
+            ];
         } catch (\Throwable $e) {
+            $isTimeout = $this->isTimeoutException($e);
+
             Log::error('Pre-migration backup failed', [
                 'migration_id' => $migration->id,
                 'resource_type' => get_class($targetResource),
                 'resource_id' => $targetResource->getAttribute('id'),
                 'error' => $e->getMessage(),
+                'timed_out' => $isTimeout,
             ]);
+
+            if ($isTimeout) {
+                return [
+                    'success' => false,
+                    'error' => "Backup timed out after {$timeoutSeconds}s",
+                    'timed_out' => true,
+                ];
+            }
 
             return [
                 'success' => false,
@@ -137,5 +193,17 @@ class CreatePreMigrationBackupAction
             || $resource instanceof StandaloneMysql
             || $resource instanceof StandaloneMariadb
             || $resource instanceof StandaloneMongodb;
+    }
+
+    /**
+     * Detect whether an exception is timeout-related by inspecting its message.
+     */
+    private function isTimeoutException(\Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'timed out')
+            || str_contains($message, 'timeout')
+            || $e instanceof ProcessTimedOutException;
     }
 }

@@ -70,7 +70,26 @@ trait HandlesHealthCheck
                     $this->application_deployment_queue->addLogEntry('Rolling update started.');
                     $this->start_by_compose_file();
                     $this->health_check();
-                    $this->stop_running_container();
+
+                    // Canary deployment: preserve old container instead of removing it.
+                    // capture_stable_container_for_canary() is provided by HandlesCanaryDeployment.
+                    $isCanary = ($this->application->settings->canary_enabled ?? false)
+                        && ($this->pull_request_id ?? 0) === 0
+                        && ! ($this->rollback ?? false)
+                        && $this->newVersionIsHealthy;
+
+                    if ($isCanary && method_exists($this, 'capture_stable_container_for_canary')) {
+                        $this->capture_stable_container_for_canary();
+
+                        // If no stable container was found, fall back to normal cleanup
+                        if ($this->stableContainerName === null) {
+                            $this->stop_running_container();
+                        }
+                        // Otherwise: old container kept alive; MonitorCanaryDeploymentJob will clean up later.
+                    } else {
+                        $this->stop_running_container();
+                    }
+
                     $this->application_deployment_queue->addLogEntry('Rolling update completed.');
                 }
             }
