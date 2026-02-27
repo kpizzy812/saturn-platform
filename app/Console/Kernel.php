@@ -12,6 +12,7 @@ use App\Jobs\CleanupMetricsJob;
 use App\Jobs\CleanupOrphanedPreviewContainersJob;
 use App\Jobs\DatabaseMetricsManagerJob;
 use App\Jobs\MonitorBackupStalenessJob;
+use App\Jobs\MonitorFailedJobsJob;
 use App\Jobs\PullChangelog;
 use App\Jobs\PullTemplatesFromCDN;
 use App\Jobs\RegenerateSslCertJob;
@@ -123,6 +124,9 @@ class Kernel extends ConsoleKernel
 
             // Stale backup monitoring (runs daily at 09:00 to alert teams during business hours)
             $this->scheduleInstance->job(new MonitorBackupStalenessJob)->dailyAt('09:00')->timezone($this->instanceTimezone)->onOneServer();
+
+            // Failed jobs monitoring (runs hourly, alerts when failed_jobs count > threshold)
+            $this->scheduleInstance->job(new MonitorFailedJobsJob)->hourly()->onOneServer();
         }
     }
 
