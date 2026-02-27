@@ -8,8 +8,10 @@ use App\Jobs\CheckForUpdatesJob;
 use App\Jobs\CheckHelperImageJob;
 use App\Jobs\CheckTraefikVersionJob;
 use App\Jobs\CleanupInstanceStuffsJob;
+use App\Jobs\CleanupMetricsJob;
 use App\Jobs\CleanupOrphanedPreviewContainersJob;
 use App\Jobs\DatabaseMetricsManagerJob;
+use App\Jobs\MonitorBackupStalenessJob;
 use App\Jobs\PullChangelog;
 use App\Jobs\PullTemplatesFromCDN;
 use App\Jobs\RegenerateSslCertJob;
@@ -110,11 +112,17 @@ class Kernel extends ConsoleKernel
             // Cleanup orphaned PR preview containers daily
             $this->scheduleInstance->job(new CleanupOrphanedPreviewContainersJob)->daily()->onOneServer();
 
+            // Prune database_metrics and server_health_checks older than 30 days
+            $this->scheduleInstance->job(new CleanupMetricsJob)->dailyAt('02:00')->timezone($this->instanceTimezone)->onOneServer();
+
             // Cleanup stuck resources (timed-out deployments, orphaned records) hourly
             $this->scheduleInstance->command('cleanup:stucked-resources')->hourly()->onOneServer();
 
             // Automated backup restore testing (runs daily, checks which backups need testing)
             $this->scheduleInstance->job(new BackupRestoreTestManagerJob)->daily()->at('03:00')->timezone($this->instanceTimezone)->onOneServer();
+
+            // Stale backup monitoring (runs daily at 09:00 to alert teams during business hours)
+            $this->scheduleInstance->job(new MonitorBackupStalenessJob)->dailyAt('09:00')->timezone($this->instanceTimezone)->onOneServer();
         }
     }
 
