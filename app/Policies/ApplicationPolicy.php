@@ -28,7 +28,8 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            // Orphaned application (no environment) — restrict to admins only
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         return $this->authService->canViewEnvironment($user, $environment);
@@ -50,7 +51,10 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return Response::allow();
+            // Orphaned application — restrict to admins only
+            return ($user->isPlatformAdmin() || $user->isSuperAdmin())
+                ? Response::allow()
+                : Response::deny('You do not have permission to update this application.');
         }
 
         $project = $environment->project;
@@ -73,7 +77,7 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         return $this->authService->canManageProject($user, $environment->project);
@@ -86,7 +90,7 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         return $this->authService->canManageProject($user, $environment->project);
@@ -99,7 +103,7 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         return $this->authService->canManageProject($user, $environment->project);
@@ -112,7 +116,7 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         return $this->authService->canDeployApplication($user, $application);
@@ -125,7 +129,7 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         return $this->authService->canManageProject($user, $environment->project);
@@ -138,7 +142,7 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         // Developers and above can manage env vars
@@ -153,7 +157,7 @@ class ApplicationPolicy
     {
         $environment = $application->environment;
         if (! $environment) {
-            return true;
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
         }
 
         // Only admins and above can view sensitive data
