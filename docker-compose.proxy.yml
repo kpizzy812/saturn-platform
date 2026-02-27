@@ -1,54 +1,100 @@
 # =============================================================================
-# Saturn Platform - Caddy Reverse Proxy
+# Saturn Platform - Traefik v3.6 Reverse Proxy
 # =============================================================================
-# Runs once on VPS, routes traffic to all Saturn environments.
-# Caddy handles automatic HTTPS (Let's Encrypt) for all domains.
+# Runs once on VPS. Routes traffic to all Saturn environments via the shared
+# 'saturn' Docker network. Handles automatic HTTPS (Let's Encrypt) and
+# auto-reloads dynamic routing config from /data/saturn/proxy/dynamic/.
 #
-# Usage:
-#   docker compose -f docker-compose.proxy.yml up -d
+# Usage (first-time setup):
+#   ACME_EMAIL=admin@saturn.ac docker compose -f docker-compose.proxy.yml up -d
+#
+# Dynamic routing config is managed by deploy.sh / setup-proxy.sh:
+#   /data/saturn/proxy/dynamic/saturn.yaml
 #
 # Domains:
 #   dev.saturn.ac    → saturn-dev:8080
 #   uat.saturn.ac    → saturn-staging:8080
 #   saturn.ac        → saturn-production:8080
+#   status.saturn.ac → saturn-gatus:8080
 # =============================================================================
 
 services:
-  caddy:
-    image: caddy:2-alpine
+  traefik:
+    image: traefik:v3.6
     container_name: saturn-proxy
     restart: always
+    command:
+      # Disable telemetry and update checks
+      - --global.checkNewVersion=false
+      - --global.sendAnonymousUsage=false
+
+      # Logging
+      - --log.level=WARN
+      - --accesslog=false
+
+      # Ping endpoint for Docker healthcheck (on port 8080, not exposed to host)
+      - --ping=true
+      - --ping.entryPoint=traefik
+
+      # Internal management entrypoint (localhost only, no host exposure)
+      - --entrypoints.traefik.address=:8080
+
+      # HTTP entrypoint
+      - --entrypoints.http.address=:80
+
+      # HTTPS entrypoint
+      - --entrypoints.https.address=:443
+
+      # Dynamic config: watch directory for auto-reload on file change
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+
+      # Let's Encrypt (HTTP-01 challenge via http entrypoint)
+      - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@saturn.ac}
+      - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http
+
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"  # HTTP/3
+      # Port 8080 (Traefik API) is intentionally NOT exposed to the host.
+      # Healthcheck uses docker exec / internal network only.
+
     volumes:
-      - /data/saturn/shared/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-      - caddy-logs:/var/log/caddy
+      # Dynamic routing config (managed by setup-proxy.sh, auto-reloaded by Traefik)
+      - /data/saturn/proxy/dynamic:/etc/traefik/dynamic:ro
+      # ACME certificates storage (must survive container restarts)
+      - traefik-data:/data
+
     networks:
-      - saturn-proxy
+      - saturn
+
+    healthcheck:
+      # Traefik v3 ships with a built-in healthcheck command that queries /ping
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # no-new-privileges: prevents privilege escalation
+    security_opt:
+      - no-new-privileges:true
+
     deploy:
       resources:
         limits:
           memory: 128M
           cpus: '0.5'
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:2019/config/"]
-      interval: 10s
-      retries: 5
-      timeout: 5s
 
 volumes:
-  caddy-data:
-    name: saturn-caddy-data
-  caddy-config:
-    name: saturn-caddy-config
-  caddy-logs:
-    name: saturn-caddy-logs
+  traefik-data:
+    name: saturn-traefik-data
 
 networks:
-  saturn-proxy:
-    name: saturn-proxy
+  # This compose file CREATES the shared 'saturn' network.
+  # All other Saturn compose files reference it as external: true.
+  # Run this compose first, then deploy.sh will find the network already exists.
+  saturn:
+    name: saturn
     driver: bridge

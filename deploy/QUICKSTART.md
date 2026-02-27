@@ -20,14 +20,14 @@ git checkout dev  # или нужная ветка
 ### 3. Настройка окружения
 
 ```bash
-# Создать директорию для данных
-mkdir -p /data/saturn/source
+# Создать директорию для данных (путь зависит от окружения: dev/staging/production)
+mkdir -p /data/saturn/dev/source
 
 # Скопировать example .env
-cp deploy/environments/dev/.env.example /data/saturn/source/.env
+cp deploy/environments/dev/.env.example /data/saturn/dev/source/.env
 
 # Отредактировать .env
-nano /data/saturn/source/.env
+nano /data/saturn/dev/source/.env
 ```
 
 **Обязательные настройки в .env:**
@@ -53,7 +53,8 @@ PUSHER_APP_SECRET=your-app-secret
 ```bash
 cd /root/coolify-Saturn/deploy/scripts
 chmod +x *.sh
-./deploy.sh
+# SATURN_ENV обязателен: dev | staging | production
+SATURN_ENV=dev ./deploy.sh
 ```
 
 Деплой займет 2-5 минут. Скрипт выполнит:
@@ -69,11 +70,11 @@ chmod +x *.sh
 # Проверить статус контейнеров
 docker ps
 
-# Проверить здоровье
-curl http://localhost:8000/api/health
+# Проверить здоровье (порт не экспозится на хост — только через docker exec)
+docker exec saturn-dev curl -sf http://127.0.0.1:8080/api/health
 
-# Открыть в браузере
-# http://YOUR_SERVER_IP:8000
+# Открыть в браузере (через Traefik)
+# https://dev.saturn.ac
 ```
 
 ---
@@ -114,15 +115,17 @@ saturn-logs  # (если настроили)
 cd /root/coolify-Saturn
 git pull origin dev
 cd deploy/scripts
-./deploy.sh
+SATURN_ENV=dev ./deploy.sh
 ```
 
 #### Перезапуск приложения
 
 ```bash
 ./saturn-ctl.sh restart
-# Или:
-docker restart saturn-dev
+# Или напрямую (имя контейнера включает окружение):
+docker restart saturn-dev     # dev
+docker restart saturn-staging # staging
+docker restart saturn-production # production
 ```
 
 #### Создать бэкап БД
@@ -177,14 +180,14 @@ alias saturn-logs='cd /root/coolify-Saturn/deploy/scripts && ./saturn-ctl.sh log
 alias saturn-deploy='cd /root/coolify-Saturn/deploy/scripts && ./deploy.sh'
 alias saturn-status='cd /root/coolify-Saturn/deploy/scripts && ./saturn-ctl.sh status'
 
-# Прямой доступ к контейнерам
+# Прямой доступ к контейнерам (для dev-окружения)
 alias saturn-shell='docker exec -it saturn-dev sh'
-alias saturn-db='docker exec -it saturn-db psql -U saturn -d saturn'
+alias saturn-db='docker exec -it saturn-db-dev psql -U saturn -d saturn'
 alias saturn-artisan='docker exec saturn-dev php artisan'
 
 # Логи напрямую
 alias saturn-app-logs='docker logs -f --tail=1000 saturn-dev'
-alias saturn-db-logs='docker logs -f --tail=1000 saturn-db'
+alias saturn-db-logs='docker logs -f --tail=1000 saturn-db-dev'
 ```
 
 После добавления:
@@ -200,10 +203,14 @@ source ~/.bashrc  # или source ~/.zshrc
 ### Проверка здоровья
 
 ```bash
-curl http://localhost:8000/api/health
+# Через docker exec (порт не экспозится на хост напрямую)
+docker exec saturn-dev curl -sf http://127.0.0.1:8080/api/health
+
+# Или через домен (если Traefik настроен)
+curl https://dev.saturn.ac/api/health
 ```
 
-Ответ должен быть: `{"status":"ok"}`
+Ответ должен быть: `{"status":"healthy"}`
 
 ### Статус всех контейнеров
 
@@ -242,20 +249,24 @@ crontab -e
 
 ### Systemd service для автозапуска
 
-Создать `/etc/systemd/system/saturn.service`:
+Создать `/etc/systemd/system/saturn-dev.service` (замените `dev` на нужное окружение):
 
 ```ini
 [Unit]
-Description=Saturn Platform
+Description=Saturn Platform (dev)
 Requires=docker.service
 After=docker.service
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/root/coolify-Saturn
-ExecStart=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.dev.override.yml --env-file /data/saturn/source/.env up -d
-ExecStop=/usr/bin/docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.dev.override.yml --env-file /data/saturn/source/.env down
+WorkingDirectory=/root/saturn
+Environment=SATURN_ENV=dev
+ExecStart=/bin/bash deploy/scripts/deploy.sh
+ExecStop=/usr/bin/docker compose -f docker-compose.env.yml \
+  -p saturn-dev \
+  --env-file /data/saturn/dev/source/.env \
+  down
 
 [Install]
 WantedBy=multi-user.target
@@ -276,29 +287,31 @@ systemctl start saturn
 ### Проблема: Контейнер не запускается
 
 ```bash
-# Проверить логи
+# Проверить логи (замените dev на нужное окружение)
 docker logs saturn-dev
 
 # Проверить .env файл
-cat /data/saturn/source/.env
+cat /data/saturn/dev/source/.env
 
 # Попробовать пересоздать контейнеры
-cd /root/coolify-Saturn
-docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.dev.override.yml --env-file /data/saturn/source/.env down
-docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.dev.override.yml --env-file /data/saturn/source/.env up -d
+cd ~/saturn
+SATURN_ENV=dev docker compose -f docker-compose.env.yml \
+  --env-file /data/saturn/dev/source/.env \
+  -p saturn-dev down
+SATURN_ENV=dev ./deploy/scripts/deploy.sh
 ```
 
 ### Проблема: Ошибка соединения с БД
 
 ```bash
 # Проверить что контейнер БД работает
-docker ps | grep saturn-db
+docker ps | grep saturn-db-dev
 
 # Проверить логи БД
-docker logs saturn-db
+docker logs saturn-db-dev
 
-# Проверить подключение
-docker exec saturn-db pg_isready -U saturn
+# Проверить подключение через PgBouncer
+docker exec saturn-pgbouncer-dev pg_isready -h localhost -p 5432
 ```
 
 ### Проблема: Не хватает места на диске
@@ -356,8 +369,10 @@ curl http://localhost:8000/api/health
 ## Откат к предыдущей версии
 
 ```bash
-cd /root/coolify-Saturn/deploy/scripts
-./deploy.sh --rollback
+cd ~/saturn/deploy/scripts
+# Восстанавливает БД из последнего pre-deploy бэкапа
+# + перезапускает стек с предыдущим образом (сохранён в /data/saturn/{env}/backups/.previous_image)
+SATURN_ENV=dev ./deploy.sh --rollback
 ```
 
 Или через меню:

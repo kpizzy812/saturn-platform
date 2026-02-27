@@ -468,21 +468,62 @@ cleanup_old_backups() {
 }
 
 rollback() {
-    log_step "Rolling back..."
+    log_step "Rolling back to previous version..."
 
     local backup_dir="${SATURN_DATA}/backups"
     local latest_backup
     latest_backup=$(ls -t "${backup_dir}"/pre_deploy_*.sql 2>/dev/null | head -1)
 
     if [[ -z "$latest_backup" ]]; then
-        log_error "No backup found"
+        log_error "No pre-deploy backup found in ${backup_dir}"
+        log_error "Cannot rollback without a backup."
         exit 1
     fi
 
-    log_info "Restoring from: $(basename "$latest_backup")"
-    docker exec -i "${CONTAINER_DB}" psql -U saturn -d saturn < "$latest_backup"
+    # Step 1: Restore database
+    log_info "Restoring database from: $(basename "$latest_backup")"
+    # Ensure postgres is running before restore (it might be down after a failed deploy)
+    compose_cmd up -d --wait postgres 2>/dev/null || true
+    if docker exec -i "${CONTAINER_DB}" psql -U saturn -d saturn < "$latest_backup"; then
+        log_success "Database restored to pre-deploy state"
+    else
+        log_error "Database restore failed — manual intervention may be required"
+        log_error "Backup file: ${latest_backup}"
+        exit 1
+    fi
 
-    log_success "Rollback completed"
+    # Step 2: Restore previous Docker image
+    local previous_image_file="${backup_dir}/.previous_image"
+    if [[ -f "$previous_image_file" ]]; then
+        local prev_image
+        prev_image=$(cat "$previous_image_file")
+        if [[ -n "$prev_image" ]]; then
+            log_info "Restoring previous image: ${prev_image}"
+            export SATURN_IMAGE="$prev_image"
+        else
+            log_warn ".previous_image file is empty — restarting with current image"
+        fi
+    else
+        log_warn "No .previous_image file found — restarting with current image (no image rollback)"
+        log_warn "Run a fresh deploy after fixing the issue, or specify SATURN_IMAGE manually."
+    fi
+
+    # Step 3: Restart all services with the (possibly rolled-back) image
+    compose_cmd down 2>/dev/null || true
+    start_infrastructure
+    sync_db_password
+    start_pgbouncer
+    wait_for_db
+    start_app
+
+    if health_check; then
+        log_success "Rollback completed — services are healthy"
+        log_success "Image: ${SATURN_IMAGE}"
+    else
+        log_error "Services failed health check after rollback — manual intervention required"
+        log_error "Logs: docker logs ${CONTAINER_APP}"
+        exit 1
+    fi
 }
 
 # =============================================================================
@@ -615,10 +656,14 @@ deploy() {
     fi
 
     # Capture the currently running image before pulling a new one.
-    # Used by rollback_to_previous() to restore the old version on health check failure.
+    # Used by rollback_to_previous() (auto) and rollback() (manual --rollback flag).
     PREVIOUS_IMAGE=$(docker inspect --format='{{.Config.Image}}' "${CONTAINER_APP}" 2>/dev/null || echo "")
     if [[ -n "$PREVIOUS_IMAGE" ]]; then
         log_info "Previous image: ${PREVIOUS_IMAGE}"
+        # Persist to disk so manual rollback (./deploy.sh --rollback) can use it
+        # even after this process has exited.
+        mkdir -p "${SATURN_DATA}/backups"
+        echo "$PREVIOUS_IMAGE" > "${SATURN_DATA}/backups/.previous_image"
     fi
 
     backup_database
