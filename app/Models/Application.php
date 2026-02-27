@@ -82,6 +82,9 @@ use Visus\Cuid2\Cuid2;
  * @property string|null $auto_inject_database_url
  * @property int|null $health_check_port
  * @property string|null $health_check_host
+ * @property bool $smoke_test_enabled
+ * @property string $smoke_test_path
+ * @property int $smoke_test_timeout
  * @property string|null $health_check_scheme
  * @property string|null $health_check_method
  * @property string|null $health_check_path
@@ -270,6 +273,9 @@ class Application extends BaseModel
         'health_check_timeout',
         'health_check_retries',
         'health_check_start_period',
+        'smoke_test_enabled',
+        'smoke_test_path',
+        'smoke_test_timeout',
         'limits_memory',
         'limits_memory_swap',
         'limits_memory_swappiness',
