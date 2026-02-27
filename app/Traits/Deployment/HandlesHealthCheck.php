@@ -78,7 +78,7 @@ trait HandlesHealthCheck
                         && ! ($this->rollback ?? false)
                         && $this->newVersionIsHealthy;
 
-                    if ($isCanary && method_exists($this, 'capture_stable_container_for_canary')) {
+                    if ($isCanary) {
                         $this->capture_stable_container_for_canary();
 
                         // If no stable container was found, fall back to normal cleanup
