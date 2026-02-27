@@ -7,7 +7,6 @@ use App\Models\EnvironmentVariable;
 use App\Models\Project;
 use App\Models\StandaloneDocker;
 use App\Services\ConfigurationGenerator;
-use Mockery;
 
 describe('ConfigurationGenerator', function () {
     afterEach(function () {

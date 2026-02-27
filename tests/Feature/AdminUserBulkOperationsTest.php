@@ -71,8 +71,8 @@ describe('Bulk Suspend Users', function () {
             'user_ids' => $this->regularUsers->pluck('id')->toArray(),
         ]);
 
-        $response->assertRedirect();
-        $response->assertSessionHas('error');
+        // is.superadmin middleware returns 403 for non-superadmin users
+        $response->assertForbidden();
     });
 
     test('returns error when no users selected', function () {

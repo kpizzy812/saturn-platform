@@ -131,7 +131,7 @@ trait HandlesDeploymentStatus
             && ($this->application_deployment_queue->pull_request_id ?? 0) === 0
             && ! $isRollback
         ) {
-            $validationSeconds = $this->application->settings->rollback_validation_seconds ?? 300;
+            $validationSeconds = $this->application->settings->rollback_validation_seconds ?? 1800;
             $checkInterval = 30;
             $totalChecks = (int) ceil($validationSeconds / $checkInterval);
 

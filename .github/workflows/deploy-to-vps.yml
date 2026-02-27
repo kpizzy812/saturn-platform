@@ -406,7 +406,8 @@ jobs:
             printf '# Security\n'
             printf 'SANCTUM_STATEFUL_DOMAINS=%s\n'  "$DOMAIN"
             printf 'CORS_ALLOWED_ORIGINS=https://%s\n' "$DOMAIN"
-            printf 'TRUSTED_PROXIES=%s\n\n'  "$_PROXIES"
+            printf 'TRUSTED_PROXIES=%s\n'  "$_PROXIES"
+            printf 'SANCTUM_TOKEN_EXPIRATION=10080\n\n'
 
             printf '# Instance\n'
             printf 'IS_REGISTRATION_ENABLED=%s\n' "$_REGISTRATION"
