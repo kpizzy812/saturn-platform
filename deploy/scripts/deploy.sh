@@ -384,7 +384,9 @@ health_check() {
             log_success "Health check passed!"
             return 0
         fi
-        ((retry++))
+        # (( retry++ )) returns exit code 1 when retry=0 (old value is 0 = falsy).
+        # With set -e this would kill the script on the first retry. Use prefix form.
+        (( ++retry ))
         log_info "Waiting... (${retry}/${max_retries})"
         sleep 2
     done
@@ -417,11 +419,21 @@ blue_green_swap() {
     #    starting the canary — defeating the purpose of blue-green.
     #    A separate project (saturn-dev-canary) is isolated from saturn-dev,
     #    so Docker Compose creates saturn-dev-next without touching saturn-dev.
+    # Docker Compose warns about volumes/networks owned by another project.
+    # These are harmless — the container still starts — but warnings may produce
+    # a non-zero exit code on some Docker Compose versions. Use || true and then
+    # explicitly verify the container is running.
     SATURN_SLOT="-next" docker compose \
         -f "${PROJECT_ROOT}/docker-compose.env.yml" \
         -p "saturn-${SATURN_ENV}-canary" \
         --env-file "${SATURN_DATA}/source/.env" \
-        up -d --no-deps saturn
+        up -d --no-deps saturn || true
+
+    # Verify container actually started (compose may exit non-zero but still start it)
+    if ! docker ps --format '{{.Names}}' | grep -q "^${next_container}$"; then
+        log_error "Canary container ${next_container} failed to start"
+        exit 1
+    fi
 
     # 2. Wait for canary to pass its internal health check
     local max_retries=30
@@ -431,7 +443,9 @@ blue_green_swap() {
             log_success "Canary is healthy"
             break
         fi
-        ((retry++))
+        # (( retry++ )) returns exit code 1 when retry=0 (old value 0 = falsy).
+        # With set -e this kills the script on the first retry. Use prefix form.
+        (( ++retry ))
         log_info "Waiting for canary... (${retry}/${max_retries})"
         sleep 2
     done
