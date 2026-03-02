@@ -52,7 +52,7 @@ class Bitbucket extends Controller
                 $pull_request_html_url = data_get($payload, 'pullrequest.links.html.href');
                 $commit = data_get($payload, 'pullrequest.source.commit.hash');
             }
-            $applications = Application::where('git_repository', 'like', "%$full_name%");
+            $applications = Application::with(['destination.server'])->where('git_repository', 'like', "%$full_name%");
             $applications = $applications->where('git_branch', $branch)->get();
             if ($applications->isEmpty()) {
                 return response([

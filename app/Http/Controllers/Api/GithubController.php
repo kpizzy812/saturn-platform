@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\GithubApp;
 use App\Models\PrivateKey;
 use Illuminate\Http\Request;
@@ -10,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 
-class GithubController extends Controller
+class GithubController extends ApiController
 {
     private function removeSensitiveData($githubApp)
     {

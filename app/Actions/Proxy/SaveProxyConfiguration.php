@@ -19,9 +19,10 @@ class SaveProxyConfiguration
         $server->save();
 
         // Transfer the configuration file to the server
+        $escaped_path = escapeshellarg($proxy_path);
         instant_remote_process([
-            "mkdir -p $proxy_path",
-            "echo '$docker_compose_yml_base64' | base64 -d | tee $proxy_path/docker-compose.yml > /dev/null",
+            "mkdir -p $escaped_path",
+            'echo '.escapeshellarg($docker_compose_yml_base64)." | base64 -d | tee $escaped_path/docker-compose.yml > /dev/null",
         ], $server);
     }
 }

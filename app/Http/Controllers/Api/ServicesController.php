@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Service\CreateCustomServiceAction;
 use App\Actions\Service\CreateOneClickServiceAction;
 use App\Actions\Service\UpdateServiceAction;
-use App\Http\Controllers\Controller;
 use App\Jobs\DeleteResourceJob;
 use App\Models\Project;
 use App\Models\Server;
@@ -13,7 +12,7 @@ use App\Models\Service;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
-class ServicesController extends Controller
+class ServicesController extends ApiController
 {
     private function removeSensitiveData($service)
     {
@@ -23,7 +22,7 @@ class ServicesController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $service->makeHidden([
                 'docker_compose_raw',
                 'docker_compose',

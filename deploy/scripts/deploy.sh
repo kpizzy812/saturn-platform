@@ -514,6 +514,21 @@ cleanup_old_backups() {
     else
         log_info "No old backups to clean up ($count total)"
     fi
+
+    # Clean up WAL archive files older than 7 days.
+    # WAL archival enables point-in-time recovery between full pre-deploy backups.
+    # Files older than 7 days are beyond the useful retention window (pre-deploy backups
+    # cover the same period) and would otherwise grow indefinitely.
+    local wal_archive_dir="${SATURN_DATA}/wal-archive"
+    if [[ -d "$wal_archive_dir" ]]; then
+        local wal_removed=$(find "$wal_archive_dir" -maxdepth 1 -type f -mtime +7 | wc -l)
+        if [[ $wal_removed -gt 0 ]]; then
+            find "$wal_archive_dir" -maxdepth 1 -type f -mtime +7 -delete
+            log_success "Removed $wal_removed WAL archive file(s) older than 7 days"
+        else
+            log_info "No old WAL archive files to clean up"
+        fi
+    fi
 }
 
 rollback() {
