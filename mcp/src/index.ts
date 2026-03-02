@@ -2,7 +2,7 @@
 /**
  * Saturn Platform MCP Server
  *
- * Exposes Saturn deploy/status/logs operations as MCP tools
+ * Exposes Saturn deploy/status/logs/env operations as MCP tools
  * for AI agents (Claude, Cursor, etc.).
  *
  * Configuration via environment variables:
@@ -14,12 +14,14 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 
 import { SaturnClient } from './client.js';
 import { registerApplicationTools } from './tools/applications.js';
+import { registerDatabaseTools } from './tools/databases.js';
 import { registerDeploymentTools } from './tools/deployments.js';
+import { registerProjectTools } from './tools/projects.js';
 import { registerServerTools } from './tools/servers.js';
 
 const server = new McpServer({
     name: 'saturn',
-    version: '0.1.0',
+    version: '0.2.0',
 });
 
 let client: SaturnClient;
@@ -33,11 +35,13 @@ try {
 registerApplicationTools(server, client);
 registerDeploymentTools(server, client);
 registerServerTools(server, client);
+registerProjectTools(server, client);
+registerDatabaseTools(server, client);
 
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('[saturn-mcp] MCP server running on stdio');
+    console.error('[saturn-mcp] MCP server v0.2.0 running on stdio');
 }
 
 main().catch((err) => {
