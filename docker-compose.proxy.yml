@@ -92,9 +92,8 @@ volumes:
     name: saturn-traefik-data
 
 networks:
-  # This compose file CREATES the shared 'saturn' network.
-  # All other Saturn compose files reference it as external: true.
-  # Run this compose first, then deploy.sh will find the network already exists.
+  # The 'saturn' network is shared across all Saturn environments.
+  # It is created once (manually or by the first deploy) and referenced as external.
   saturn:
     name: saturn
-    driver: bridge
+    external: true
