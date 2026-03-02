@@ -28,6 +28,7 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
     const [showNewTokenModal, setShowNewTokenModal] = React.useState(false);
     const [tokenToRevoke, setTokenToRevoke] = React.useState<ApiToken | null>(null);
     const [newTokenName, setNewTokenName] = React.useState('');
+    const [newTokenAbilities, setNewTokenAbilities] = React.useState<string[]>(['read']);
     const [newlyCreatedToken, setNewlyCreatedToken] = React.useState('');
     const [isCreating, setIsCreating] = React.useState(false);
     const [isRevoking, setIsRevoking] = React.useState(false);
@@ -47,7 +48,7 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ name: newTokenName }),
+                body: JSON.stringify({ name: newTokenName, abilities: newTokenAbilities }),
             });
 
             if (!response.ok) {
@@ -68,6 +69,7 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
             setTokens([...tokens, newToken]);
             setNewlyCreatedToken(data.token);
             setNewTokenName('');
+            setNewTokenAbilities(['read']);
             setShowCreateModal(false);
             setShowNewTokenModal(true);
             toast({
@@ -271,7 +273,7 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 title="Create API Token"
-                description="Give your token a descriptive name"
+                description="Give your token a descriptive name and select its permissions"
             >
                 <form onSubmit={handleCreateToken}>
                     <Input
@@ -282,11 +284,41 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                         required
                     />
 
+                    <div className="mt-4 space-y-2">
+                        <p className="text-sm font-medium text-foreground">Permissions</p>
+                        {([
+                            { key: 'read', label: 'Read', description: 'Read all resources' },
+                            { key: 'write', label: 'Write', description: 'Create and update resources' },
+                            { key: 'deploy', label: 'Deploy', description: 'Trigger deployments' },
+                            { key: 'read:sensitive', label: 'Read Sensitive', description: 'Access environment variables' },
+                            { key: 'root', label: 'Root', description: 'Full access (all permissions)' },
+                        ] as const).map(({ key, label, description }) => (
+                            <label key={key} className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-background-secondary">
+                                <input
+                                    type="checkbox"
+                                    className="mt-0.5 h-4 w-4 accent-primary"
+                                    checked={newTokenAbilities.includes(key)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setNewTokenAbilities([...newTokenAbilities, key]);
+                                        } else {
+                                            setNewTokenAbilities(newTokenAbilities.filter((a) => a !== key));
+                                        }
+                                    }}
+                                />
+                                <div>
+                                    <p className="text-sm font-medium text-foreground">{label}</p>
+                                    <p className="text-xs text-foreground-muted">{description}</p>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+
                     <ModalFooter>
                         <Button type="button" variant="secondary" onClick={() => setShowCreateModal(false)}>
                             Cancel
                         </Button>
-                        <Button type="submit" loading={isCreating}>
+                        <Button type="submit" loading={isCreating} disabled={newTokenAbilities.length === 0}>
                             Create Token
                         </Button>
                     </ModalFooter>
