@@ -35,6 +35,12 @@ help:
 	@echo "    make panel-build  - Build panel distributable"
 	@echo "    make panel-test   - Run panel tests"
 	@echo ""
+	@echo "  MCP Server:"
+	@echo "    make mcp-install  - Install MCP dependencies"
+	@echo "    make mcp-build    - Build MCP server (dist/)"
+	@echo "    make mcp-dev      - Run MCP server in dev mode (tsx)"
+	@echo "    make mcp-typecheck - TypeScript type check"
+	@echo ""
 
 # ============================================
 # Docker Compose shortcuts
@@ -109,3 +115,18 @@ panel-build:
 
 panel-test:
 	cd panel && npm test
+
+# ============================================
+# MCP Server
+# ============================================
+mcp-install:
+	cd mcp && npm install
+
+mcp-build:
+	cd mcp && npm run build
+
+mcp-dev:
+	cd mcp && npm run dev
+
+mcp-typecheck:
+	cd mcp && npm run typecheck

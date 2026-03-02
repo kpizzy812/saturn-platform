@@ -1,0 +1,27 @@
+{
+  "name": "@saturn/mcp",
+  "version": "0.1.0",
+  "description": "Saturn Platform MCP Server — exposes deploy, status, logs as MCP tools for AI agents",
+  "type": "module",
+  "bin": {
+    "saturn-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

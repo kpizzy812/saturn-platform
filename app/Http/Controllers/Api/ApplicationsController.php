@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Jobs\DeleteResourceJob;
 use App\Models\Application;
 use App\Models\Server;
