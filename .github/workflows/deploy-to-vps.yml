@@ -247,6 +247,7 @@ jobs:
     needs: [prepare, test, build]
     if: always() && needs.test.result == 'success' && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     environment: ${{ needs.prepare.outputs.environment }}
     steps:
       - name: Checkout code

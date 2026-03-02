@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CloudProviderToken;
 use App\Models\PrivateKey;
 use App\Models\Server;
+use App\Services\Authorization\ResourceAuthorizationService;
 use App\Services\HetznerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -14,12 +15,20 @@ use Visus\Cuid2\Cuid2;
 
 class WebHetznerController extends Controller
 {
+    public function __construct(
+        private readonly ResourceAuthorizationService $authorizationService
+    ) {}
+
     /**
      * Return available locations and server types for a given token.
      * Used by the Hetzner wizard in the frontend.
      */
     public function options(Request $request)
     {
+        if (! $this->authorizationService->canManageCloudProviders(auth()->user())) {
+            abort(403, 'Cloud providers permission required');
+        }
+
         $request->validate([
             'token_uuid' => 'required|string',
         ]);
@@ -64,6 +73,10 @@ class WebHetznerController extends Controller
     public function store(Request $request)
     {
         Gate::authorize('create', Server::class);
+
+        if (! $this->authorizationService->canManageCloudProviders(auth()->user())) {
+            abort(403, 'Cloud providers permission required');
+        }
 
         $validated = $request->validate([
             'cloud_provider_token_uuid' => 'required|string',

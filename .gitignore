@@ -55,3 +55,7 @@ panel/node_modules/
 .mcp.json
 CLAUDE.md
 .AI_INSTRUCTIONS_SYNC.md
+
+.ai/logs/
+.ai/state/
+.ai/metrics/

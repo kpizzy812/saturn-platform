@@ -2,7 +2,8 @@ import * as React from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { User, Users, Key, Plug, Building2, FileText, Bell, Shield } from 'lucide-react';
+import { User, Users, Key, Plug, Building2, FileText, Bell, Shield, Cloud } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface SettingSection {
     id: string;
@@ -11,7 +12,7 @@ interface SettingSection {
     href: string;
 }
 
-const settingSections: SettingSection[] = [
+const baseSections: SettingSection[] = [
     { id: 'account', label: 'Account', icon: User, href: '/settings/account' },
     { id: 'team', label: 'Team', icon: Users, href: '/settings/team' },
     { id: 'tokens', label: 'API Tokens', icon: Key, href: '/settings/tokens' },
@@ -22,12 +23,24 @@ const settingSections: SettingSection[] = [
     { id: 'security', label: 'Security', icon: Shield, href: '/settings/security' },
 ];
 
+const cloudProvidersSection: SettingSection = {
+    id: 'cloud-providers',
+    label: 'Cloud Providers',
+    icon: Cloud,
+    href: '/settings/cloud-providers',
+};
+
 interface SettingsLayoutProps {
     children: React.ReactNode;
     activeSection?: string;
 }
 
 export function SettingsLayout({ children, activeSection }: SettingsLayoutProps) {
+    const { can } = usePermissions();
+    const settingSections = can('settings.cloud_providers')
+        ? [...baseSections, cloudProvidersSection]
+        : baseSections;
+
     return (
         <AppLayout title="Settings" showNewProject={false}>
             <div className="mx-auto max-w-7xl">

@@ -53,7 +53,9 @@ class StopApplication
                     CleanupDocker::dispatch($server, false, false);
                 }
             } catch (\Exception $e) {
-                return $e->getMessage();
+                // Re-throw so callers (e.g. DeleteResourceJob) know the container was NOT stopped.
+                // Silently returning caused orphaned containers when SSH failed during deletion.
+                throw $e;
             }
         }
         $teamId = $application->environment?->project?->team?->id;

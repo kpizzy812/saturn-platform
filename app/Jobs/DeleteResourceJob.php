@@ -70,6 +70,8 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
                 case 'service':
                     StopService::run($this->resource, $this->deleteConnectedNetworks, $this->dockerCleanup);
                     DeleteService::run($this->resource, $this->deleteVolumes, $this->deleteConnectedNetworks, $this->deleteConfigurations, $this->dockerCleanup);
+                    // forceDelete here so we don't fall through to the block below
+                    $this->resource->forceDelete();
 
                     return;
             }
@@ -102,10 +104,15 @@ class DeleteResourceJob implements ShouldBeEncrypted, ShouldQueue
             if ($this->deleteConnectedNetworks && $this->resource->type() === 'application') {
                 $this->resource->deleteConnectedNetworks();
             }
+
+            // Only delete the DB record after the container has been successfully stopped.
+            // Previously this was in finally{} which caused orphaned containers: if SSH failed
+            // during StopApplication the container kept running but the record was deleted.
+            $this->resource->forceDelete();
         } catch (\Throwable $e) {
             throw $e;
         } finally {
-            $this->resource->forceDelete();
+            // Docker cleanup runs regardless — it is safe even if the stop failed.
             if ($this->dockerCleanup) {
                 $server = data_get($this->resource, 'server') ?? data_get($this->resource, 'destination.server');
                 if ($server) {

@@ -120,11 +120,16 @@ it('source calls deleteConnectedNetworks for dockercompose build pack', function
     expect($source)->toContain("\$application->build_pack === 'dockercompose'");
 });
 
-it('source wraps each server iteration in try/catch and returns exception message', function () {
+it('source wraps each server iteration in try/catch and re-throws the exception', function () {
+    // Previously the catch returned $e->getMessage() which silently swallowed SSH errors,
+    // causing orphaned containers when a delete was triggered while SSH was unavailable.
+    // The fix: re-throw so callers (e.g. DeleteResourceJob) learn that the stop failed.
     $source = file_get_contents(app_path('Actions/Application/StopApplication.php'));
 
     expect($source)->toContain('} catch (\Exception $e) {');
-    expect($source)->toContain('return $e->getMessage()');
+    expect($source)->toContain('throw $e');
+    // Must NOT silently return the message any more
+    expect($source)->not->toContain('return $e->getMessage()');
 });
 
 it('source calls getCurrentApplicationContainerStatus with includePullrequests true when previewDeployments is true', function () {

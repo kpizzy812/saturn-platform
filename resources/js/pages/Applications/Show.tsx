@@ -50,11 +50,20 @@ interface ApplicationWithRelations extends Application {
     has_webhook_secret?: boolean;
 }
 
-interface Props {
-    application: ApplicationWithRelations;
+interface AvailableServer {
+    uuid: string;
+    name: string;
+    ip: string;
+    is_current: boolean;
 }
 
-export default function ApplicationShow({ application: initialApplication }: Props) {
+interface Props {
+    application: ApplicationWithRelations;
+    availableServers?: AvailableServer[];
+    canChangeServer?: boolean;
+}
+
+export default function ApplicationShow({ application: initialApplication, availableServers = [], canChangeServer = false }: Props) {
     const { can } = usePermissions();
     const [application, setApplication] = useState<ApplicationWithRelations>(initialApplication);
     const [showEnvVars, setShowEnvVars] = useState(false);
@@ -66,6 +75,8 @@ export default function ApplicationShow({ application: initialApplication }: Pro
     const [requiresApproval, setRequiresApproval] = useState(false);
     const [forceRebuild, setForceRebuild] = useState(false);
     const [showCloneModal, setShowCloneModal] = useState(false);
+    const currentServerUuid = availableServers.find(s => s.is_current)?.uuid ?? '';
+    const [selectedServerUuid, setSelectedServerUuid] = useState(currentServerUuid);
 
     // Fetch real-time container metrics
     const isRunning = application.status?.startsWith('running') ?? false;
@@ -168,10 +179,16 @@ export default function ApplicationShow({ application: initialApplication }: Pro
     };
 
     const confirmDeploy = () => {
-        router.post(`/applications/${application.uuid}/deploy`, {
+        const payload: Record<string, unknown> = {
             force_rebuild: forceRebuild,
             requires_approval: requiresApproval,
-        }, {
+        };
+
+        if (selectedServerUuid && selectedServerUuid !== currentServerUuid) {
+            payload.server_uuid = selectedServerUuid;
+        }
+
+        router.post(`/applications/${application.uuid}/deploy`, payload, {
             preserveScroll: true,
             onSuccess: () => {
                 setShowDeployModal(false);
@@ -591,6 +608,30 @@ export default function ApplicationShow({ application: initialApplication }: Pro
                                 ? 'This will rebuild the application from scratch and deploy it.'
                                 : 'This will deploy the latest version of your application.'}
                         </p>
+
+                        {availableServers.length > 1 && canChangeServer && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-1">
+                                    Deploy to server
+                                </label>
+                                <select
+                                    value={selectedServerUuid}
+                                    onChange={(e) => setSelectedServerUuid(e.target.value)}
+                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                    {availableServers.map(s => (
+                                        <option key={s.uuid} value={s.uuid}>
+                                            {s.name} ({s.ip}){s.is_current ? ' — current' : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                                {selectedServerUuid && selectedServerUuid !== currentServerUuid && (
+                                    <p className="text-xs text-warning mt-1">
+                                        This will migrate the application to the selected server
+                                    </p>
+                                )}
+                            </div>
+                        )}
 
                         <div className="mb-4">
                             <label className="flex items-center gap-2 cursor-pointer">

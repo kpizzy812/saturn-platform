@@ -554,6 +554,11 @@ export default function MemberShow({
                                     description="View and edit environment variables"
                                 />
                                 <PermissionItem
+                                    granted={false}
+                                    title="Cloud Providers"
+                                    description="Provision servers via cloud provider tokens (Hetzner) — requires explicit permission assignment"
+                                />
+                                <PermissionItem
                                     granted
                                     title="View Resources"
                                     description="Access to view applications, databases, and services"

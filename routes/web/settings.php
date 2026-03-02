@@ -2406,10 +2406,9 @@ Route::post('/teams/switch/{id}', function (string $id) {
     return redirect('/dashboard')->with('success', "Switched to {$team->name}");
 })->name('teams.switch');
 
-// Cloud Provider Tokens (web session auth) — moved to admin panel
-Route::get('/settings/cloud-providers', function () {
-    return redirect('/admin/cloud-providers');
-})->name('settings.cloud-providers');
+// Cloud Provider Tokens — read-only team view for users with settings.cloud_providers permission
+Route::get('/settings/cloud-providers', [\App\Http\Controllers\Inertia\SettingsCloudProvidersController::class, 'index'])
+    ->name('settings.cloud-providers');
 
 Route::post('/settings/cloud-tokens', [\App\Http\Controllers\Web\WebCloudTokensController::class, 'store'])
     ->name('settings.cloud-tokens.store');
