@@ -22,7 +22,7 @@ class SaveProxyConfiguration
         $escaped_path = escapeshellarg($proxy_path);
         instant_remote_process([
             "mkdir -p $escaped_path",
-            "echo ".escapeshellarg($docker_compose_yml_base64)." | base64 -d | tee $escaped_path/docker-compose.yml > /dev/null",
+            'echo '.escapeshellarg($docker_compose_yml_base64)." | base64 -d | tee $escaped_path/docker-compose.yml > /dev/null",
         ], $server);
     }
 }

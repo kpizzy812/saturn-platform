@@ -12,7 +12,7 @@ use OpenApi\Attributes as OA;
 use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
 
-class ApplicationsController extends Controller
+class ApplicationsController extends ApiController
 {
     private function removeSensitiveData($application)
     {
@@ -22,7 +22,7 @@ class ApplicationsController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $application->makeHidden([
                 'custom_labels',
                 'dockerfile',

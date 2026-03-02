@@ -15,11 +15,11 @@ use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 use Stringable;
 
-class ServersController extends Controller
+class ServersController extends ApiController
 {
     private function removeSensitiveDataFromSettings($settings)
     {
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $settings = $settings->makeHidden([
                 'sentinel_token',
             ]);
@@ -33,7 +33,7 @@ class ServersController extends Controller
         $server->makeHidden([
             'id',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             // Mask IP when Cloudflare protection is active for non-admin users
             if (instanceSettings()->isCloudflareProtectionActive()) {
                 $server->ip = '[protected]';
@@ -407,7 +407,7 @@ class ServersController extends Controller
         }
         // Mask IPs when Cloudflare protection is active for non-admin users
         $maskIp = $settings->isCloudflareProtectionActive()
-            && request()->attributes->get('can_read_sensitive', false) === false;
+            && ! $this->canReadSensitive();
 
         $domains = $domains->groupBy('ip')->map(function ($domain) {
             return $domain->pluck('domain')->flatten();

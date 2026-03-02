@@ -8,7 +8,7 @@ use App\Models\Service;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
-class ServiceEnvsController extends Controller
+class ServiceEnvsController extends ApiController
 {
     private function removeSensitiveData($service)
     {
@@ -18,7 +18,7 @@ class ServiceEnvsController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $service->makeHidden([
                 'docker_compose_raw',
                 'docker_compose',

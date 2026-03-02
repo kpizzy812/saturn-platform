@@ -16,11 +16,11 @@ use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 use Visus\Cuid2\Cuid2;
 
-class DeployController extends Controller
+class DeployController extends ApiController
 {
     private function removeSensitiveData($deployment)
     {
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $deployment->makeHidden([
                 'logs',
             ]);

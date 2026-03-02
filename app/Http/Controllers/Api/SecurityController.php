@@ -7,11 +7,11 @@ use App\Models\PrivateKey;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
-class SecurityController extends Controller
+class SecurityController extends ApiController
 {
     private function removeSensitiveData($team)
     {
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $team->makeHidden([
                 'private_key',
             ]);
