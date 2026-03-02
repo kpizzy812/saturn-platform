@@ -4,6 +4,30 @@ import type { SaturnClient } from '../client.js';
 
 export function registerProjectTools(server: McpServer, client: SaturnClient): void {
     server.registerTool(
+        'saturn_overview',
+        {
+            title: 'Saturn Overview',
+            description:
+                'START HERE. Returns a full snapshot of the Saturn platform: ' +
+                'all applications (with uuid, name, status, fqdn), ' +
+                'all servers (with uuid, name, ip, status), ' +
+                'and all databases (with uuid, name, type, status). ' +
+                'Use this first to find UUIDs before calling any other tool. ' +
+                'Hierarchy: Project → Environment → Application/Database/Service.',
+            inputSchema: z.object({}),
+        },
+        async () => {
+            const [applications, servers, databases] = await Promise.all([
+                client.get('/applications'),
+                client.get('/servers'),
+                client.get('/databases'),
+            ]);
+            const overview = { applications, servers, databases };
+            return { content: [{ type: 'text', text: JSON.stringify(overview, null, 2) }] };
+        },
+    );
+
+    server.registerTool(
         'saturn_list_projects',
         {
             title: 'List Projects',
