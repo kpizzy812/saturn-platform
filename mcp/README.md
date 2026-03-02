@@ -1,156 +1,138 @@
 # Saturn MCP Server
 
-Model Context Protocol (MCP) server для Saturn Platform. Позволяет AI-агентам (Claude Code, Claude Desktop, Cursor и др.) деплоить приложения, смотреть логи и проверять статус — прямо из чата.
+Allows AI agents (Claude Code, Cursor, Claude Desktop) to deploy apps, check logs and status — directly from chat.
 
-## Инструменты (Tools)
+## Tools
 
-| Tool | Описание |
-|------|----------|
-| `saturn_list_applications` | Список всех приложений |
-| `saturn_get_application` | Детали приложения по UUID |
-| `saturn_deploy` | Запустить деплой |
-| `saturn_get_deployment_logs` | Логи деплоя (poll до finished/failed) |
-| `saturn_list_servers` | Список серверов |
+| Tool | Description |
+|------|-------------|
+| `saturn_list_applications` | List all applications |
+| `saturn_get_application` | Get application details by UUID |
+| `saturn_deploy` | Trigger a deployment |
+| `saturn_get_deployment_logs` | Fetch deployment logs (poll until finished/failed) |
+| `saturn_list_servers` | List all servers |
 
-## Авторизация
+---
 
-- Каждый участник команды создаёт **свой** токен: Saturn UI → Settings → API Tokens → Create
-- Abilities: `read` + `deploy` (для деплоя), только `read` (для мониторинга)
-- Токен привязан к **команде** — видит только ресурсы своей команды
-- Все действия логируются в Saturn с именем токена
+## Step 1 — Get your API token
 
-## Окружения
+Go to **Saturn UI → Settings → Tokens → Create token**
 
-Один и тот же MCP-сервер может работать с любым окружением через `SATURN_API_URL`:
+- Dev: `https://dev.saturn.ac/settings/tokens`
+- UAT: `https://uat.saturn.ac/settings/tokens`
+- Prod: `https://saturn.ac/settings/tokens`
 
-| Окружение | URL |
-|-----------|-----|
-| **dev** | `https://dev.saturn.ac` |
-| **staging/UAT** | `https://uat.saturn.ac` |
-| **production** | `https://saturn.ac` |
+Select abilities: **read** + **deploy**. Copy the token — it's shown only once.
 
-Рекомендуется зарегистрировать **три** отдельных MCP-сервера (saturn-dev, saturn-uat, saturn-prod), чтобы агент мог явно выбирать окружение.
+---
 
-## Установка для команды
+## Step 2 — Install in your AI tool
 
-### 1. Получить код и зависимости
+### Claude Code (CLI)
+
+Run once per environment from the project root:
 
 ```bash
-git pull                  # mcp/ уже в репозитории
-cd mcp && npm install
+# Dev
+claude mcp add saturn-dev \
+  -e SATURN_API_URL=https://dev.saturn.ac \
+  -e SATURN_API_TOKEN=<your-dev-token> \
+  -- npx tsx mcp/src/index.ts
+
+# UAT
+claude mcp add saturn-uat \
+  -e SATURN_API_URL=https://uat.saturn.ac \
+  -e SATURN_API_TOKEN=<your-uat-token> \
+  -- npx tsx mcp/src/index.ts
+
+# Production
+claude mcp add saturn-prod \
+  -e SATURN_API_URL=https://saturn.ac \
+  -e SATURN_API_TOKEN=<your-prod-token> \
+  -- npx tsx mcp/src/index.ts
 ```
 
-### 2. Создать API-токены
+Verify: `claude mcp list`
 
-Для каждого окружения создай **отдельный токен** в Saturn UI:
-- `dev.saturn.ac` → токен для dev
-- `uat.saturn.ac` → токен для staging
-- `saturn.ac` → токен для prod (можно без `deploy`, только `read`)
+---
 
-### 3. Добавить env-переменные в шелл
+### Cursor
 
-В `~/.zshrc` или `~/.bashrc`:
+Open **Settings → MCP** and add:
 
-```bash
-export SATURN_TOKEN_DEV="1|abcdef..."
-export SATURN_TOKEN_UAT="2|ghijkl..."
-export SATURN_TOKEN_PROD="3|mnopqr..."
+```json
+{
+  "saturn-dev": {
+    "command": "npx",
+    "args": ["tsx", "/absolute/path/to/mcp/src/index.ts"],
+    "env": {
+      "SATURN_API_URL": "https://dev.saturn.ac",
+      "SATURN_API_TOKEN": "<your-dev-token>"
+    }
+  }
+}
 ```
 
-Затем `source ~/.zshrc`.
+---
 
-### 4. Добавить серверы в `.mcp.json` проекта
+### Claude Desktop
 
-Файл `.mcp.json` в корне проекта **не коммитится** (gitignored) — каждый заполняет свой.
-Добавь saturn-серверы к уже существующим записям:
+Edit `~/.claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "saturn-dev": {
       "command": "npx",
-      "args": ["--yes", "tsx", "mcp/src/index.ts"],
+      "args": ["tsx", "/absolute/path/to/mcp/src/index.ts"],
       "env": {
         "SATURN_API_URL": "https://dev.saturn.ac",
-        "SATURN_API_TOKEN": "${SATURN_TOKEN_DEV}"
-      }
-    },
-    "saturn-uat": {
-      "command": "npx",
-      "args": ["--yes", "tsx", "mcp/src/index.ts"],
-      "env": {
-        "SATURN_API_URL": "https://uat.saturn.ac",
-        "SATURN_API_TOKEN": "${SATURN_TOKEN_UAT}"
-      }
-    },
-    "saturn-prod": {
-      "command": "npx",
-      "args": ["--yes", "tsx", "mcp/src/index.ts"],
-      "env": {
-        "SATURN_API_URL": "https://saturn.ac",
-        "SATURN_API_TOKEN": "${SATURN_TOKEN_PROD}"
+        "SATURN_API_TOKEN": "<your-dev-token>"
       }
     }
   }
 }
 ```
 
-`${VAR}` автоматически берётся из твоего шелла — токен не хранится в файле.
+Then restart Claude Desktop.
 
-### 5. Разрешить серверы в Claude Code
+---
 
-Claude Code спросит при первом запуске — нажать **Allow** для каждого сервера.
-Или добавить в `.claude/settings.json`:
-```json
-{
-  "enableAllProjectMcpServers": true
-}
-```
-
-## Как агенты используют MCP
+## How agents use it
 
 ```
-User: Задеплой frontend в dev
-
-Agent (claude-dev):
-1. saturn-dev: saturn_list_applications
-   → [{ uuid: "abc-123", name: "frontend" }, ...]
-2. saturn-dev: saturn_deploy(uuid="abc-123")
-   → { deployment_uuid: "dep-456", status: "queued" }
-3. saturn-dev: saturn_get_deployment_logs(deployment_uuid="dep-456")
-   → { status: "in_progress", logs: [...] }
-4. saturn-dev: saturn_get_deployment_logs(deployment_uuid="dep-456")
-   → { status: "finished" } ✓
-```
-
-```
-User: Проверь что на prod всё в порядке
+User: Deploy frontend to dev
 
 Agent:
-1. saturn-prod: saturn_list_servers     → серверы, статус
-2. saturn-prod: saturn_list_applications → приложения, статус
+1. saturn_list_applications → finds uuid for "frontend"
+2. saturn_deploy(uuid) → returns deployment_uuid
+3. saturn_get_deployment_logs(deployment_uuid) → polls until status=finished
 ```
 
-## Переменные окружения
+---
 
-| Переменная | Обязательная | По умолчанию | Описание |
-|------------|:---:|---|---|
-| `SATURN_API_TOKEN` | ✅ | — | API токен из Saturn UI |
-| `SATURN_API_URL` | ❌ | `https://dev.saturn.ac` | Base URL окружения |
+## Authorization
 
-## Разработка
+- Token belongs to **you** — agents see only your team's resources
+- All actions are logged under your user in Saturn
+- `read` = view apps/servers/logs, `deploy` = trigger deployments
+- Production token: consider creating read-only (`read` only) for safety
+
+---
+
+## Environment variables
+
+| Variable | Required | Default |
+|----------|:--------:|---------|
+| `SATURN_API_TOKEN` | ✅ | — |
+| `SATURN_API_URL` | ❌ | `https://dev.saturn.ac` |
+
+---
+
+## Local development
 
 ```bash
-cd mcp
-npm install
-npm run dev          # запуск через tsx (без сборки)
-npm run typecheck    # проверка типов
-npm run build        # сборка в dist/
-```
-
-Или через Makefile из корня проекта:
-```bash
-make mcp-install
-make mcp-build
-make mcp-dev
+make mcp-install   # npm install
+make mcp-build     # build to dist/
+make mcp-dev       # run with tsx (no build)
 ```
