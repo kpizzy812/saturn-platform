@@ -1,34 +1,42 @@
 <?php
 
-namespace App\Http\Controllers\Web;
+namespace App\Http\Controllers\Inertia;
 
 use App\Http\Controllers\Controller;
 use App\Models\CloudProviderToken;
-use App\Services\Authorization\ResourceAuthorizationService;
+use App\Models\Team;
 use App\Services\HetznerService;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 use Visus\Cuid2\Cuid2;
 
-class WebCloudTokensController extends Controller
+class AdminCloudProvidersController extends Controller
 {
-    public function __construct(
-        protected ResourceAuthorizationService $authService
-    ) {}
+    public function index(): Response
+    {
+        $tokens = CloudProviderToken::with(['team', 'servers'])
+            ->withCount('servers')
+            ->get();
+
+        $teams = Team::select(['id', 'name'])->orderBy('name')->get();
+
+        return Inertia::render('Admin/CloudProviders/Index', [
+            'tokens' => $tokens,
+            'teams' => $teams,
+        ]);
+    }
 
     public function store(Request $request)
     {
-        if (! $this->authService->canManageCloudProviders(auth()->user())) {
-            abort(403, 'Insufficient permissions to manage cloud provider tokens.');
-        }
-
         $validated = $request->validate([
+            'team_id' => 'required|exists:teams,id',
             'name' => 'required|string|max:255',
             'provider' => 'required|in:hetzner,digitalocean',
             'token' => 'required|string|max:1000',
         ]);
 
         $validated['uuid'] = (string) new Cuid2;
-        $validated['team_id'] = currentTeam()->id;
 
         CloudProviderToken::create($validated);
 
@@ -37,13 +45,7 @@ class WebCloudTokensController extends Controller
 
     public function destroy(string $uuid)
     {
-        if (! $this->authService->canManageCloudProviders(auth()->user())) {
-            abort(403, 'Insufficient permissions to manage cloud provider tokens.');
-        }
-
-        $token = CloudProviderToken::ownedByCurrentTeam()
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $token = CloudProviderToken::where('uuid', $uuid)->firstOrFail();
 
         if ($token->hasServers()) {
             return back()->withErrors(['token' => 'Cannot delete token: it has associated servers.']);
@@ -56,13 +58,7 @@ class WebCloudTokensController extends Controller
 
     public function checkToken(string $uuid)
     {
-        if (! $this->authService->canManageCloudProviders(auth()->user())) {
-            abort(403, 'Insufficient permissions to manage cloud provider tokens.');
-        }
-
-        $token = CloudProviderToken::ownedByCurrentTeam()
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $token = CloudProviderToken::where('uuid', $uuid)->firstOrFail();
 
         try {
             if ($token->provider === 'hetzner') {

@@ -46,6 +46,7 @@ import {
     ArrowLeft,
     Globe,
     UserPlus,
+    Cloud,
 } from 'lucide-react';
 
 export interface AdminBreadcrumb {
@@ -100,6 +101,7 @@ const adminNavGroups: NavGroup[] = [
             { label: 'Servers', href: '/admin/servers', icon: <Server className="h-4 w-4" /> },
             { label: 'Projects', href: '/admin/projects', icon: <FolderKanban className="h-4 w-4" /> },
             { label: 'SSH Keys', href: '/admin/ssh-keys', icon: <KeyRound className="h-4 w-4" /> },
+            { label: 'Cloud Providers', href: '/admin/cloud-providers', icon: <Cloud className="h-4 w-4" /> },
             { label: 'Templates', href: '/admin/templates', icon: <LayoutTemplate className="h-4 w-4" /> },
         ],
     },

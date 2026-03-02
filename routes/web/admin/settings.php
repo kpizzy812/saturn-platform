@@ -6,6 +6,7 @@
  * Instance settings management.
  */
 
+use App\Models\CloudProviderToken;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -40,9 +41,24 @@ Route::get('/settings', function () {
         's3_secret' => ! empty(env('AWS_SECRET_ACCESS_KEY')),
     ];
 
+    $cloudTokens = CloudProviderToken::select(['uuid', 'name', 'provider', 'team_id'])->get();
+
     return Inertia::render('Admin/Settings/Index', [
         'settings' => $settingsArray,
         'envStatus' => $envStatus,
+        'autoProvisioning' => [
+            'auto_provision_enabled' => $settings->auto_provision_enabled,
+            'auto_provision_max_servers_per_day' => $settings->auto_provision_max_servers_per_day ?? 3,
+            'auto_provision_cooldown_minutes' => $settings->auto_provision_cooldown_minutes ?? 30,
+            'auto_provision_server_type' => $settings->auto_provision_server_type,
+            'auto_provision_location' => $settings->auto_provision_location,
+            'resource_monitoring_enabled' => $settings->resource_monitoring_enabled,
+            'resource_warning_cpu_threshold' => $settings->resource_warning_cpu_threshold ?? 75,
+            'resource_critical_cpu_threshold' => $settings->resource_critical_cpu_threshold ?? 90,
+            'resource_warning_memory_threshold' => $settings->resource_warning_memory_threshold ?? 80,
+            'resource_critical_memory_threshold' => $settings->resource_critical_memory_threshold ?? 95,
+        ],
+        'cloudTokens' => $cloudTokens,
     ]);
 })->name('admin.settings.index');
 
