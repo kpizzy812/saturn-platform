@@ -98,6 +98,7 @@ class User extends Authenticatable implements SendsEmail
         'suspended_by',
         'suspension_reason',
         'last_login_at',
+        'avatar',
     ];
 
     protected $hidden = [
