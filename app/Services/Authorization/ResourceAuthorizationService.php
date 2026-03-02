@@ -475,4 +475,23 @@ class ResourceAuthorizationService
 
         return $this->canAccessSensitiveData($user, $teamId);
     }
+
+    // ==========================================
+    // CLOUD PROVIDER AUTHORIZATION
+    // ==========================================
+
+    /**
+     * Check if user can manage cloud provider API tokens.
+     * Permission: settings.cloud_providers (sensitive)
+     */
+    public function canManageCloudProviders(User $user, ?int $teamId = null): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        $resolvedTeamId = $teamId ?? currentTeam()?->id;
+
+        return $this->hasPermission($user, 'settings.cloud_providers', $resolvedTeamId);
+    }
 }

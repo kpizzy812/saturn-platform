@@ -417,6 +417,15 @@ class PermissionsSeeder extends Seeder
                 'category' => 'settings',
                 'is_sensitive' => true,
             ],
+            [
+                'key' => 'settings.cloud_providers',
+                'name' => 'Manage Cloud Providers',
+                'description' => 'Add and manage cloud provider API tokens (Hetzner, DigitalOcean) for server provisioning',
+                'resource' => 'settings',
+                'action' => 'cloud_providers',
+                'category' => 'settings',
+                'is_sensitive' => true,
+            ],
 
             // ===================
             // PROJECTS

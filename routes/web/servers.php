@@ -30,9 +30,13 @@ Route::get('/servers/create', function () {
         ->where('provider', 'hetzner')
         ->get();
 
+    $authService = app(\App\Services\Authorization\ResourceAuthorizationService::class);
+    $canProvisionCloudServers = $authService->canManageCloudProviders(auth()->user());
+
     return Inertia::render('Servers/Create', [
         'privateKeys' => $privateKeys,
         'cloudTokens' => $cloudTokens,
+        'canProvisionCloudServers' => $canProvisionCloudServers,
     ]);
 })->name('servers.create');
 

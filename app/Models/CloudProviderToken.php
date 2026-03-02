@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Traits\Auditable;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -33,12 +35,14 @@ class CloudProviderToken extends BaseModel
         'token' => 'encrypted',
     ];
 
-    public function team()
+    /** @return BelongsTo<Team, $this> */
+    public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
     }
 
-    public function servers()
+    /** @return HasMany<Server, $this> */
+    public function servers(): HasMany
     {
         return $this->hasMany(Server::class);
     }

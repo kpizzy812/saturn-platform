@@ -34,6 +34,12 @@ interface GithubApp {
     installation_id: number | null;
 }
 
+interface AvailableServer {
+    uuid: string;
+    name: string;
+    ip: string;
+}
+
 interface Props {
     projects?: Project[];
     wildcardDomain?: WildcardDomain | null;
@@ -43,6 +49,8 @@ interface Props {
     preselectedProject?: string | null;
     /** Pre-selected environment UUID (when creating from canvas) */
     preselectedEnvironment?: string | null;
+    availableServers?: AvailableServer[];
+    canChangeServer?: boolean;
 }
 
 type Phase = 'repo_select' | 'analyze_deploy';
@@ -88,7 +96,7 @@ const secondaryOptions = [
 
 // ── Main Component ──────────────────────────────────────────────────
 
-export default function ProjectCreate({ projects = [], wildcardDomain = null, hasGithubApp: _hasGithubApp = false, githubApps = [], preselectedProject = null, preselectedEnvironment = null }: Props) {
+export default function ProjectCreate({ projects = [], wildcardDomain = null, hasGithubApp: _hasGithubApp = false, githubApps = [], preselectedProject = null, preselectedEnvironment = null, availableServers, canChangeServer }: Props) {
     // When project is preselected (from canvas), we skip project creation
     const hasPreselectedProject = !!(preselectedProject && preselectedEnvironment);
 
@@ -449,6 +457,8 @@ export default function ProjectCreate({ projects = [], wildcardDomain = null, ha
                                 destinationUuid="auto"
                                 onComplete={handleProvisionComplete}
                                 autoStart
+                                availableServers={availableServers}
+                                canChangeServer={canChangeServer}
                             />
                         </>
                     )}

@@ -2406,16 +2406,9 @@ Route::post('/teams/switch/{id}', function (string $id) {
     return redirect('/dashboard')->with('success', "Switched to {$team->name}");
 })->name('teams.switch');
 
-// Cloud Provider Tokens (web session auth)
-Route::get('/settings/cloud-providers', function () {
-    $tokens = \App\Models\CloudProviderToken::ownedByCurrentTeam()
-        ->withCount('servers')
-        ->get();
-
-    return Inertia::render('Settings/CloudProviders', [
-        'tokens' => $tokens,
-    ]);
-})->name('settings.cloud-providers');
+// Cloud Provider Tokens — read-only team view for users with settings.cloud_providers permission
+Route::get('/settings/cloud-providers', [\App\Http\Controllers\Inertia\SettingsCloudProvidersController::class, 'index'])
+    ->name('settings.cloud-providers');
 
 Route::post('/settings/cloud-tokens', [\App\Http\Controllers\Web\WebCloudTokensController::class, 'store'])
     ->name('settings.cloud-tokens.store');
@@ -2426,26 +2419,9 @@ Route::delete('/settings/cloud-tokens/{uuid}', [\App\Http\Controllers\Web\WebClo
 Route::post('/settings/cloud-tokens/{uuid}/validate', [\App\Http\Controllers\Web\WebCloudTokensController::class, 'checkToken'])
     ->name('settings.cloud-tokens.validate');
 
-// Auto-Provisioning Settings
+// Auto-Provisioning Settings — moved to admin panel
 Route::get('/settings/auto-provisioning', function () {
-    $settings = \App\Models\InstanceSettings::get();
-    $cloudTokens = \App\Models\CloudProviderToken::ownedByCurrentTeam()->get();
-
-    return Inertia::render('Settings/AutoProvisioning', [
-        'settings' => [
-            'auto_provision_enabled' => $settings->auto_provision_enabled,
-            'auto_provision_max_servers_per_day' => $settings->auto_provision_max_servers_per_day ?? 3,
-            'auto_provision_cooldown_minutes' => $settings->auto_provision_cooldown_minutes ?? 30,
-            'auto_provision_server_type' => $settings->auto_provision_server_type,
-            'auto_provision_location' => $settings->auto_provision_location,
-            'resource_monitoring_enabled' => $settings->resource_monitoring_enabled,
-            'resource_warning_cpu_threshold' => $settings->resource_warning_cpu_threshold ?? 75,
-            'resource_critical_cpu_threshold' => $settings->resource_critical_cpu_threshold ?? 90,
-            'resource_warning_memory_threshold' => $settings->resource_warning_memory_threshold ?? 80,
-            'resource_critical_memory_threshold' => $settings->resource_critical_memory_threshold ?? 95,
-        ],
-        'cloudTokens' => $cloudTokens,
-    ]);
+    return redirect('/admin/settings');
 })->name('settings.auto-provisioning');
 
 Route::post('/settings/auto-provisioning', [\App\Http\Controllers\Web\WebAutoProvisioningController::class, 'update'])

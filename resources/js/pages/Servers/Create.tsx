@@ -3,7 +3,7 @@ import { router, Link } from '@inertiajs/react';
 import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Textarea, Select } from '@/components/ui';
-import { ArrowLeft, Check, Server, Key, Cloud } from 'lucide-react';
+import { ArrowLeft, Check, Server, Key, Cloud, Lock } from 'lucide-react';
 import { validateIPAddress, validatePort, validateSSHKey } from '@/lib/validation';
 import type { PrivateKey } from '@/types';
 import type { CloudProviderToken } from '@/types/models';
@@ -16,9 +16,10 @@ type Tab = 'manual' | 'cloud';
 interface Props {
     privateKeys?: PrivateKey[];
     cloudTokens?: CloudProviderToken[];
+    canProvisionCloudServers?: boolean;
 }
 
-export default function ServerCreate({ privateKeys = [], cloudTokens = [] }: Props) {
+export default function ServerCreate({ privateKeys = [], cloudTokens = [], canProvisionCloudServers = false }: Props) {
     const [tab, setTab] = useState<Tab>('manual');
     const [step, setStep] = useState<Step>(1);
     const [name, setName] = useState('');
@@ -123,14 +124,22 @@ export default function ServerCreate({ privateKeys = [], cloudTokens = [] }: Pro
                         </button>
                         <button
                             type="button"
-                            onClick={() => setTab('cloud')}
+                            onClick={() => canProvisionCloudServers && setTab('cloud')}
+                            disabled={!canProvisionCloudServers}
+                            title={canProvisionCloudServers ? undefined : 'Requires Cloud Providers permission'}
                             className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors ${
-                                tab === 'cloud'
-                                    ? 'bg-background text-foreground shadow-sm'
-                                    : 'text-foreground-muted hover:text-foreground'
+                                !canProvisionCloudServers
+                                    ? 'cursor-not-allowed text-foreground-muted/50'
+                                    : tab === 'cloud'
+                                        ? 'bg-background text-foreground shadow-sm'
+                                        : 'text-foreground-muted hover:text-foreground'
                             }`}
                         >
-                            <Cloud className="h-4 w-4" />
+                            {canProvisionCloudServers ? (
+                                <Cloud className="h-4 w-4" />
+                            ) : (
+                                <Lock className="h-4 w-4" />
+                            )}
                             Cloud Provider
                         </button>
                     </div>

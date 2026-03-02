@@ -144,6 +144,12 @@ interface ProvisionResult {
     monorepo_group_id: string | null;
 }
 
+interface AvailableServer {
+    uuid: string;
+    name: string;
+    ip: string;
+}
+
 interface Props {
     gitRepository: string;
     gitBranch?: string;
@@ -154,6 +160,8 @@ interface Props {
     destinationUuid: string;
     onComplete: (result: ProvisionResult) => void;
     autoStart?: boolean;
+    availableServers?: AvailableServer[];
+    canChangeServer?: boolean;
 }
 
 interface AppConfig {
@@ -287,6 +295,8 @@ export function MonorepoAnalyzer({
     destinationUuid,
     onComplete,
     autoStart = false,
+    availableServers,
+    canChangeServer = false,
 }: Props) {
     const [analyzing, setAnalyzing] = useState(false);
     const [provisioning, setProvisioning] = useState(false);
@@ -297,6 +307,7 @@ export function MonorepoAnalyzer({
     const [appConfigs, setAppConfigs] = useState<Record<string, AppConfig>>({});
     const [error, setError] = useState<string | null>(null);
     const [expandedApps, setExpandedApps] = useState<Record<string, boolean>>({});
+    const [appServerUuids, setAppServerUuids] = useState<Record<string, string>>({});
     const autoStarted = useRef(false);
 
     const repoName = analysis?.repository_name || extractRepoName(gitRepository);
@@ -400,6 +411,7 @@ export function MonorepoAnalyzer({
                 base_directory: appConfigs[app.name]?.base_directory ?? app.path,
                 application_type: appConfigs[app.name]?.application_type ?? app.application_mode ?? 'web',
                 env_vars: (appConfigs[app.name]?.env_vars ?? []).filter(v => v.key && v.value),
+                ...(appServerUuids[app.name] ? { server_uuid: appServerUuids[app.name] } : {}),
             })),
             databases: analysis.databases.map(db => ({
                 type: db.type,
@@ -860,6 +872,26 @@ export function MonorepoAnalyzer({
                                                         className="h-8 text-sm"
                                                     />
                                                 </div>
+                                                {canChangeServer && availableServers && availableServers.length > 1 && (
+                                                    <div className="sm:col-span-2">
+                                                        <label className="text-xs text-foreground-muted block mb-1">Deploy to Server</label>
+                                                        <select
+                                                            value={appServerUuids[app.name] ?? ''}
+                                                            onChange={(e) => setAppServerUuids(prev => ({
+                                                                ...prev,
+                                                                [app.name]: e.target.value,
+                                                            }))}
+                                                            className="w-full h-8 text-sm bg-white/[0.04] backdrop-blur-sm border border-white/[0.08] rounded-lg px-2 hover:border-white/[0.12] transition-colors duration-200"
+                                                        >
+                                                            <option value="">Auto-select</option>
+                                                            {availableServers.map(server => (
+                                                                <option key={server.uuid} value={server.uuid}>
+                                                                    {server.name} ({server.ip})
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Environment Variables */}

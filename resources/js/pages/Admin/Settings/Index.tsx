@@ -2,6 +2,7 @@ import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { router } from '@inertiajs/react';
 import type { RouterPayload } from '@/types/inertia';
+import type { AutoProvisioningSettings } from '@/types/models';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { Select } from '@/components/ui/Select';
 import { TabsRoot, TabsList, TabsTrigger, TabsPanels, TabsContent } from '@/components/ui/Tabs';
-import { useConfirm } from '@/components/ui';
+import { useConfirm, useToast } from '@/components/ui';
 import {
     Globe,
     Mail,
@@ -183,6 +184,8 @@ interface Props {
         s3_key: boolean;
         s3_secret: boolean;
     };
+    autoProvisioning?: AutoProvisioningSettings;
+    cloudTokens?: { uuid: string; name: string; provider: string }[];
 }
 
 // Helper to normalize allowed_ip_ranges to string for display
@@ -192,8 +195,18 @@ function ipRangesToString(val: string | string[] | undefined): string {
     return val;
 }
 
-export default function AdminSettingsIndex({ settings, envStatus }: Props) {
+const SERVER_TYPES = ['cx22', 'cx32', 'cx42', 'cx52', 'cpx11', 'cpx21', 'cpx31'];
+const LOCATIONS = [
+    { value: 'nbg1', label: 'Nuremberg (nbg1)' },
+    { value: 'hel1', label: 'Helsinki (hel1)' },
+    { value: 'fsn1', label: 'Falkenstein (fsn1)' },
+    { value: 'ash', label: 'Ashburn, VA (ash)' },
+    { value: 'sjc', label: 'Hillsboro, OR (sjc)' },
+];
+
+export default function AdminSettingsIndex({ settings, envStatus, autoProvisioning, cloudTokens = [] }: Props) {
     const confirm = useConfirm();
+    const { toast } = useToast();
     const initialData = React.useMemo(() => ({
         ...settings,
         allowed_ip_ranges: ipRangesToString(settings?.allowed_ip_ranges),
@@ -214,6 +227,38 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
     const [showDockerPassword, setShowDockerPassword] = React.useState(false);
     const [showCloudflareToken, setShowCloudflareToken] = React.useState(false);
     const [isCloudflareAction, setIsCloudflareAction] = React.useState(false);
+
+    // Auto-provisioning form state
+    const defaultAutoProvisioning: AutoProvisioningSettings = {
+        auto_provision_enabled: false,
+        auto_provision_max_servers_per_day: 3,
+        auto_provision_cooldown_minutes: 30,
+        auto_provision_server_type: null,
+        auto_provision_location: null,
+        resource_monitoring_enabled: false,
+        resource_warning_cpu_threshold: 75,
+        resource_critical_cpu_threshold: 90,
+        resource_warning_memory_threshold: 80,
+        resource_critical_memory_threshold: 95,
+        cloud_provider_token_uuid: null,
+    };
+    const [apForm, setApForm] = React.useState<AutoProvisioningSettings>(
+        autoProvisioning ?? defaultAutoProvisioning
+    );
+    const [isApSaving, setIsApSaving] = React.useState(false);
+
+    const setAp = <K extends keyof AutoProvisioningSettings>(key: K, value: AutoProvisioningSettings[K]) =>
+        setApForm((prev) => ({ ...prev, [key]: value }));
+
+    const handleApSave = () => {
+        setIsApSaving(true);
+        router.post('/admin/auto-provisioning', apForm as unknown as RouterPayload, {
+            preserveScroll: true,
+            onSuccess: () => toast({ title: 'Auto-provisioning settings saved', variant: 'success' }),
+            onError: () => toast({ title: 'Failed to save settings', variant: 'error' }),
+            onFinish: () => setIsApSaving(false),
+        });
+    };
 
     // Track unsaved changes
     const isDirty = React.useMemo(() => {
@@ -375,6 +420,12 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
                             <span className="flex items-center gap-1.5">
                                 <Cloud className="h-4 w-4" />
                                 IP Protection
+                            </span>
+                        </TabsTrigger>
+                        <TabsTrigger>
+                            <span className="flex items-center gap-1.5">
+                                <Zap className="h-4 w-4" />
+                                Auto-Provisioning
                             </span>
                         </TabsTrigger>
                     </TabsList>
@@ -2392,9 +2443,237 @@ export default function AdminSettingsIndex({ settings, envStatus }: Props) {
                                 </Card>
                             </div>
                         </TabsContent>
+
+                        {/* ============ TAB 8: AUTO-PROVISIONING ============ */}
+                        <TabsContent>
+                            <div className="space-y-6">
+                                {/* Main toggle */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Zap className="h-5 w-5 text-primary" />
+                                            <CardTitle>Auto-Provisioning</CardTitle>
+                                        </div>
+                                        <CardDescription>
+                                            Automatically provision new servers when resource thresholds are exceeded
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <label className="flex cursor-pointer items-center gap-3">
+                                            <div
+                                                onClick={() => setAp('auto_provision_enabled', !apForm.auto_provision_enabled)}
+                                                className={`relative h-6 w-11 rounded-full transition-colors ${
+                                                    apForm.auto_provision_enabled ? 'bg-primary' : 'bg-border'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                                        apForm.auto_provision_enabled ? 'translate-x-5' : 'translate-x-0.5'
+                                                    }`}
+                                                />
+                                            </div>
+                                            <span className="text-sm font-medium text-foreground">
+                                                {apForm.auto_provision_enabled ? 'Enabled' : 'Disabled'}
+                                            </span>
+                                        </label>
+
+                                        {apForm.auto_provision_enabled && (
+                                            <div className="grid gap-4 pt-2 md:grid-cols-2">
+                                                {/* Cloud Provider Token */}
+                                                <div className="space-y-1">
+                                                    <label className="block text-sm font-medium text-foreground">
+                                                        Cloud Provider Token
+                                                    </label>
+                                                    <select
+                                                        value={apForm.cloud_provider_token_uuid ?? ''}
+                                                        onChange={(e) => setAp('cloud_provider_token_uuid', e.target.value || null)}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    >
+                                                        <option value="">— Select token —</option>
+                                                        {cloudTokens.map((t) => (
+                                                            <option key={t.uuid} value={t.uuid}>
+                                                                {t.name} ({t.provider})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Server Type */}
+                                                <div className="space-y-1">
+                                                    <label className="block text-sm font-medium text-foreground">
+                                                        Server Type
+                                                    </label>
+                                                    <select
+                                                        value={apForm.auto_provision_server_type ?? ''}
+                                                        onChange={(e) => setAp('auto_provision_server_type', e.target.value || null)}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    >
+                                                        <option value="">— Select —</option>
+                                                        {SERVER_TYPES.map((s) => (
+                                                            <option key={s} value={s}>{s}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Location */}
+                                                <div className="space-y-1">
+                                                    <label className="block text-sm font-medium text-foreground">
+                                                        Location
+                                                    </label>
+                                                    <select
+                                                        value={apForm.auto_provision_location ?? ''}
+                                                        onChange={(e) => setAp('auto_provision_location', e.target.value || null)}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    >
+                                                        <option value="">— Select —</option>
+                                                        {LOCATIONS.map((l) => (
+                                                            <option key={l.value} value={l.value}>{l.label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Max servers per day */}
+                                                <div className="space-y-1">
+                                                    <label className="block text-sm font-medium text-foreground">
+                                                        Max Servers / Day
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min={1}
+                                                        max={10}
+                                                        value={apForm.auto_provision_max_servers_per_day}
+                                                        onChange={(e) => setAp('auto_provision_max_servers_per_day', parseInt(e.target.value) || 1)}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    />
+                                                </div>
+
+                                                {/* Cooldown */}
+                                                <div className="space-y-1">
+                                                    <label className="block text-sm font-medium text-foreground">
+                                                        Cooldown (minutes)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        min={15}
+                                                        max={240}
+                                                        value={apForm.auto_provision_cooldown_minutes}
+                                                        onChange={(e) => setAp('auto_provision_cooldown_minutes', parseInt(e.target.value) || 30)}
+                                                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Resource Monitoring */}
+                                <Card variant="glass">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Activity className="h-5 w-5 text-primary" />
+                                            <CardTitle>Resource Monitoring</CardTitle>
+                                        </div>
+                                        <CardDescription>Trigger provisioning based on resource usage thresholds</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <label className="flex cursor-pointer items-center gap-3">
+                                            <div
+                                                onClick={() => setAp('resource_monitoring_enabled', !apForm.resource_monitoring_enabled)}
+                                                className={`relative h-6 w-11 rounded-full transition-colors ${
+                                                    apForm.resource_monitoring_enabled ? 'bg-primary' : 'bg-border'
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                                        apForm.resource_monitoring_enabled ? 'translate-x-5' : 'translate-x-0.5'
+                                                    }`}
+                                                />
+                                            </div>
+                                            <span className="text-sm font-medium text-foreground">
+                                                Enable resource monitoring
+                                            </span>
+                                        </label>
+
+                                        {apForm.resource_monitoring_enabled && (
+                                            <div className="grid gap-6 pt-2 md:grid-cols-2">
+                                                <AdminThresholdGroup
+                                                    label="CPU (%)"
+                                                    warning={apForm.resource_warning_cpu_threshold}
+                                                    critical={apForm.resource_critical_cpu_threshold}
+                                                    onWarning={(v) => setAp('resource_warning_cpu_threshold', v)}
+                                                    onCritical={(v) => setAp('resource_critical_cpu_threshold', v)}
+                                                />
+                                                <AdminThresholdGroup
+                                                    label="Memory (%)"
+                                                    warning={apForm.resource_warning_memory_threshold}
+                                                    critical={apForm.resource_critical_memory_threshold}
+                                                    onWarning={(v) => setAp('resource_warning_memory_threshold', v)}
+                                                    onCritical={(v) => setAp('resource_critical_memory_threshold', v)}
+                                                />
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                <div className="flex justify-end">
+                                    <Button onClick={handleApSave} disabled={isApSaving}>
+                                        <Save className="h-4 w-4" />
+                                        {isApSaving ? 'Saving...' : 'Save Settings'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </TabsContent>
                     </TabsPanels>
                 </TabsRoot>
             </div>
         </AdminLayout>
+    );
+}
+
+function AdminThresholdGroup({
+    label,
+    warning,
+    critical,
+    onWarning,
+    onCritical,
+}: {
+    label: string;
+    warning: number;
+    critical: number;
+    onWarning: (v: number) => void;
+    onCritical: (v: number) => void;
+}) {
+    return (
+        <div className="space-y-3">
+            <p className="text-sm font-medium text-foreground">{label}</p>
+            <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-foreground-muted">
+                    <span>Warning</span>
+                    <span className="font-medium text-yellow-500">{warning}%</span>
+                </div>
+                <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={warning}
+                    onChange={(e) => onWarning(parseInt(e.target.value))}
+                    className="w-full accent-yellow-500"
+                />
+            </div>
+            <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-foreground-muted">
+                    <span>Critical</span>
+                    <span className="font-medium text-red-500">{critical}%</span>
+                </div>
+                <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={critical}
+                    onChange={(e) => onCritical(parseInt(e.target.value))}
+                    className="w-full accent-red-500"
+                />
+            </div>
+        </div>
     );
 }
