@@ -6,7 +6,6 @@ use App\Actions\Server\DeleteServer;
 use App\Actions\Server\ValidateServer;
 use App\Enums\ProxyStatus;
 use App\Enums\ProxyTypes;
-use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\PrivateKey;
 use App\Models\Project;

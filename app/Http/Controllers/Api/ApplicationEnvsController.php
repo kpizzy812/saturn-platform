@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\EnvironmentVariable;
 use Illuminate\Http\Request;

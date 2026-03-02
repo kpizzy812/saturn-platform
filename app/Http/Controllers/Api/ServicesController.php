@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Service\CreateCustomServiceAction;
 use App\Actions\Service\CreateOneClickServiceAction;
 use App\Actions\Service\UpdateServiceAction;
-use App\Http\Controllers\Controller;
 use App\Jobs\DeleteResourceJob;
 use App\Models\Project;
 use App\Models\Server;

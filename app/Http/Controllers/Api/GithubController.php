@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\GithubApp;
 use App\Models\PrivateKey;
 use Illuminate\Http\Request;
