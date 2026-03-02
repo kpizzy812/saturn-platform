@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Database\StartDatabase;
 use App\Actions\Service\StartService;
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\Deploy\ListDeploymentsRequest;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
@@ -16,11 +15,11 @@ use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 use Visus\Cuid2\Cuid2;
 
-class DeployController extends Controller
+class DeployController extends ApiController
 {
     private function removeSensitiveData($deployment)
     {
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $deployment->makeHidden([
                 'logs',
             ]);

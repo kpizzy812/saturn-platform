@@ -59,7 +59,7 @@ class Gitea extends Controller
             if (! $branch) {
                 return response('Nothing to do. No branch found in the request.');
             }
-            $applicationsQuery = Application::where('git_repository', 'like', "%$full_name%");
+            $applicationsQuery = Application::with(['destination.server'])->where('git_repository', 'like', "%$full_name%");
             if ($x_gitea_event === 'push') {
                 $applications = $applicationsQuery->where('git_branch', $branch)->get();
                 if ($applications->isEmpty()) {

@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\Models\Activity;
 
-class TeamController extends Controller
+class TeamController extends ApiController
 {
     private function removeSensitiveData($team)
     {
@@ -15,7 +14,7 @@ class TeamController extends Controller
             'custom_server_limit',
             'pivot',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $team->makeHidden([
                 'smtp_username',
                 'smtp_password',

@@ -19,7 +19,7 @@ use OpenApi\Attributes as OA;
  * For backups, see DatabaseBackupsController.
  * For actions (start/stop/restart), see DatabaseActionsController.
  */
-class DatabasesController extends Controller
+class DatabasesController extends ApiController
 {
     /**
      * Hide sensitive data from database response.
@@ -30,7 +30,7 @@ class DatabasesController extends Controller
             'id',
             'laravel_through_key',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $database->makeHidden([
                 'internal_db_url',
                 'external_db_url',

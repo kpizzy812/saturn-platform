@@ -78,7 +78,7 @@ class Gitlab extends Controller
                     return response($return_payloads);
                 }
             }
-            $applicationsQuery = Application::where('git_repository', 'like', "%$full_name%");
+            $applicationsQuery = Application::with(['destination.server'])->where('git_repository', 'like', "%$full_name%");
             if ($x_gitlab_event === 'push') {
                 $applications = $applicationsQuery->where('git_branch', $branch)->get();
                 if ($applications->isEmpty()) {

@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\EnvironmentVariable;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
-class ApplicationEnvsController extends Controller
+class ApplicationEnvsController extends ApiController
 {
     private function removeSensitiveData($resource)
     {
@@ -18,7 +17,7 @@ class ApplicationEnvsController extends Controller
             'resourceable_id',
             'resourceable_type',
         ]);
-        if (request()->attributes->get('can_read_sensitive', false) === false) {
+        if (! $this->canReadSensitive()) {
             $resource->makeHidden([
                 'custom_labels',
                 'dockerfile',

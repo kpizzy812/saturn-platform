@@ -236,6 +236,35 @@ class OtherController extends Controller
             $healthy = false;
         }
 
+        // Check disk space on the storage volume.
+        // Uses the storage path — mounted from /data/saturn/{env}/ on the host.
+        // Alerts at <20% free (warning) and <10% free (critical, sets healthy=false).
+        try {
+            $storagePath = storage_path();
+            $freeBytes = disk_free_space($storagePath);
+            $totalBytes = disk_total_space($storagePath);
+            $freePercent = $totalBytes > 0 ? round(($freeBytes / $totalBytes) * 100, 1) : 0;
+
+            $diskStatus = match (true) {
+                $freePercent < 10 => 'critical',
+                $freePercent < 20 => 'warning',
+                default => 'ok',
+            };
+
+            if ($diskStatus === 'critical') {
+                $healthy = false;
+            }
+
+            $checks['disk'] = [
+                'status' => $diskStatus,
+                'free_percent' => $freePercent,
+                'free_gb' => round($freeBytes / 1073741824, 1),
+                'total_gb' => round($totalBytes / 1073741824, 1),
+            ];
+        } catch (\Throwable $e) {
+            $checks['disk'] = ['status' => 'failing'];
+        }
+
         // Always return 200 for Docker/deploy liveness probes.
         // Monitoring tools should check the 'status' field in the response body.
         return response()->json([

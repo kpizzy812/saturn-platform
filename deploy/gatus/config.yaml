@@ -123,6 +123,31 @@ endpoints:
         description: "Production Soketi unreachable from app container"
         send-on-resolved: true
 
+  # --- Disk space (alerts before storage fills up and breaks deploys/backups) ---
+  - name: "Production Disk Space"
+    group: "Infrastructure"
+    url: "https://saturn.ac/api/health"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].checks.disk.status == ok"
+    alerts:
+      - type: telegram
+        description: "Production disk space critically low (<10% free)"
+        send-on-resolved: true
+
+  - name: "Staging Disk Space"
+    group: "Infrastructure"
+    url: "https://uat.saturn.ac/api/health"
+    interval: 10m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].checks.disk.status == ok"
+    alerts:
+      - type: telegram
+        description: "Staging disk space critically low (<10% free)"
+        send-on-resolved: true
+
   # --- WebSocket direct checks (Gatus is on the saturn network — can reach containers by name) ---
   - name: "Production WebSocket"
     group: "WebSocket"

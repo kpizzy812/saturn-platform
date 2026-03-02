@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\Models\CloudProviderToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 
-class CloudProviderTokensController extends Controller
+class CloudProviderTokensController extends ApiController
 {
     private function removeSensitiveData($token)
     {
