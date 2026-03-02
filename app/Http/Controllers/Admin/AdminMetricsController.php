@@ -103,11 +103,15 @@ class AdminMetricsController extends Controller
         $servers = Server::with(['settings'])->get();
         $serverUsage = [];
 
+        // Load all health checks in a single query instead of N queries per server
+        $allChecks = ServerHealthCheck::whereIn('server_id', $servers->pluck('id'))
+            ->where('checked_at', '>=', $since)
+            ->orderBy('checked_at')
+            ->get(['server_id', 'cpu_usage_percent', 'memory_usage_percent', 'disk_usage_percent', 'checked_at'])
+            ->groupBy('server_id');
+
         foreach ($servers as $server) {
-            $checks = ServerHealthCheck::where('server_id', $server->id)
-                ->where('checked_at', '>=', $since)
-                ->orderBy('checked_at')
-                ->get(['cpu_usage_percent', 'memory_usage_percent', 'disk_usage_percent', 'checked_at']);
+            $checks = $allChecks->get($server->id, collect());
 
             if ($checks->isEmpty()) {
                 $serverUsage[] = [
@@ -187,13 +191,16 @@ class AdminMetricsController extends Controller
         $teamCosts = AiUsageLog::where('created_at', '>=', now()->subDays(30))
             ->selectRaw('team_id, SUM(cost_usd) as total_cost, COUNT(*) as request_count, SUM(input_tokens + output_tokens) as total_tokens')
             ->groupBy('team_id')
-            ->get()
-            ->map(function ($row) {
-                $team = Team::find($row->team_id);
+            ->get();
 
+        // Load all teams at once to avoid N+1
+        $teamsById = Team::whereIn('id', $teamCosts->pluck('team_id'))->pluck('name', 'id');
+
+        $teamCosts = $teamCosts
+            ->map(function ($row) use ($teamsById) {
                 return [
                     'team_id' => $row->team_id,
-                    'team_name' => $team->name ?? 'Unknown',
+                    'team_name' => $teamsById->get($row->team_id) ?? 'Unknown',
                     'total_cost' => round((float) $row->getAttribute('total_cost'), 4),
                     'request_count' => (int) $row->getAttribute('request_count'),
                     'total_tokens' => (int) $row->getAttribute('total_tokens'),
