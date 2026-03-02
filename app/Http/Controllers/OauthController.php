@@ -78,8 +78,10 @@ class OauthController extends Controller
                     'name' => $oauthUser->name ?? $oauthUser->nickname ?? 'User',
                     'email' => $email,
                 ]);
+            }
 
-                // OAuth email is verified by the provider
+            // OAuth email is verified by the provider — mark for both new and existing users
+            if (! $user->hasVerifiedEmail()) {
                 $user->markEmailAsVerified();
             }
 
