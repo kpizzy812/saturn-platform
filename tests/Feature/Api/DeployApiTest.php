@@ -14,6 +14,7 @@ use App\Models\Tag;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Visus\Cuid2\Cuid2;
 
@@ -30,11 +31,16 @@ beforeEach(function () {
     $this->token = $this->user->createToken('test-token', ['*']);
     $this->bearerToken = $this->token->plainTextToken;
 
-    // Create InstanceSettings
-    if (! InstanceSettings::first()) {
-        InstanceSettings::create([
+    // Ensure InstanceSettings id=0 exists.
+    // Eloquent create() ignores explicit id=0 on PostgreSQL bigserial columns;
+    // use raw DB insert to guarantee the singleton record exists.
+    if (! DB::table('instance_settings')->where('id', 0)->exists()) {
+        DB::table('instance_settings')->insert([
             'id' => 0,
             'is_api_enabled' => true,
+            'is_registration_enabled' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 

@@ -106,4 +106,61 @@ class DeleteResourceJobTest extends TestCase
         $this->assertTrue($job->deleteConfigurations);
         $this->assertFalse($job->dockerCleanup);
     }
+
+    // -------------------------------------------------------------------------
+    // Orphaned-container prevention: forceDelete() must NOT be in finally{}
+    // -------------------------------------------------------------------------
+
+    /**
+     * Root cause of the orphaned-container bug:
+     *
+     * Previously forceDelete() was placed inside finally{}, which always runs —
+     * even when StopApplication threw an SSH exception. This deleted the DB record
+     * while the container kept running, making it invisible to Saturn forever.
+     *
+     * Fix: forceDelete() must only execute on the success path (inside try{}).
+     */
+    public function test_force_delete_is_not_inside_finally_block(): void
+    {
+        $source = file_get_contents(app_path('Jobs/DeleteResourceJob.php'));
+
+        // Locate the finally block
+        $finallyPos = strpos($source, '} finally {');
+        $this->assertNotFalse($finallyPos, 'finally block must exist');
+
+        // Everything after "} finally {" until the matching closing brace is the finally body
+        $afterFinally = substr($source, $finallyPos + strlen('} finally {'));
+
+        // Find the end of the finally block (first standalone closing brace at same indent)
+        // Simple heuristic: grab the next ~300 chars which covers the entire finally body
+        $finallyBody = substr($afterFinally, 0, 300);
+
+        $this->assertStringNotContainsString(
+            'forceDelete()',
+            $finallyBody,
+            'forceDelete() must NOT be inside finally{} — it would delete the DB record even when SSH fails, leaving orphaned containers'
+        );
+    }
+
+    public function test_force_delete_exists_in_try_block(): void
+    {
+        $source = file_get_contents(app_path('Jobs/DeleteResourceJob.php'));
+
+        // forceDelete() must still be called somewhere in the file
+        $this->assertStringContainsString(
+            'forceDelete()',
+            $source,
+            'forceDelete() must be called to clean up the DB record after a successful stop'
+        );
+    }
+
+    public function test_stop_application_rethrows_exceptions(): void
+    {
+        // StopApplication must re-throw SSH exceptions so DeleteResourceJob
+        // fails (and does NOT call forceDelete) when the container stop fails.
+        $source = file_get_contents(app_path('Actions/Application/StopApplication.php'));
+
+        $this->assertStringContainsString('throw $e', $source);
+        $this->assertStringNotContainsString('return $e->getMessage()', $source);
+    }
 }

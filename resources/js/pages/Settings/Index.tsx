@@ -2,7 +2,8 @@ import * as React from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { User, Users, Key, Plug, Building2, FileText, Bell, Shield, Cloud, Zap } from 'lucide-react';
+import { User, Users, Key, Plug, Building2, FileText, Bell, Shield, Cloud } from 'lucide-react';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface SettingSection {
     id: string;
@@ -11,18 +12,23 @@ interface SettingSection {
     href: string;
 }
 
-const settingSections: SettingSection[] = [
+const baseSections: SettingSection[] = [
     { id: 'account', label: 'Account', icon: User, href: '/settings/account' },
     { id: 'team', label: 'Team', icon: Users, href: '/settings/team' },
     { id: 'tokens', label: 'API Tokens', icon: Key, href: '/settings/tokens' },
     { id: 'integrations', label: 'Integrations', icon: Plug, href: '/settings/integrations' },
-    { id: 'cloud-providers', label: 'Cloud Providers', icon: Cloud, href: '/settings/cloud-providers' },
-    { id: 'auto-provisioning', label: 'Auto-Provisioning', icon: Zap, href: '/settings/auto-provisioning' },
     { id: 'notifications', label: 'Notifications', icon: Bell, href: '/settings/notifications' },
     { id: 'workspace', label: 'Workspace', icon: Building2, href: '/settings/workspace' },
     { id: 'audit-log', label: 'Audit Log', icon: FileText, href: '/settings/audit-log' },
     { id: 'security', label: 'Security', icon: Shield, href: '/settings/security' },
 ];
+
+const cloudProvidersSection: SettingSection = {
+    id: 'cloud-providers',
+    label: 'Cloud Providers',
+    icon: Cloud,
+    href: '/settings/cloud-providers',
+};
 
 interface SettingsLayoutProps {
     children: React.ReactNode;
@@ -30,6 +36,11 @@ interface SettingsLayoutProps {
 }
 
 export function SettingsLayout({ children, activeSection }: SettingsLayoutProps) {
+    const { can } = usePermissions();
+    const settingSections = can('settings.cloud_providers')
+        ? [...baseSections, cloudProvidersSection]
+        : baseSections;
+
     return (
         <AppLayout title="Settings" showNewProject={false}>
             <div className="mx-auto max-w-7xl">

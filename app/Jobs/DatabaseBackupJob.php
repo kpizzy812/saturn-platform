@@ -531,12 +531,14 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             }
             Log::info('MongoDB backup URL configured', ['has_url' => filled($url), 'using_env_vars' => blank($this->database->internal_db_url)]);
             $escapedContainerName = escapeshellarg($this->container_name);
+            // SECURITY: escape the full URI so passwords with $, ", ` etc. cannot inject shell commands
+            $escapedUrl = escapeshellarg($url);
             if ($databaseWithCollections === 'all') {
                 $commands[] = 'mkdir -p '.$this->backup_dir;
                 if (str($this->database->image)->startsWith('mongo:4')) {
-                    $commands[] = "docker exec {$escapedContainerName} mongodump --uri=\"$url\" --gzip --archive > $this->backup_location";
+                    $commands[] = "docker exec {$escapedContainerName} mongodump --uri={$escapedUrl} --gzip --archive > $this->backup_location";
                 } else {
-                    $commands[] = "docker exec {$escapedContainerName} mongodump --authenticationDatabase=admin --uri=\"$url\" --gzip --archive > $this->backup_location";
+                    $commands[] = "docker exec {$escapedContainerName} mongodump --authenticationDatabase=admin --uri={$escapedUrl} --gzip --archive > $this->backup_location";
                 }
             } else {
                 if (str($databaseWithCollections)->contains(':')) {
@@ -554,15 +556,19 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
                 if ($collectionsToExclude->count() === 0) {
                     if (str($this->database->image)->startsWith('mongo:4')) {
-                        $commands[] = "docker exec {$escapedContainerName} mongodump --uri=\"$url\" --gzip --archive > $this->backup_location";
+                        $commands[] = "docker exec {$escapedContainerName} mongodump --uri={$escapedUrl} --gzip --archive > $this->backup_location";
                     } else {
-                        $commands[] = "docker exec {$escapedContainerName} mongodump --authenticationDatabase=admin --uri=\"$url\" --db $escapedDatabaseName --gzip --archive > $this->backup_location";
+                        $commands[] = "docker exec {$escapedContainerName} mongodump --authenticationDatabase=admin --uri={$escapedUrl} --db $escapedDatabaseName --gzip --archive > $this->backup_location";
                     }
                 } else {
+                    // SECURITY: escape each collection name individually to prevent injection
+                    $escapedCollections = $collectionsToExclude
+                        ->map(fn ($c) => escapeshellarg(trim($c)))
+                        ->implode(' --excludeCollection ');
                     if (str($this->database->image)->startsWith('mongo:4')) {
-                        $commands[] = "docker exec {$escapedContainerName} mongodump --uri=$url --gzip --excludeCollection ".$collectionsToExclude->implode(' --excludeCollection ')." --archive > $this->backup_location";
+                        $commands[] = "docker exec {$escapedContainerName} mongodump --uri={$escapedUrl} --gzip --excludeCollection {$escapedCollections} --archive > $this->backup_location";
                     } else {
-                        $commands[] = "docker exec {$escapedContainerName} mongodump --authenticationDatabase=admin --uri=\"$url\" --db $escapedDatabaseName --gzip --excludeCollection ".$collectionsToExclude->implode(' --excludeCollection ')." --archive > $this->backup_location";
+                        $commands[] = "docker exec {$escapedContainerName} mongodump --authenticationDatabase=admin --uri={$escapedUrl} --db $escapedDatabaseName --gzip --excludeCollection {$escapedCollections} --archive > $this->backup_location";
                     }
                 }
             }

@@ -31,8 +31,8 @@ class ApplicationDeploymentsController extends Controller
         // Check authorization
         $this->authorize('view', $application);
 
-        $take = $request->get('take', 20);
-        $skip = $request->get('skip', 0);
+        $take = min(500, max(1, (int) $request->get('take', 20)));
+        $skip = max(0, (int) $request->get('skip', 0));
 
         $deployments = ApplicationDeploymentQueue::where('application_id', $application->id)
             ->where('pull_request_id', 0)
@@ -67,7 +67,7 @@ class ApplicationDeploymentsController extends Controller
         // Check authorization
         $this->authorize('view', $application);
 
-        $take = $request->get('take', 10);
+        $take = min(500, max(1, (int) $request->get('take', 10)));
 
         $rollbackEvents = ApplicationRollbackEvent::where('application_id', $application->id)
             ->with(['failedDeployment', 'rollbackDeployment', 'triggeredByUser'])

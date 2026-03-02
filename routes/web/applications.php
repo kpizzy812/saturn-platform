@@ -375,6 +375,27 @@ Route::get('/applications/{uuid}', function (string $uuid) {
         $autoDeployStatus = 'manual_webhook';
     }
 
+    // Available servers for deploy-time server selection
+    $authService = app(\App\Services\Authorization\ResourceAuthorizationService::class);
+    $currentUser = auth()->user();
+    $currentServerUuid = $application->destination?->server?->uuid;
+
+    $availableServers = \App\Models\Server::ownedByCurrentTeam()
+        ->whereRelation('settings', 'is_reachable', true)
+        ->whereRelation('settings', 'is_usable', true)
+        ->whereRelation('settings', 'is_swarm_worker', false)
+        ->whereRelation('settings', 'is_build_server', false)
+        ->whereRelation('settings', 'force_disabled', false)
+        ->get()
+        ->map(fn ($s) => [
+            'uuid' => $s->uuid,
+            'name' => $s->name,
+            'ip' => $s->ip,
+            'is_current' => $s->uuid === $currentServerUuid,
+        ]);
+
+    $canChangeServer = $authService->hasPermission($currentUser, 'servers.update');
+
     return Inertia::render('Applications/Show', [
         'application' => [
             'id' => $application->id,
@@ -398,6 +419,8 @@ Route::get('/applications/{uuid}', function (string $uuid) {
             'webhook_url' => url('/webhooks/source/github/events/manual'),
             'has_webhook_secret' => ! empty($application->manual_webhook_secret_github),
         ],
+        'availableServers' => $availableServers,
+        'canChangeServer' => $canChangeServer,
     ]);
 })->name('applications.show');
 
@@ -408,6 +431,34 @@ Route::post('/applications/{uuid}/deploy', function (string $uuid, \Illuminate\H
         ->firstOrFail();
 
     Gate::authorize('deploy', $application);
+
+    // Handle optional server migration
+    $serverUuid = $request->input('server_uuid');
+    if ($serverUuid && $serverUuid !== $application->destination?->server?->uuid) {
+        $authService = app(\App\Services\Authorization\ResourceAuthorizationService::class);
+        if (! $authService->hasPermission(auth()->user(), 'servers.update')) {
+            abort(403, 'Server change permission required');
+        }
+
+        $newServer = \App\Models\Server::ownedByCurrentTeam()
+            ->whereRelation('settings', 'is_reachable', true)
+            ->where('uuid', $serverUuid)
+            ->firstOrFail();
+
+        $destination = $newServer->standaloneDockers()->first()
+            ?? \App\Models\StandaloneDocker::create([
+                'name' => 'default',
+                'network' => 'saturn',
+                'server_id' => $newServer->id,
+            ]);
+
+        $application->update([
+            'destination_id' => $destination->id,
+            'destination_type' => $destination->getMorphClass(),
+        ]);
+
+        $application->refresh();
+    }
 
     $deployment_uuid = new Cuid2;
 

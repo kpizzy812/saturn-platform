@@ -120,6 +120,7 @@ jobs:
   # =============================================================================
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -140,6 +141,13 @@ jobs:
           path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
+
+      - name: Cache PHPStan results
+        uses: actions/cache@v4
+        with:
+          path: .phpstan-cache
+          key: ${{ runner.os }}-phpstan-${{ hashFiles('**/*.php') }}
+          restore-keys: ${{ runner.os }}-phpstan-
 
       - name: Create CI .env
         run: |
@@ -166,6 +174,12 @@ jobs:
 
       - name: Run PHPStan (static analysis)
         run: ./vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: ShellCheck (bash script analysis)
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './deploy/scripts'
+          severity: error
 
   # =============================================================================
   # Job 3: Build and push Docker image (runs parallel with test)
@@ -233,6 +247,7 @@ jobs:
     needs: [prepare, test, build]
     if: always() && needs.test.result == 'success' && (needs.build.result == 'success' || inputs.skip_build)
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     environment: ${{ needs.prepare.outputs.environment }}
     steps:
       - name: Checkout code

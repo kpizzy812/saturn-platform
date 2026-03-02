@@ -232,11 +232,28 @@ class InfrastructureProvisioner
 
         foreach ($detectedApps as $app) {
             $overrides = $appOverrides[$app->name] ?? [];
+
+            // Per-app server override: if a specific server_uuid is requested, use it
+            $appServer = $server;
+            $appDestination = $destination;
+            if (! empty($overrides['server_uuid']) && $overrides['server_uuid'] !== $server->uuid) {
+                $overrideServer = Server::where('uuid', $overrides['server_uuid'])->first();
+                if ($overrideServer) {
+                    $appServer = $overrideServer;
+                    $appDestination = $overrideServer->standaloneDockers()->first()
+                        ?? StandaloneDocker::create([
+                            'name' => 'default',
+                            'network' => 'saturn',
+                            'server_id' => $overrideServer->id,
+                        ]);
+                }
+            }
+
             $created[$app->name] = $this->createApplication(
                 $app,
                 $environment,
-                $server,
-                $destination,
+                $appServer,
+                $appDestination,
                 $gitConfig,
                 $groupId,
                 $overrides

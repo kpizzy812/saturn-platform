@@ -107,6 +107,22 @@ Route::get('/projects/create', function () {
         }
     }
 
+    $resourceAuthService = app(\App\Services\Authorization\ResourceAuthorizationService::class);
+    $availableServers = \App\Models\Server::ownedByCurrentTeam()
+        ->whereRelation('settings', 'is_reachable', true)
+        ->whereRelation('settings', 'is_usable', true)
+        ->whereRelation('settings', 'is_swarm_worker', false)
+        ->whereRelation('settings', 'is_build_server', false)
+        ->whereRelation('settings', 'force_disabled', false)
+        ->get()
+        ->map(fn ($s) => [
+            'uuid' => $s->uuid,
+            'name' => $s->name,
+            'ip' => $s->ip,
+        ]);
+
+    $canChangeServer = $resourceAuthService->hasPermission($currentUser, 'servers.update');
+
     return Inertia::render('Projects/Create', [
         'projects' => $projects,
         'wildcardDomain' => $wildcardDomain,
@@ -114,6 +130,8 @@ Route::get('/projects/create', function () {
         'githubApps' => $githubApps,
         'preselectedProject' => $preselectedProject,
         'preselectedEnvironment' => $preselectedEnvironment,
+        'availableServers' => $availableServers,
+        'canChangeServer' => $canChangeServer,
     ]);
 })->name('projects.create');
 

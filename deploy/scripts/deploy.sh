@@ -384,7 +384,9 @@ health_check() {
             log_success "Health check passed!"
             return 0
         fi
-        ((retry++))
+        # (( retry++ )) returns exit code 1 when retry=0 (old value is 0 = falsy).
+        # With set -e this would kill the script on the first retry. Use prefix form.
+        (( ++retry ))
         log_info "Waiting... (${retry}/${max_retries})"
         sleep 2
     done
@@ -410,8 +412,28 @@ blue_green_swap() {
 
     log_step "Blue-green: starting canary (${next_container})..."
 
-    # 1. Start canary alongside the live container (no infra restart)
-    SATURN_SLOT="-next" compose_cmd up -d --no-deps saturn
+    # 1. Start canary alongside the live container using a SEPARATE project name.
+    #    Using the same project name (saturn-dev) would cause Docker Compose to
+    #    reconcile the 'saturn' service: seeing container_name changed from
+    #    saturn-dev to saturn-dev-next, it would STOP the live container before
+    #    starting the canary — defeating the purpose of blue-green.
+    #    A separate project (saturn-dev-canary) is isolated from saturn-dev,
+    #    so Docker Compose creates saturn-dev-next without touching saturn-dev.
+    # Docker Compose warns about volumes/networks owned by another project.
+    # These are harmless — the container still starts — but warnings may produce
+    # a non-zero exit code on some Docker Compose versions. Use || true and then
+    # explicitly verify the container is running.
+    SATURN_SLOT="-next" docker compose \
+        -f "${PROJECT_ROOT}/docker-compose.env.yml" \
+        -p "saturn-${SATURN_ENV}-canary" \
+        --env-file "${SATURN_DATA}/source/.env" \
+        up -d --no-deps saturn || true
+
+    # Verify container actually started (compose may exit non-zero but still start it)
+    if ! docker ps --format '{{.Names}}' | grep -q "^${next_container}$"; then
+        log_error "Canary container ${next_container} failed to start"
+        exit 1
+    fi
 
     # 2. Wait for canary to pass its internal health check
     local max_retries=30
@@ -421,15 +443,23 @@ blue_green_swap() {
             log_success "Canary is healthy"
             break
         fi
-        ((retry++))
+        # (( retry++ )) returns exit code 1 when retry=0 (old value 0 = falsy).
+        # With set -e this kills the script on the first retry. Use prefix form.
+        (( ++retry ))
         log_info "Waiting for canary... (${retry}/${max_retries})"
         sleep 2
     done
 
     if [[ $retry -ge $max_retries ]]; then
         log_error "Canary failed health check — aborting blue-green, current container preserved"
+        # Remove canary container and tear down the temporary canary compose project
         docker stop "${next_container}" 2>/dev/null || true
         docker rm "${next_container}" 2>/dev/null || true
+        SATURN_SLOT="-next" docker compose \
+            -f "${PROJECT_ROOT}/docker-compose.env.yml" \
+            -p "saturn-${SATURN_ENV}-canary" \
+            --env-file "${SATURN_DATA}/source/.env" \
+            down --remove-orphans 2>/dev/null || true
         exit 1
     fi
 
@@ -460,6 +490,14 @@ blue_green_swap() {
         sed -i "s|http://${next_container}:8080|http://${main_container}:8080|g" "${proxy_target}"
         sleep 2
     fi
+
+    # NOTE: Do NOT run 'compose down' for the canary project here.
+    # After 'docker rename', the container (now named ${main_container}) still carries
+    # the compose label com.docker.compose.project=saturn-{env}-canary.
+    # Running 'compose -p saturn-{env}-canary down' would find this container by label
+    # and STOP it — killing the freshly promoted app container.
+    # The orphaned project entry is harmless: Docker Compose projects are just labels,
+    # not daemon state. The container runs fine under its canonical name.
 
     log_success "Blue-green swap complete — near-zero downtime!"
 }

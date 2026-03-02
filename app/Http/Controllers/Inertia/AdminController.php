@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\AuditLog;
+use App\Models\CloudProviderToken;
 use App\Models\InstanceSettings;
 use App\Models\Server;
 use App\Models\Service;
@@ -336,6 +337,20 @@ class AdminController extends Controller
                 'created_at' => $settings->created_at,
                 'updated_at' => $settings->updated_at,
             ],
+            'autoProvisioning' => [
+                'auto_provision_enabled' => $settings->auto_provision_enabled,
+                'auto_provision_max_servers_per_day' => $settings->auto_provision_max_servers_per_day,
+                'auto_provision_cooldown_minutes' => $settings->auto_provision_cooldown_minutes,
+                'auto_provision_server_type' => $settings->auto_provision_server_type,
+                'auto_provision_location' => $settings->auto_provision_location,
+                'resource_monitoring_enabled' => $settings->resource_monitoring_enabled,
+                'resource_warning_cpu_threshold' => $settings->resource_warning_cpu_threshold,
+                'resource_critical_cpu_threshold' => $settings->resource_critical_cpu_threshold,
+                'resource_warning_memory_threshold' => $settings->resource_warning_memory_threshold,
+                'resource_critical_memory_threshold' => $settings->resource_critical_memory_threshold,
+                'cloud_provider_token_uuid' => null,
+            ],
+            'cloudTokens' => CloudProviderToken::select(['uuid', 'name', 'provider', 'team_id'])->get(),
         ]);
     }
 

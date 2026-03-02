@@ -4,14 +4,23 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\CloudProviderToken;
+use App\Services\Authorization\ResourceAuthorizationService;
 use App\Services\HetznerService;
 use Illuminate\Http\Request;
 use Visus\Cuid2\Cuid2;
 
 class WebCloudTokensController extends Controller
 {
+    public function __construct(
+        protected ResourceAuthorizationService $authService
+    ) {}
+
     public function store(Request $request)
     {
+        if (! $this->authService->canManageCloudProviders(auth()->user())) {
+            abort(403, 'Insufficient permissions to manage cloud provider tokens.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'provider' => 'required|in:hetzner,digitalocean',
@@ -28,6 +37,10 @@ class WebCloudTokensController extends Controller
 
     public function destroy(string $uuid)
     {
+        if (! $this->authService->canManageCloudProviders(auth()->user())) {
+            abort(403, 'Insufficient permissions to manage cloud provider tokens.');
+        }
+
         $token = CloudProviderToken::ownedByCurrentTeam()
             ->where('uuid', $uuid)
             ->firstOrFail();
@@ -43,6 +56,10 @@ class WebCloudTokensController extends Controller
 
     public function checkToken(string $uuid)
     {
+        if (! $this->authService->canManageCloudProviders(auth()->user())) {
+            abort(403, 'Insufficient permissions to manage cloud provider tokens.');
+        }
+
         $token = CloudProviderToken::ownedByCurrentTeam()
             ->where('uuid', $uuid)
             ->firstOrFail();

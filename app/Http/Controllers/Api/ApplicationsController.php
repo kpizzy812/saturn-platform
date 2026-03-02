@@ -7,6 +7,7 @@ use App\Jobs\DeleteResourceJob;
 use App\Models\Application;
 use App\Models\Server;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use OpenApi\Attributes as OA;
 use Symfony\Component\Yaml\Yaml;
 use Visus\Cuid2\Cuid2;
@@ -280,7 +281,9 @@ class ApplicationsController extends Controller
                 'logs' => $logs,
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Failed to connect to server: '.$e->getMessage()], 500);
+            Log::error('Failed to fetch application logs', ['application_uuid' => $application->uuid, 'error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to connect to server.'], 500);
         }
     }
 

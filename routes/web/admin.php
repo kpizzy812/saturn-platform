@@ -53,6 +53,9 @@ Route::prefix('admin')->middleware('is.superadmin')->group(function () {
     // SSH Key management
     require __DIR__.'/admin/ssh-keys.php';
 
+    // Cloud Providers management and Auto-Provisioning
+    require __DIR__.'/admin/cloud-providers.php';
+
     // Deployment management
     require __DIR__.'/admin/deployments.php';
 
