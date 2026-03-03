@@ -59,7 +59,7 @@ class Gitea extends Controller
             if (! $branch) {
                 return response('Nothing to do. No branch found in the request.');
             }
-            $applicationsQuery = Application::with(['destination.server'])->where('git_repository', 'like', "%$full_name%");
+            $applicationsQuery = Application::with(['destination.server'])->where('git_repository', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $full_name).'%');
             if ($x_gitea_event === 'push') {
                 $applications = $applicationsQuery->where('git_branch', $branch)->get();
                 if ($applications->isEmpty()) {
@@ -75,6 +75,16 @@ class Gitea extends Controller
             }
             foreach ($applications as $application) {
                 $webhook_secret = data_get($application, 'manual_webhook_secret_gitea');
+                // Security: Reject if webhook secret is not configured to prevent bypass
+                if (empty($webhook_secret)) {
+                    $return_payloads->push([
+                        'application' => $application->name,
+                        'status' => 'failed',
+                        'message' => 'Webhook secret not configured.',
+                    ]);
+
+                    continue;
+                }
                 $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
                 // Security: Always validate signature - never skip in dev mode
                 if (! hash_equals($x_hub_signature_256, $hmac)) {

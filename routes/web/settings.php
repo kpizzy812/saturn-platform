@@ -622,6 +622,18 @@ Route::post('/settings/team/members/{id}/role', function (string $id, Request $r
         return redirect()->back()->withErrors(['role' => 'You cannot change your own role']);
     }
 
+    $targetRole = $member->pivot->role ?? 'member';
+
+    // Only owner can modify another owner's role
+    if ($targetRole === 'owner' && ! $currentUser->isOwner()) {
+        return redirect()->back()->withErrors(['role' => 'Only an owner can change the role of another owner']);
+    }
+
+    // Only owner can assign the owner role
+    if ($request->role === 'owner' && ! $currentUser->isOwner()) {
+        return redirect()->back()->withErrors(['role' => 'Only an owner can assign the owner role']);
+    }
+
     // Update the role in the pivot table
     $team->members()->updateExistingPivot($id, ['role' => $request->role]);
 
@@ -1580,19 +1592,31 @@ Route::post('/settings/team/invite', function (Request $request) {
     $email = strtolower($request->email);
     $role = $request->role;
     $team = currentTeam();
+    $currentUser = auth()->user();
 
-    // Check if user is already a member
-    $existingMember = $team->members()->where('email', $email)->first();
-    if ($existingMember) {
-        return redirect()->back()->with('error', 'User is already a member of this team');
+    // A1: Only admins and owners can send invitations
+    if (! $currentUser->isAdmin()) {
+        return redirect()->back()->with('error', 'You do not have permission to invite team members');
     }
 
-    // Check for existing pending invitation
-    $existingInvitation = \App\Models\TeamInvitation::where('team_id', $team->id)
-        ->where('email', $email)
-        ->first();
-    if ($existingInvitation) {
-        return redirect()->back()->with('error', 'An invitation has already been sent to this email');
+    // A2: Enforce role hierarchy — cannot invite with a role equal to or higher than own
+    $roleHierarchy = ['owner' => 0, 'admin' => 1, 'developer' => 2, 'member' => 3, 'viewer' => 4];
+    $currentUserLevel = $roleHierarchy[$currentUser->role()] ?? 99;
+    $invitedLevel = $roleHierarchy[$role] ?? 99;
+
+    if ($role === 'owner' && ! $currentUser->isOwner()) {
+        return redirect()->back()->with('error', 'Only an owner can invite another owner');
+    }
+
+    if (! $currentUser->isOwner() && $invitedLevel <= $currentUserLevel) {
+        return redirect()->back()->with('error', 'You cannot invite a member with a role equal to or higher than your own');
+    }
+
+    // A5: Unified error message to prevent email enumeration
+    $alreadyExists = $team->members()->where('email', $email)->exists()
+        || \App\Models\TeamInvitation::where('team_id', $team->id)->where('email', $email)->exists();
+    if ($alreadyExists) {
+        return redirect()->back()->with('success', 'If this email is not already in the team, an invitation has been sent');
     }
 
     // Validate allowed_projects belong to this team
@@ -2426,3 +2450,10 @@ Route::get('/settings/auto-provisioning', function () {
 
 Route::post('/settings/auto-provisioning', [\App\Http\Controllers\Web\WebAutoProvisioningController::class, 'update'])
     ->name('settings.auto-provisioning.update');
+
+// MCP / AI Tools Setup
+Route::get('/settings/mcp', function () {
+    return Inertia::render('Settings/MCP', [
+        'saturn_url' => rtrim(config('app.url'), '/'),
+    ]);
+})->name('settings.mcp');

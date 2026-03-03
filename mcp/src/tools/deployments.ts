@@ -119,6 +119,34 @@ export function registerDeploymentTools(server: McpServer, client: SaturnClient)
         },
     );
 
+    server.registerTool(
+        'saturn_reject_deployment',
+        {
+            title: 'Reject Deployment',
+            description: 'Reject a deployment that is waiting for manual approval.',
+            inputSchema: z.object({
+                deployment_uuid: z.string().describe('Deployment UUID to reject'),
+            }),
+        },
+        async ({ deployment_uuid }) => {
+            const data = await client.post(`/deployments/${deployment_uuid}/reject`);
+            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        },
+    );
+
+    server.registerTool(
+        'saturn_get_pending_approvals',
+        {
+            title: 'Get Pending Approvals',
+            description: 'List all deployments waiting for your manual approval.',
+            inputSchema: z.object({}),
+        },
+        async () => {
+            const data = await client.get('/approvals/pending');
+            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        },
+    );
+
     // ── AI Analysis ───────────────────────────────────────────────────────
 
     server.registerTool(
@@ -149,6 +177,40 @@ export function registerDeploymentTools(server: McpServer, client: SaturnClient)
         },
         async ({ deployment_uuid }) => {
             const data = await client.get(`/deployments/${deployment_uuid}/analysis`);
+            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        },
+    );
+
+    // ── Code Review ───────────────────────────────────────────────────────
+
+    server.registerTool(
+        'saturn_trigger_code_review',
+        {
+            title: 'Trigger AI Code Review',
+            description:
+                'Trigger an AI code review for the changes in a deployment. ' +
+                'Use saturn_get_code_review to fetch results after triggering.',
+            inputSchema: z.object({
+                deployment_uuid: z.string().describe('Deployment UUID'),
+            }),
+        },
+        async ({ deployment_uuid }) => {
+            const data = await client.post(`/deployments/${deployment_uuid}/code-review`);
+            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        },
+    );
+
+    server.registerTool(
+        'saturn_get_code_review',
+        {
+            title: 'Get AI Code Review',
+            description: 'Get the AI code review results (violations, suggestions) for a deployment.',
+            inputSchema: z.object({
+                deployment_uuid: z.string().describe('Deployment UUID'),
+            }),
+        },
+        async ({ deployment_uuid }) => {
+            const data = await client.get(`/deployments/${deployment_uuid}/code-review`);
             return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
         },
     );

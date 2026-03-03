@@ -2,7 +2,7 @@ import * as React from 'react';
 import { AppLayout } from '@/components/layout';
 import { Link } from '@inertiajs/react';
 import { cn } from '@/lib/utils';
-import { User, Users, Key, Plug, Building2, FileText, Bell, Shield, Cloud } from 'lucide-react';
+import { User, Users, Key, Plug, Building2, FileText, Bell, Shield, Cloud, Terminal } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 
 interface SettingSection {
@@ -17,6 +17,7 @@ const baseSections: SettingSection[] = [
     { id: 'team', label: 'Team', icon: Users, href: '/settings/team' },
     { id: 'tokens', label: 'API Tokens', icon: Key, href: '/settings/tokens' },
     { id: 'integrations', label: 'Integrations', icon: Plug, href: '/settings/integrations' },
+    { id: 'mcp', label: 'MCP / AI Tools', icon: Terminal, href: '/settings/mcp' },
     { id: 'notifications', label: 'Notifications', icon: Bell, href: '/settings/notifications' },
     { id: 'workspace', label: 'Workspace', icon: Building2, href: '/settings/workspace' },
     { id: 'audit-log', label: 'Audit Log', icon: FileText, href: '/settings/audit-log' },

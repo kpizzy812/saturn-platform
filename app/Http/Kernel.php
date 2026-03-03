@@ -79,5 +79,6 @@ class Kernel extends HttpKernel
 
         'can.access.terminal' => \App\Http\Middleware\CanAccessTerminal::class,
         'is.superadmin' => \App\Http\Middleware\IsSuperAdmin::class,
+        'api.token.throttle' => \App\Http\Middleware\ApiTokenRateLimiter::class,
     ];
 }

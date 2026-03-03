@@ -7,7 +7,9 @@ use App\Http\Controllers\Webhook\Gitlab;
 use App\Http\Controllers\Webhook\Stripe;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['throttle:60,1'])->group(function () {
+// Strict rate limit for webhook endpoints: 10 requests per minute per IP.
+// A lower limit prevents queue flooding via repeated webhook delivery or abuse.
+Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/source/github/events', [Github::class, 'normal']);
     Route::post('/source/github/events/manual', [Github::class, 'manual']);
 

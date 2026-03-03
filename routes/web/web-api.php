@@ -91,6 +91,7 @@ Route::get('/web-api/applications/{uuid}', function (string $uuid) {
     }
 
     $appData['is_auto_deploy_enabled'] = $settings?->is_auto_deploy_enabled ?? false;
+    $appData['wait_for_ci'] = $settings?->wait_for_ci ?? false;
     $appData['auto_deploy_status'] = $autoDeployStatus;
     $appData['has_webhook_secret'] = ! empty($application->manual_webhook_secret_github);
     $appData['manual_webhook_secret_github'] = $application->manual_webhook_secret_github;
@@ -133,17 +134,20 @@ Route::patch('/web-api/applications/{uuid}', function (string $uuid, Request $re
     $data = $request->only($allowedFields);
     $application->update($data);
 
-    // Handle is_auto_deploy_enabled (stored in application_settings)
-    if ($request->has('is_auto_deploy_enabled')) {
+    // Handle settings fields stored in application_settings
+    $settingsFields = array_filter([
+        'is_auto_deploy_enabled' => $request->has('is_auto_deploy_enabled')
+            ? (bool) $request->input('is_auto_deploy_enabled') : null,
+        'wait_for_ci' => $request->has('wait_for_ci')
+            ? (bool) $request->input('wait_for_ci') : null,
+    ], fn ($v) => ! is_null($v));
+
+    if (! empty($settingsFields)) {
         $settings = $application->settings;
         if ($settings) {
-            $settings->update([
-                'is_auto_deploy_enabled' => (bool) $request->input('is_auto_deploy_enabled'),
-            ]);
+            $settings->update($settingsFields);
         } else {
-            $application->settings()->create([
-                'is_auto_deploy_enabled' => (bool) $request->input('is_auto_deploy_enabled'),
-            ]);
+            $application->settings()->create($settingsFields);
         }
     }
 

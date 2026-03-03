@@ -78,7 +78,7 @@ class Gitlab extends Controller
                     return response($return_payloads);
                 }
             }
-            $applicationsQuery = Application::with(['destination.server'])->where('git_repository', 'like', "%$full_name%");
+            $applicationsQuery = Application::with(['destination.server'])->where('git_repository', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $full_name).'%');
             if ($x_gitlab_event === 'push') {
                 $applications = $applicationsQuery->where('git_branch', $branch)->get();
                 if ($applications->isEmpty()) {
@@ -104,8 +104,18 @@ class Gitlab extends Controller
             }
             foreach ($applications as $application) {
                 $webhook_secret = data_get($application, 'manual_webhook_secret_gitlab');
+                // Security: Reject if webhook secret is not configured to prevent bypass
+                if (empty($webhook_secret)) {
+                    $return_payloads->push([
+                        'application' => $application->name,
+                        'status' => 'failed',
+                        'message' => 'Webhook secret not configured.',
+                    ]);
+
+                    continue;
+                }
                 // Security: Use timing-safe comparison to prevent timing attacks
-                if (! hash_equals($webhook_secret ?? '', $x_gitlab_token)) {
+                if (! hash_equals($webhook_secret, $x_gitlab_token)) {
                     $return_payloads->push([
                         'application' => $application->name,
                         'status' => 'failed',

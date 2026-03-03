@@ -823,14 +823,11 @@ Route::post('/projects/{uuid}/transfer', function (Request $request, string $uui
         return response()->json(['message' => 'Only project owners or admins can transfer projects'], 403);
     }
 
-    // Transfer
-    $project->update(['team_id' => $targetTeamId]);
+    $targetTeam = \App\Models\Team::findOrFail($targetTeamId);
 
-    // Clear project-level members (they may not be in the new team)
-    $project->members()->detach();
-
-    // Audit log
-    $project->audit('transfer', "Project transferred to team #{$targetTeamId}");
+    // Use TransferProject Action: creates TeamResourceTransfer record, snapshot, syncs team admins
+    $transferAction = app(\App\Actions\Transfer\TransferProject::class);
+    $transferAction->execute($project, $targetTeam, $user);
 
     return redirect()->route('projects.index')
         ->with('success', 'Project transferred successfully');

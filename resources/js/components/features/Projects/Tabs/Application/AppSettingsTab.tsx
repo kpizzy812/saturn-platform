@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Badge, Button, useConfirm } from '@/components/ui';
+import { Badge, Button, Modal, ModalFooter, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2, Zap, Webhook, AlertCircle, Check, Eye, EyeOff, ChevronDown, Plus } from 'lucide-react';
+import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2, Zap, Webhook, AlertCircle, Check, Eye, EyeOff, ChevronDown, Plus, HelpCircle, Info } from 'lucide-react';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { BranchSelector } from '@/components/ui/BranchSelector';
 import type { SelectedService } from '../../types';
@@ -64,6 +64,7 @@ interface ApplicationData {
     };
     // Auto-deploy fields
     is_auto_deploy_enabled?: boolean;
+    wait_for_ci?: boolean;
     auto_deploy_status?: 'automatic' | 'manual_webhook' | 'not_configured';
     has_webhook_secret?: boolean;
     manual_webhook_secret_github?: string | null;
@@ -106,6 +107,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
 
     // Auto-deploy state
     const [autoDeployEnabled, setAutoDeployEnabled] = useState(false);
+    const [waitForCi, setWaitForCi] = useState(false);
     const [showWebhookSecret, setShowWebhookSecret] = useState(false);
     const [githubApps, setGithubApps] = useState<GithubAppOption[]>([]);
     const [isLinkingApp, setIsLinkingApp] = useState(false);
@@ -145,6 +147,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     fetchBranches(data.git_repository, appId);
                 }
                 setAutoDeployEnabled(data.is_auto_deploy_enabled ?? false);
+                setWaitForCi(data.wait_for_ci ?? false);
             } else {
                 addToast('error', 'Failed to load application settings');
             }
@@ -198,6 +201,31 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
         } catch {
             setAutoDeployEnabled(!enabled);
             addToast('error', 'Failed to update auto-deploy setting');
+        }
+    };
+
+    const handleToggleWaitForCi = async (enabled: boolean) => {
+        setWaitForCi(enabled);
+        try {
+            const response = await fetch(`/web-api/applications/${service.uuid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ wait_for_ci: enabled }),
+            });
+            if (!response.ok) {
+                setWaitForCi(!enabled);
+                addToast('error', 'Failed to update Wait for CI setting');
+            } else {
+                addToast('success', enabled ? 'Wait for CI enabled' : 'Wait for CI disabled');
+            }
+        } catch {
+            setWaitForCi(!enabled);
+            addToast('error', 'Failed to update Wait for CI setting');
         }
     };
 
@@ -324,7 +352,8 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
 
     const buildPackLabel = (bp: string | null) => {
         switch (bp) {
-            case 'nixpacks': return 'Nixpacks';
+            case 'railpack': return 'Railpack';
+            case 'nixpacks': return 'Nixpacks (Legacy)';
             case 'static': return 'Static';
             case 'dockerfile': return 'Dockerfile';
             case 'dockercompose': return 'Docker Compose';
@@ -417,6 +446,8 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     app={app}
                     autoDeployEnabled={autoDeployEnabled}
                     onToggleAutoDeploy={handleToggleAutoDeploy}
+                    waitForCi={waitForCi}
+                    onToggleWaitForCi={handleToggleWaitForCi}
                     deployStatus={deployStatus}
                     showWebhookSecret={showWebhookSecret}
                     onToggleShowSecret={() => setShowWebhookSecret(!showWebhookSecret)}
@@ -739,6 +770,8 @@ function AutoDeploySection({
     app,
     autoDeployEnabled,
     onToggleAutoDeploy,
+    waitForCi,
+    onToggleWaitForCi,
     deployStatus,
     showWebhookSecret,
     onToggleShowSecret,
@@ -752,6 +785,8 @@ function AutoDeploySection({
     app: ApplicationData;
     autoDeployEnabled: boolean;
     onToggleAutoDeploy: (enabled: boolean) => void;
+    waitForCi: boolean;
+    onToggleWaitForCi: (enabled: boolean) => void;
     deployStatus: string;
     showWebhookSecret: boolean;
     onToggleShowSecret: () => void;
@@ -790,9 +825,10 @@ function AutoDeploySection({
     };
 
     const status = statusConfig[deployStatus as keyof typeof statusConfig] || statusConfig.not_configured;
+    const [showCiGuide, setShowCiGuide] = useState(false);
 
     return (
-        <div>
+        <div className="space-y-3">
             <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground">Auto Deploy</h3>
                 <button
@@ -805,6 +841,84 @@ function AutoDeploySection({
                     <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${autoDeployEnabled ? 'left-[18px]' : 'left-0.5'}`} />
                 </button>
             </div>
+
+            {/* Wait for CI toggle — only shown when auto-deploy is enabled */}
+            {autoDeployEnabled && (
+                <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-medium text-foreground">Wait for CI</p>
+                            <button
+                                type="button"
+                                onClick={() => setShowCiGuide(true)}
+                                className="text-foreground-muted hover:text-foreground transition-colors"
+                                title="How to set up CI gating"
+                            >
+                                <HelpCircle className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                        <p className="text-xs text-foreground-muted">
+                            Deploy only after all GitHub Actions pass
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => onToggleWaitForCi(!waitForCi)}
+                        role="switch"
+                        aria-checked={waitForCi}
+                        aria-label="Toggle wait for CI"
+                        className={`relative ml-3 h-5 w-9 shrink-0 rounded-full transition-colors ${waitForCi ? 'bg-primary' : 'bg-background-tertiary'}`}
+                    >
+                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${waitForCi ? 'left-[18px]' : 'left-0.5'}`} />
+                    </button>
+                </div>
+            )}
+
+            {/* CI Gate Setup Guide Modal */}
+            <Modal
+                isOpen={showCiGuide}
+                onClose={() => setShowCiGuide(false)}
+                title="Wait for CI — Setup Guide"
+                description="Enable the check_suite event so Saturn waits for GitHub Actions before deploying"
+                size="lg"
+            >
+                <div className="space-y-5">
+                    <div className="flex gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold flex-shrink-0">1</div>
+                        <div>
+                            <p className="text-sm font-medium text-foreground mb-0.5">Open your GitHub webhook</p>
+                            <p className="text-xs text-foreground-muted">Repository → Settings → Webhooks → click your Saturn webhook.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold flex-shrink-0">2</div>
+                        <div>
+                            <p className="text-sm font-medium text-foreground mb-0.5">Select individual events</p>
+                            <p className="text-xs text-foreground-muted">Choose <strong>"Let me select individual events"</strong> in the trigger section.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold flex-shrink-0">3</div>
+                        <div>
+                            <p className="text-sm font-medium text-foreground mb-0.5">Enable Check suites</p>
+                            <p className="text-xs text-foreground-muted">
+                                Tick <code className="px-1 bg-background rounded">Check suites</code> (keep{' '}
+                                <code className="px-1 bg-background rounded">Pushes</code> ticked too), then save.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="p-3 bg-info/10 border border-info/30 rounded-lg flex gap-2.5">
+                        <Info className="h-4 w-4 text-info flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-foreground-muted">
+                            On push, Saturn queues the deploy and waits. When GitHub reports{' '}
+                            <code className="px-1 bg-background rounded">check_suite completed / success</code>, the deployment starts automatically.
+                            If CI fails, the deployment is skipped.
+                        </p>
+                    </div>
+                </div>
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowCiGuide(false)}>Close</Button>
+                </ModalFooter>
+            </Modal>
 
             <div className={`rounded-lg border ${status.borderColor} ${status.bgColor} p-4`}>
                 {/* Status indicator */}

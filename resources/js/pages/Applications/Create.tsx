@@ -50,7 +50,7 @@ interface Props {
 }
 
 type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
-type BuildPack = 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage';
+type BuildPack = 'railpack' | 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage';
 type ApplicationType = 'web' | 'worker' | 'both';
 
 interface FormData {
@@ -99,7 +99,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
         source_type: initialSource,
         git_repository: '',
         git_branch: 'main',
-        build_pack: 'nixpacks',
+        build_pack: 'railpack',
         application_type: 'web',
         project_uuid: projects[0]?.uuid || '',
         environment_uuid: projects[0]?.environments[0]?.uuid || '',
@@ -763,12 +763,13 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                 value={formData.build_pack}
                                                 onChange={(e) => setFormData(prev => ({ ...prev, build_pack: e.target.value as BuildPack }))}
                                             >
-                                                <option value="nixpacks">Nixpacks (Auto-detect)</option>
+                                                <option value="railpack">Railpack (Auto-detect)</option>
+                                                <option value="nixpacks">Nixpacks (Legacy)</option>
                                                 <option value="dockerfile">Dockerfile</option>
                                                 <option value="dockercompose">Docker Compose</option>
                                             </Select>
                                             <p className="mt-1 text-xs text-foreground-muted">
-                                                Nixpacks will automatically detect your application type
+                                                Railpack automatically detects your application type with smaller, faster images
                                             </p>
                                         </div>
 

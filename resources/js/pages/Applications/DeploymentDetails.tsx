@@ -143,7 +143,7 @@ export default function DeploymentDetails({
     const toggleDebugLogs = React.useCallback(() => {
         setShowDebugLogs(prev => {
             const next = !prev;
-            try { localStorage.setItem('saturn-show-debug-logs', String(next)); } catch {}
+            try { localStorage.setItem('saturn-show-debug-logs', String(next)); } catch { /* intentionally ignored */ }
             return next;
         });
     }, []);

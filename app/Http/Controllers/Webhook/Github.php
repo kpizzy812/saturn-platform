@@ -13,6 +13,7 @@ use App\Models\GithubApp;
 use App\Models\PrivateKey;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Visus\Cuid2\Cuid2;
@@ -36,6 +37,12 @@ class Github extends Controller
             if ($content_type !== 'application/json') {
                 $payload = json_decode(data_get($payload, 'payload'), true);
             }
+
+            // Handle check_suite event: trigger pending "wait for CI" deployments
+            if ($x_github_event === 'check_suite') {
+                return $this->handleManualCheckSuite($request, $payload, $x_hub_signature_256, $return_payloads);
+            }
+
             $branch = null;
             $full_name = null;
             $action = null;
@@ -67,7 +74,7 @@ class Github extends Controller
             if (! $branch) {
                 return response('Nothing to do. No branch found in the request.');
             }
-            $applicationsQuery = Application::with(['destination.server'])->where('git_repository', 'like', "%$full_name%");
+            $applicationsQuery = Application::with(['destination.server', 'settings'])->where('git_repository', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $full_name).'%');
             if ($x_github_event === 'push') {
                 $applications = $applicationsQuery->where('git_branch', $branch)->get();
                 if ($applications->isEmpty()) {
@@ -122,12 +129,32 @@ class Github extends Controller
                         if ($application->isDeployable()) {
                             $is_watch_path_triggered = $application->isWatchPathsTriggered($changed_files);
                             if ($is_watch_path_triggered || is_null($application->watch_paths)) {
+                                $commit = data_get($payload, 'after', 'HEAD');
+
+                                // Wait for CI: store pending deployment and return early
+                                if ($application->settings?->wait_for_ci && $commit !== 'HEAD') {
+                                    Cache::put(
+                                        "ci_pending:{$application->id}:{$commit}",
+                                        ['branch' => $branch, 'changed_files' => $changed_files->toArray()],
+                                        now()->addHours(24)
+                                    );
+                                    $return_payloads->push([
+                                        'application' => $application->name,
+                                        'status' => 'waiting_for_ci',
+                                        'message' => 'Deployment queued, waiting for CI to pass.',
+                                        'application_uuid' => $application->uuid,
+                                        'commit' => $commit,
+                                    ]);
+
+                                    continue;
+                                }
+
                                 $deployment_uuid = new Cuid2;
                                 $result = queue_application_deployment(
                                     application: $application,
                                     deployment_uuid: $deployment_uuid,
                                     force_rebuild: false,
-                                    commit: data_get($payload, 'after', 'HEAD'),
+                                    commit: $commit,
                                     is_webhook: true,
                                 );
                                 if ($result['status'] === 'queue_full') {
@@ -327,6 +354,12 @@ class Github extends Controller
 
                 return response('cool');
             }
+
+            // Handle check_suite event: trigger pending "wait for CI" deployments
+            if ($x_github_event === 'check_suite') {
+                return $this->handleNormalCheckSuite($payload, $github_app, $return_payloads);
+            }
+
             $branch = null;
             $action = null;
             $base_branch = null;
@@ -357,7 +390,7 @@ class Github extends Controller
             if (! $id || ! $branch) {
                 return response('Nothing to do. No id or branch found.');
             }
-            $applicationsQuery = Application::with(['destination.server'])->where('repository_project_id', $id)
+            $applicationsQuery = Application::with(['destination.server', 'settings'])->where('repository_project_id', $id)
                 ->where('source_id', $github_app->id)
                 ->whereRelation('source', 'is_public', false);
             if ($x_github_event === 'push') {
@@ -394,11 +427,31 @@ class Github extends Controller
                         if ($application->isDeployable()) {
                             $is_watch_path_triggered = $application->isWatchPathsTriggered($changed_files);
                             if ($is_watch_path_triggered || is_null($application->watch_paths)) {
+                                $commit = data_get($payload, 'after', 'HEAD');
+
+                                // Wait for CI: store pending deployment and return early
+                                if ($application->settings?->wait_for_ci && $commit !== 'HEAD') {
+                                    Cache::put(
+                                        "ci_pending:{$application->id}:{$commit}",
+                                        ['branch' => $branch, 'changed_files' => $changed_files->toArray()],
+                                        now()->addHours(24)
+                                    );
+                                    $return_payloads->push([
+                                        'status' => 'waiting_for_ci',
+                                        'message' => 'Deployment queued, waiting for CI to pass.',
+                                        'application_uuid' => $application->uuid,
+                                        'application_name' => $application->name,
+                                        'commit' => $commit,
+                                    ]);
+
+                                    continue;
+                                }
+
                                 $deployment_uuid = new Cuid2;
                                 $result = queue_application_deployment(
                                     application: $application,
                                     deployment_uuid: $deployment_uuid,
-                                    commit: data_get($payload, 'after', 'HEAD'),
+                                    commit: $commit,
                                     force_rebuild: false,
                                     is_webhook: true,
                                 );
@@ -721,5 +774,142 @@ class Github extends Controller
             return redirect()->route('sources.github.index')
                 ->with('error', 'GitHub App installation failed: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Handle check_suite event from a manual (per-repo) webhook.
+     * Triggers pending "wait for CI" deployments when all checks pass.
+     */
+    private function handleManualCheckSuite(Request $request, mixed $payload, string $signature, \Illuminate\Support\Collection $return_payloads): \Illuminate\Http\Response
+    {
+        $action = data_get($payload, 'action');
+        $conclusion = data_get($payload, 'check_suite.conclusion');
+        $head_sha = data_get($payload, 'check_suite.head_sha');
+        $head_branch = data_get($payload, 'check_suite.head_branch');
+        $full_name = data_get($payload, 'repository.full_name');
+
+        if ($action !== 'completed' || $conclusion !== 'success' || ! $head_sha || ! $full_name) {
+            return response('Nothing to do. Check suite not completed successfully.');
+        }
+
+        $applications = Application::with(['destination.server', 'settings'])
+            ->where('git_repository', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $full_name).'%')
+            ->where('git_branch', $head_branch)
+            ->whereHas('settings', fn ($q) => $q->where('wait_for_ci', true))
+            ->get();
+
+        foreach ($applications as $application) {
+            $webhook_secret = $application->manual_webhook_secret_github;
+            if (empty($webhook_secret)) {
+                continue;
+            }
+
+            $hmac = hash_hmac('sha256', $request->getContent(), $webhook_secret);
+            if (! hash_equals($signature, $hmac)) {
+                continue;
+            }
+
+            $cacheKey = "ci_pending:{$application->id}:{$head_sha}";
+            if (! Cache::has($cacheKey)) {
+                continue;
+            }
+
+            Cache::forget($cacheKey);
+
+            if (! $application->destination->server->isFunctional() || ! $application->isDeployable()) {
+                $return_payloads->push([
+                    'application' => $application->name,
+                    'status' => 'failed',
+                    'message' => 'Server not functional or deployments disabled.',
+                ]);
+
+                continue;
+            }
+
+            $deployment_uuid = new Cuid2;
+            $result = queue_application_deployment(
+                application: $application,
+                deployment_uuid: $deployment_uuid,
+                force_rebuild: false,
+                commit: $head_sha,
+                is_webhook: true,
+            );
+
+            $return_payloads->push([
+                'application' => $application->name,
+                'status' => $result['status'] === 'queue_full' ? 'failed' : 'success',
+                'message' => $result['status'] === 'queue_full' ? $result['message'] : 'Deployment triggered after CI passed.',
+                'deployment_uuid' => $result['deployment_uuid'] ?? null,
+            ]);
+        }
+
+        return response($return_payloads->isEmpty()
+            ? 'Nothing to do. No pending CI deployments found.'
+            : $return_payloads);
+    }
+
+    /**
+     * Handle check_suite event from a GitHub App webhook.
+     * Triggers pending "wait for CI" deployments when all checks pass.
+     */
+    private function handleNormalCheckSuite(mixed $payload, GithubApp $github_app, \Illuminate\Support\Collection $return_payloads): \Illuminate\Http\Response
+    {
+        $action = data_get($payload, 'action');
+        $conclusion = data_get($payload, 'check_suite.conclusion');
+        $head_sha = data_get($payload, 'check_suite.head_sha');
+        $head_branch = data_get($payload, 'check_suite.head_branch');
+        $repo_id = data_get($payload, 'repository.id');
+
+        if ($action !== 'completed' || $conclusion !== 'success' || ! $head_sha || ! $repo_id) {
+            return response('Nothing to do. Check suite not completed successfully.');
+        }
+
+        $applications = Application::with(['destination.server', 'settings'])
+            ->where('repository_project_id', $repo_id)
+            ->where('source_id', $github_app->id)
+            ->where('git_branch', $head_branch)
+            ->whereHas('settings', fn ($q) => $q->where('wait_for_ci', true))
+            ->get();
+
+        foreach ($applications as $application) {
+            $cacheKey = "ci_pending:{$application->id}:{$head_sha}";
+            if (! Cache::has($cacheKey)) {
+                continue;
+            }
+
+            Cache::forget($cacheKey);
+
+            if (! $application->destination->server->isFunctional() || ! $application->isDeployable()) {
+                $return_payloads->push([
+                    'status' => 'failed',
+                    'message' => 'Server not functional or deployments disabled.',
+                    'application_uuid' => $application->uuid,
+                    'application_name' => $application->name,
+                ]);
+
+                continue;
+            }
+
+            $deployment_uuid = new Cuid2;
+            $result = queue_application_deployment(
+                application: $application,
+                deployment_uuid: $deployment_uuid,
+                force_rebuild: false,
+                commit: $head_sha,
+                is_webhook: true,
+            );
+
+            $return_payloads->push([
+                'status' => $result['status'] === 'queue_full' ? 'failed' : 'success',
+                'message' => $result['status'] === 'queue_full' ? $result['message'] : 'Deployment triggered after CI passed.',
+                'application_uuid' => $application->uuid,
+                'application_name' => $application->name,
+                'deployment_uuid' => $result['deployment_uuid'] ?? null,
+            ]);
+        }
+
+        return response($return_payloads->isEmpty()
+            ? 'Nothing to do. No pending CI deployments found.'
+            : $return_payloads);
     }
 }

@@ -8,6 +8,8 @@ use App\Events\ProxyStatusChangedUI;
 use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\Activitylog\Contracts\Activity;
+use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\Yaml\Yaml;
 
 class StartProxy
 {
@@ -33,15 +35,25 @@ class StartProxy
         if (! $configuration) {
             throw new \Exception('Configuration is not synced');
         }
+
+        // Validate YAML before persisting to avoid saving a broken proxy config
+        try {
+            Yaml::parse($configuration);
+        } catch (ParseException $e) {
+            throw new \Exception('Invalid proxy configuration YAML: '.$e->getMessage());
+        }
+
         SaveProxyConfiguration::run($server, $configuration);
         $docker_compose_yml_base64 = base64_encode($configuration);
         $server->proxy->set('last_applied_settings', str($docker_compose_yml_base64)->pipe('md5')->value());
         $server->save();
 
         if ($server->isSwarmManager()) {
+            $escaped_proxy_path = escapeshellarg($proxy_path);
+            $escaped_dynamic_path = escapeshellarg($proxy_path.'/dynamic');
             $commands = $commands->merge([
-                "mkdir -p $proxy_path/dynamic",
-                "cd $proxy_path",
+                "mkdir -p $escaped_dynamic_path",
+                "cd $escaped_proxy_path",
                 "echo 'Creating required Docker Compose file.'",
                 "echo 'Starting saturn-proxy.'",
                 'docker stack deploy --detach=true -c docker-compose.yml saturn-proxy',
@@ -53,14 +65,18 @@ class StartProxy
                     $proxy_path = '/data/saturn/proxy/caddy';
                 }
             }
+            $escaped_proxy_path = escapeshellarg($proxy_path);
+            $escaped_dynamic_path = escapeshellarg($proxy_path.'/dynamic');
+            $escaped_caddyfile_path = escapeshellarg($proxy_path.'/dynamic/Caddyfile');
             $caddyfile = 'import /dynamic/*.caddy';
             $commands = $commands->merge([
-                "mkdir -p $proxy_path/dynamic",
-                "cd $proxy_path",
-                "echo '$caddyfile' > $proxy_path/dynamic/Caddyfile",
+                "mkdir -p $escaped_dynamic_path",
+                "cd $escaped_proxy_path",
+                'echo '.escapeshellarg($caddyfile)." > $escaped_caddyfile_path",
                 "echo 'Creating required Docker Compose file.'",
                 "echo 'Pulling docker image.'",
-                'docker compose pull',
+                // Log pull errors but do not abort — image may already be cached locally
+                'docker compose pull 2>&1 | tee /tmp/saturn-proxy-pull.log; PULL_EXIT=${PIPESTATUS[0]}; if [ "$PULL_EXIT" -ne 0 ]; then echo "WARNING: docker compose pull failed (exit $PULL_EXIT), using cached image if available. See /tmp/saturn-proxy-pull.log"; fi',
                 'if docker ps -a --format "{{.Names}}" | grep -q "^saturn-proxy$"; then',
                 "    echo 'Stopping and removing existing saturn-proxy.'",
                 '    docker stop saturn-proxy 2>/dev/null || true',

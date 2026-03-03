@@ -1510,6 +1510,19 @@ $schema://$host {
         return instant_remote_process($commands, $this, false);
     }
 
+    /**
+     * Returns true when the latest recorded disk usage exceeds the critical threshold (95%).
+     * Used by ApplicationDeploymentJob to block deployments on critically full disks.
+     */
+    public function isDiskFull(): bool
+    {
+        $latest = \App\Models\ServerMetric::where('server_id', $this->id)
+            ->orderByDesc('recorded_at')
+            ->value('disk_usage_percent');
+
+        return $latest !== null && $latest >= \App\Jobs\MonitorDiskSpaceJob::CRITICAL_THRESHOLD;
+    }
+
     public function isIpv6(): bool
     {
         return str($this->ip)->contains(':');

@@ -116,7 +116,7 @@ export interface Application {
     repository_project_id: number | null;
     git_repository: string | null;
     git_branch: string;
-    build_pack: 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage';
+    build_pack: 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage' | 'railpack';
     status: ApplicationStatus;
     environment_id: number;
     destination_id: number;
