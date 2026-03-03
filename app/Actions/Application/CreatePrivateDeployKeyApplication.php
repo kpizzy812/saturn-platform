@@ -125,8 +125,8 @@ class CreatePrivateDeployKeyApplication
                     ],
                 ], 422);
             }
-            $dockerComposeRaw = base64_decode($request->docker_compose_raw);
-            $yaml = Yaml::parse($dockerComposeRaw);
+            // Security: PARSE_EXCEPTION_ON_INVALID_TYPE prevents deserialization of PHP objects via !!php/object tags
+            $yaml = Yaml::parse($dockerComposeRaw, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
             $services = data_get($yaml, 'services');
             $dockerComposeDomains = collect($request->docker_compose_domains);
             if ($dockerComposeDomains->count() > 0) {

@@ -20,7 +20,8 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
 
     public $tries = 1;
 
-    public $timeout = 30;
+    // SSH retries: up to 3 attempts × 30s TCP timeout + retry delays (2s+4s) = ~100s max
+    public $timeout = 120;
 
     public function __construct(
         public Server $server,

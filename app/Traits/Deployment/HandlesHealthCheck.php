@@ -5,6 +5,7 @@ namespace App\Traits\Deployment;
 use App\Exceptions\DeploymentException;
 use App\Models\ApplicationDeploymentQueue;
 use Exception;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
 
 /**
@@ -79,9 +80,18 @@ trait HandlesHealthCheck
                         && $this->newVersionIsHealthy;
 
                     if ($isCanary) {
-                        $this->capture_stable_container_for_canary();
+                        // BUG #5 fix: wrap capture_stable_container_for_canary() in try-catch so that
+                        // if it throws (despite its internal guard), we still clean up the old container.
+                        // Without this, a thrown exception would leave the old container running forever
+                        // because stop_running_container() would never be called.
+                        try {
+                            $this->capture_stable_container_for_canary();
+                        } catch (\Throwable $e) {
+                            Log::warning("Canary: capture_stable_container_for_canary() threw unexpectedly for {$this->application->name}: {$e->getMessage()}. Falling back to normal container cleanup.");
+                            $this->stableContainerName = null;
+                        }
 
-                        // If no stable container was found, fall back to normal cleanup
+                        // If no stable container was found (first deploy or capture failed), fall back to normal cleanup
                         if ($this->stableContainerName === null) {
                             $this->stop_running_container();
                         }
@@ -180,10 +190,14 @@ trait HandlesHealthCheck
                         }
                     }
                     if (str($this->saved_outputs->get('health_check'))->replace('"', '')->value() === 'starting') {
+                        // BUG #1 fix: mark deployment as unhealthy before logging the timeout error
+                        $this->newVersionIsHealthy = false;
                         $this->application_deployment_queue->addLogEntry('Healthcheck timed out (still starting after all retries).', type: 'error');
                         $this->checkContainerState();
                         $this->query_logs();
                         $this->analyzeContainerFailure();
+                        // BUG #4 fix: stop execution after timeout — do not continue as if nothing happened
+                        throw new DeploymentException('Healthcheck timed out: container remained in "starting" state after all retries. Check the logs above for details.');
                     }
                 }
             }

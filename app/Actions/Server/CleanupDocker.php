@@ -51,10 +51,12 @@ class CleanupDocker
             'docker container prune -f --filter "label=saturn.managed=true" --filter "label!=saturn.proxy=true"',
             $imagePruneCmd,
             'docker builder prune -af',
-            "docker images --filter before=$helperImageWithVersion --filter reference=$helperImage | grep $helperImage | awk '{print $3}' | xargs -r docker rmi -f",
-            "docker images --filter before=$realtimeImageWithVersion --filter reference=$realtimeImage | grep $realtimeImage | awk '{print $3}' | xargs -r docker rmi -f",
-            "docker images --filter before=$helperImageWithoutPrefixVersion --filter reference=$helperImageWithoutPrefix | grep $helperImageWithoutPrefix | awk '{print $3}' | xargs -r docker rmi -f",
-            "docker images --filter before=$realtimeImageWithoutPrefixVersion --filter reference=$realtimeImageWithoutPrefix | grep $realtimeImageWithoutPrefix | awk '{print $3}' | xargs -r docker rmi -f",
+            // Remove -f flag: do not force-remove images that may be in use by running containers.
+            // If the image is in use, docker rmi will fail gracefully; '|| true' suppresses the error.
+            "docker images --filter before=$helperImageWithVersion --filter reference=$helperImage | grep $helperImage | awk '{print \$3}' | xargs -r -I {} sh -c 'docker rmi {} || true'",
+            "docker images --filter before=$realtimeImageWithVersion --filter reference=$realtimeImage | grep $realtimeImage | awk '{print \$3}' | xargs -r -I {} sh -c 'docker rmi {} || true'",
+            "docker images --filter before=$helperImageWithoutPrefixVersion --filter reference=$helperImageWithoutPrefix | grep $helperImageWithoutPrefix | awk '{print \$3}' | xargs -r -I {} sh -c 'docker rmi {} || true'",
+            "docker images --filter before=$realtimeImageWithoutPrefixVersion --filter reference=$realtimeImageWithoutPrefix | grep $realtimeImageWithoutPrefix | awk '{print \$3}' | xargs -r -I {} sh -c 'docker rmi {} || true'",
         ];
 
         if ($deleteUnusedVolumes) {

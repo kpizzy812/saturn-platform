@@ -179,7 +179,7 @@ export default function ApplicationShow({ application: initialApplication, avail
     };
 
     const confirmDeploy = () => {
-        const payload: Record<string, unknown> = {
+        const payload: Record<string, string | boolean> = {
             force_rebuild: forceRebuild,
             requires_approval: requiresApproval,
         };

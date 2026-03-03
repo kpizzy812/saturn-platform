@@ -39,14 +39,26 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
         setIsCreating(true);
 
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            // Refresh CSRF cookie to avoid token mismatch on long-lived pages
+            await fetch('/sanctum/csrf-cookie', { credentials: 'same-origin' });
+
+            // Read fresh CSRF token from cookie (set by sanctum/csrf-cookie)
+            const xsrfCookie = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('XSRF-TOKEN='))
+                ?.split('=')[1];
+            const csrfToken = xsrfCookie
+                ? decodeURIComponent(xsrfCookie)
+                : document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
             const response = await fetch('/settings/tokens', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': csrfToken,
+                    'X-XSRF-TOKEN': csrfToken,
                 },
                 body: JSON.stringify({ name: newTokenName, abilities: newTokenAbilities }),
             });

@@ -1,100 +1,73 @@
 # Saturn MCP Server
 
-Allows AI agents (Claude Code, Cursor, Claude Desktop) to deploy apps, check logs and status — directly from chat.
+Allows AI agents (Claude Code, Cursor, Claude Desktop) to deploy apps, check logs and manage infrastructure — directly from chat.
 
-## Tools
+## Quick Start
 
-| Tool | Description |
-|------|-------------|
-| `saturn_list_applications` | List all applications |
-| `saturn_get_application` | Get application details by UUID |
-| `saturn_deploy` | Trigger a deployment |
-| `saturn_get_deployment_logs` | Fetch deployment logs (poll until finished/failed) |
-| `saturn_list_servers` | List all servers |
+### 1. Create an API token
 
----
+Go to **Saturn UI → Settings → MCP / AI Tools** — create a token and copy the ready-made install command for your tool.
 
-## Step 1 — Get your API token
+### 2. Add to your AI tool
 
-Go to **Saturn UI → Settings → Tokens → Create token**
-
-- Dev: `https://dev.saturn.ac/settings/tokens`
-- UAT: `https://uat.saturn.ac/settings/tokens`
-- Prod: `https://saturn.ac/settings/tokens`
-
-Select abilities: **read** + **deploy**. Copy the token — it's shown only once.
-
----
-
-## Step 2 — Install in your AI tool
-
-### Claude Code (CLI)
-
-Run once per environment from the project root:
+#### Claude Code
 
 ```bash
-# Dev
-claude mcp add saturn-dev \
-  -e SATURN_API_URL=https://dev.saturn.ac \
-  -e SATURN_API_TOKEN=<your-dev-token> \
-  -- npx tsx mcp/src/index.ts
-
-# UAT
-claude mcp add saturn-uat \
-  -e SATURN_API_URL=https://uat.saturn.ac \
-  -e SATURN_API_TOKEN=<your-uat-token> \
-  -- npx tsx mcp/src/index.ts
-
-# Production
-claude mcp add saturn-prod \
-  -e SATURN_API_URL=https://saturn.ac \
-  -e SATURN_API_TOKEN=<your-prod-token> \
-  -- npx tsx mcp/src/index.ts
+claude mcp add saturn -- npx --yes tsx mcp/src/index.ts --url https://saturn.ac --token YOUR_TOKEN
 ```
 
-Verify: `claude mcp list`
+That's it. Verify with `claude mcp list`.
 
----
+**Multiple environments:**
 
-### Cursor
+```bash
+claude mcp add saturn-dev  -- npx --yes tsx mcp/src/index.ts --url https://dev.saturn.ac --token DEV_TOKEN
+claude mcp add saturn-prod -- npx --yes tsx mcp/src/index.ts --url https://saturn.ac    --token PROD_TOKEN
+```
+
+#### Cursor
 
 Open **Settings → MCP** and add:
 
 ```json
 {
-  "saturn-dev": {
+  "saturn": {
     "command": "npx",
-    "args": ["tsx", "/absolute/path/to/mcp/src/index.ts"],
-    "env": {
-      "SATURN_API_URL": "https://dev.saturn.ac",
-      "SATURN_API_TOKEN": "<your-dev-token>"
-    }
+    "args": ["--yes", "tsx", "mcp/src/index.ts", "--url", "https://saturn.ac", "--token", "YOUR_TOKEN"]
   }
 }
 ```
 
----
-
-### Claude Desktop
+#### Claude Desktop
 
 Edit `~/.claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "saturn-dev": {
+    "saturn": {
       "command": "npx",
-      "args": ["tsx", "/absolute/path/to/mcp/src/index.ts"],
-      "env": {
-        "SATURN_API_URL": "https://dev.saturn.ac",
-        "SATURN_API_TOKEN": "<your-dev-token>"
-      }
+      "args": ["--yes", "tsx", "/path/to/mcp/src/index.ts", "--url", "https://saturn.ac", "--token", "YOUR_TOKEN"]
     }
   }
 }
 ```
 
-Then restart Claude Desktop.
+---
+
+## Tools (96)
+
+| Domain | Tools |
+|--------|-------|
+| Applications | list, get, logs, create, update, delete, envs (list/set/delete/bulk), start, stop, restart, rollback, rollback-events |
+| Deployments | deploy, list, get, logs, list-by-app, cancel, approve, reject, pending-approvals, analyze, get-analysis, code-review, get-code-review |
+| Servers | list, get, validate, metrics, create, update, delete, reboot, domains, resources, hetzner-locations, hetzner-types, hetzner-create |
+| Projects | overview, list, get, environment, create, update, delete, list-envs, create-env, delete-env |
+| Databases | list, get, logs, create (8 types), update, delete, start, stop, restart, backups CRUD, restore, backup executions |
+| Services | list, get, logs, create, update, delete, envs (list/set/delete/bulk), start, stop, restart, healthcheck |
+| Teams | list-teams, members, activities, SSH keys CRUD, GitHub Apps, repositories, branches, webhooks CRUD, alerts CRUD |
+
+**Start with `saturn_overview`** — it returns all apps, servers, and databases with their UUIDs.
 
 ---
 
@@ -104,9 +77,9 @@ Then restart Claude Desktop.
 User: Deploy frontend to dev
 
 Agent:
-1. saturn_list_applications → finds uuid for "frontend"
-2. saturn_deploy(uuid) → returns deployment_uuid
-3. saturn_get_deployment_logs(deployment_uuid) → polls until status=finished
+1. saturn_overview → finds all apps with UUIDs
+2. saturn_deploy(uuid) → triggers deployment, gets deployment_uuid
+3. saturn_get_deployment_logs(deployment_uuid) → polls until finished
 ```
 
 ---
@@ -116,16 +89,18 @@ Agent:
 - Token belongs to **you** — agents see only your team's resources
 - All actions are logged under your user in Saturn
 - `read` = view apps/servers/logs, `deploy` = trigger deployments
-- Production token: consider creating read-only (`read` only) for safety
+- For production: consider read-only token (`read` ability only)
 
 ---
 
-## Environment variables
+## Configuration priority
 
-| Variable | Required | Default |
-|----------|:--------:|---------|
-| `SATURN_API_TOKEN` | ✅ | — |
-| `SATURN_API_URL` | ❌ | `https://dev.saturn.ac` |
+Token and URL are resolved in order (first wins):
+
+1. **CLI args**: `--token` and `--url`
+2. **Environment variables**: `SATURN_API_TOKEN` and `SATURN_API_URL`
+
+Default URL: `https://saturn.ac`
 
 ---
 

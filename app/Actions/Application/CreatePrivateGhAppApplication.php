@@ -152,7 +152,8 @@ class CreatePrivateGhAppApplication
                     ],
                 ], 422);
             }
-            $yaml = Yaml::parse($dockerComposeRaw);
+            // Security: PARSE_EXCEPTION_ON_INVALID_TYPE prevents deserialization of PHP objects via !!php/object tags
+            $yaml = Yaml::parse($dockerComposeRaw, Yaml::PARSE_EXCEPTION_ON_INVALID_TYPE);
             $services = data_get($yaml, 'services');
             $dockerComposeDomains = collect($request->docker_compose_domains);
             if ($dockerComposeDomains->count() > 0) {

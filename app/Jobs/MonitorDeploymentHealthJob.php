@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\ApplicationDeploymentStatus;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\ApplicationRollbackEvent;
@@ -229,6 +230,21 @@ class MonitorDeploymentHealthJob implements ShouldQueue
     protected function triggerAutoRollback(Application $application, string $reason, array $metricsSnapshot): void
     {
         Log::warning("Triggering auto-rollback for {$application->name} due to: {$reason} (after {$this->consecutiveFailures} consecutive failures)");
+
+        // Prevent race condition: skip if a rollback is already queued or in progress
+        $activeRollback = ApplicationDeploymentQueue::where('application_id', $application->id)
+            ->where('rollback', true)
+            ->whereIn('status', [
+                ApplicationDeploymentStatus::QUEUED->value,
+                ApplicationDeploymentStatus::IN_PROGRESS->value,
+            ])
+            ->exists();
+
+        if ($activeRollback) {
+            Log::info("Skipping auto-rollback for {$application->name}: a rollback is already in progress or queued.");
+
+            return;
+        }
 
         // Find last successful deployment (before the current one)
         $lastSuccessful = ApplicationDeploymentQueue::where('application_id', $application->id)

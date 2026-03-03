@@ -12,6 +12,7 @@ interface ApplicationSettings {
     rollback_on_health_check_fail: boolean;
     rollback_on_crash_loop: boolean;
     docker_images_to_keep: number;
+    wait_for_ci: boolean;
 }
 
 interface Props {
@@ -40,6 +41,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
         memory_limit: application.limits_memory || '',
         build_pack: application.build_pack || 'nixpacks',
         deploy_on_push: application.is_auto_deploy_enabled ?? true,
+        wait_for_ci: applicationSettings?.wait_for_ci ?? false,
         // Rollback settings
         auto_rollback_enabled: applicationSettings?.auto_rollback_enabled ?? false,
         rollback_validation_seconds: applicationSettings?.rollback_validation_seconds ?? 300,
@@ -52,6 +54,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
     const [errors, setErrors] = React.useState<Record<string, string>>({});
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'success' | 'error'>('idle');
     const [showWebhookGuide, setShowWebhookGuide] = React.useState(false);
+    const [showCiGuide, setShowCiGuide] = React.useState(false);
     const [copiedField, setCopiedField] = React.useState<string | null>(null);
     const [isTogglingRollback, setIsTogglingRollback] = React.useState(false);
 
@@ -212,9 +215,10 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                     </label>
                                     <Select
                                         value={settings.build_pack}
-                                        onChange={(e) => setSettings({ ...settings, build_pack: e.target.value as 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage' })}
+                                        onChange={(e) => setSettings({ ...settings, build_pack: e.target.value as 'railpack' | 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage' })}
                                     >
-                                        <option value="nixpacks">Nixpacks</option>
+                                        <option value="railpack">Railpack</option>
+                                        <option value="nixpacks">Nixpacks (Legacy)</option>
                                         <option value="dockerfile">Dockerfile</option>
                                         <option value="dockercompose">Docker Compose</option>
                                         <option value="dockerimage">Docker Image</option>
@@ -362,6 +366,37 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                         <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                                     </label>
                                 </div>
+
+                                {/* Wait for CI */}
+                                {settings.deploy_on_push && (
+                                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-background-secondary">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-medium text-foreground">Wait for CI</p>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCiGuide(true)}
+                                                className="text-foreground-muted hover:text-foreground transition-colors"
+                                                title="How to set up CI gating"
+                                            >
+                                                <HelpCircle className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                        <p className="text-sm text-foreground-muted mt-0.5">
+                                            Deploy only after all GitHub Actions checks pass successfully.
+                                        </p>
+                                    </div>
+                                    <label className="relative inline-flex cursor-pointer items-center ml-4 shrink-0">
+                                        <input
+                                            type="checkbox"
+                                            className="peer sr-only"
+                                            checked={settings.wait_for_ci}
+                                            onChange={(e) => setSettings({ ...settings, wait_for_ci: e.target.checked })}
+                                        />
+                                        <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
+                                    </label>
+                                </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -750,6 +785,95 @@ export default function ApplicationSettingsPage({ application, applicationSettin
 
                 <ModalFooter>
                     <Button variant="secondary" onClick={() => setShowWebhookGuide(false)}>
+                        Close
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* CI Gate Setup Guide Modal */}
+            <Modal
+                isOpen={showCiGuide}
+                onClose={() => setShowCiGuide(false)}
+                title="Wait for CI — Setup Guide"
+                description="Enable the check_suite webhook event so Saturn waits for GitHub Actions before deploying"
+                size="lg"
+            >
+                <div className="space-y-6">
+                    {/* Step 1 */}
+                    <div className="flex gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                            1
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-1">Open your GitHub webhook settings</h4>
+                            <p className="text-sm text-foreground-muted">
+                                Go to your repository → <strong>Settings</strong> → <strong>Webhooks</strong> and click on your Saturn webhook.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Step 2 */}
+                    <div className="flex gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                            2
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-1">Select individual events</h4>
+                            <p className="text-sm text-foreground-muted">
+                                In the <strong>"Which events would you like to trigger this webhook?"</strong> section, choose{' '}
+                                <strong>"Let me select individual events"</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Step 3 */}
+                    <div className="flex gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                            3
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-1">Enable Check suites</h4>
+                            <p className="text-sm text-foreground-muted">
+                                Find and check the <code className="px-1 py-0.5 bg-background rounded text-xs">Check suites</code> checkbox
+                                (keep <code className="px-1 py-0.5 bg-background rounded text-xs">Pushes</code> checked too).
+                                Then click <strong>"Update webhook"</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Step 4 */}
+                    <div className="flex gap-4">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-bold flex-shrink-0">
+                            4
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-medium text-foreground mb-1">Enable "Wait for CI" in Saturn</h4>
+                            <p className="text-sm text-foreground-muted">
+                                Toggle on <strong>"Wait for CI"</strong> in the Auto Deploy settings above. Saturn will now queue the
+                                deployment on push and start it only when all checks pass.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* How it works */}
+                    <div className="p-4 bg-info/10 border border-info/30 rounded-lg">
+                        <div className="flex gap-3">
+                            <Info className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
+                            <div>
+                                <h4 className="font-medium text-foreground mb-1">How it works</h4>
+                                <p className="text-sm text-foreground-muted">
+                                    On push, Saturn stores the commit SHA and waits. When GitHub sends a{' '}
+                                    <code className="px-1 py-0.5 bg-background rounded text-xs">check_suite completed</code> event
+                                    with <code className="px-1 py-0.5 bg-background rounded text-xs">conclusion: success</code>,
+                                    Saturn finds the pending deployment and starts it automatically. If CI fails, the deployment is skipped.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowCiGuide(false)}>
                         Close
                     </Button>
                 </ModalFooter>

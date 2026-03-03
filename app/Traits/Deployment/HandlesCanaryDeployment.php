@@ -129,8 +129,9 @@ trait HandlesCanaryDeployment
         // Send 100% traffic to canary
         $this->update_canary_traffic(100, $canaryContainer, $stableContainer);
 
-        // Brief pause to let Traefik reload the dynamic config before removing the stable container
-        Sleep::for(5)->seconds();
+        // D6: Configurable pause to let Traefik reload before removing the stable container
+        $waitSeconds = (int) data_get($this->application, 'settings.canary_promotion_wait_seconds', 10);
+        Sleep::for($waitSeconds)->seconds();
 
         // Remove old stable container
         $escapedStable = escapeshellarg($stableContainer);
@@ -166,8 +167,9 @@ trait HandlesCanaryDeployment
         // Shift all traffic back to stable
         $this->update_canary_traffic(0, $canaryContainer, $stableContainer);
 
-        // Brief pause to let Traefik reload before removing the canary container
-        Sleep::for(5)->seconds();
+        // D6: Configurable pause to let Traefik reload before removing the canary container
+        $waitSeconds = (int) data_get($this->application, 'settings.canary_promotion_wait_seconds', 10);
+        Sleep::for($waitSeconds)->seconds();
 
         // Remove canary container
         $escapedCanary = escapeshellarg($canaryContainer);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ApplicationDeploymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
@@ -136,6 +137,21 @@ class ApplicationDeploymentsController extends Controller
             ], 400);
         }
 
+        // Prevent race condition: check if a rollback is already queued or in progress
+        $activeRollback = ApplicationDeploymentQueue::where('application_id', $application->id)
+            ->where('rollback', true)
+            ->whereIn('status', [
+                ApplicationDeploymentStatus::QUEUED->value,
+                ApplicationDeploymentStatus::IN_PROGRESS->value,
+            ])
+            ->exists();
+
+        if ($activeRollback) {
+            return response()->json([
+                'message' => 'A rollback is already in progress or queued for this application.',
+            ], 409);
+        }
+
         // Create rollback event
         $event = ApplicationRollbackEvent::createEvent(
             application: $application,
@@ -160,6 +176,9 @@ class ApplicationDeploymentsController extends Controller
         );
 
         if ($result['status'] === 'queue_full') {
+            // D8: Clean up the orphaned deployment queue entry to avoid ghost records
+            ApplicationDeploymentQueue::where('deployment_uuid', $rollback_deployment_uuid)->delete();
+
             return response()->json([
                 'message' => $result['message'],
             ], 429)->header('Retry-After', '60');

@@ -35,8 +35,13 @@ trait HandlesDeploymentStatus
         }
 
         $this->updateDeploymentStatus($status);
-        $this->handleStatusTransition($status);
-        queue_next_deployment($this->application);
+
+        try {
+            $this->handleStatusTransition($status);
+        } finally {
+            // D7: Always queue next deployment even if status transition side-effects fail
+            queue_next_deployment($this->application);
+        }
     }
 
     /**

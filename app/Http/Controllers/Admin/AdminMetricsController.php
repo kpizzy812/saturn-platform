@@ -18,8 +18,8 @@ use App\Models\StandaloneMysql;
 use App\Models\StandalonePostgresql;
 use App\Models\StandaloneRedis;
 use App\Models\Team;
-use App\Services\TeamQuotaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -152,17 +152,62 @@ class AdminMetricsController extends Controller
     private function getTeamPerformanceData(): array
     {
         $teams = Team::withCount(['members', 'servers', 'projects'])->get();
-        $quotaService = new TeamQuotaService;
+        $teamIds = $teams->pluck('id')->all();
 
-        return $teams->map(function ($team) use ($quotaService) {
-            $usage = $quotaService->getUsage($team);
+        if (empty($teamIds)) {
+            return [];
+        }
 
-            $deploymentsQuery = ApplicationDeploymentQueue::whereHas('application.environment.project', function ($q) use ($team) {
-                $q->where('team_id', $team->id);
-            })->where('created_at', '>=', now()->subDays(30));
+        // Preload application counts per team in a single query
+        $appCounts = DB::table('applications')
+            ->join('environments', 'applications.environment_id', '=', 'environments.id')
+            ->join('projects', 'environments.project_id', '=', 'projects.id')
+            ->whereIn('projects.team_id', $teamIds)
+            ->selectRaw('projects.team_id, COUNT(*) as cnt')
+            ->groupBy('projects.team_id')
+            ->get()
+            ->keyBy('team_id');
 
-            $totalDeploys = (clone $deploymentsQuery)->count();
-            $successDeploys = (clone $deploymentsQuery)->where('status', 'finished')->count();
+        // Preload database counts per team via UNION ALL across all standalone DB tables
+        $dbTables = [
+            'standalone_postgresqls', 'standalone_mysqls', 'standalone_mariadbs',
+            'standalone_mongodbs', 'standalone_redis', 'standalone_keydbs',
+            'standalone_dragonflies', 'standalone_clickhouses',
+        ];
+        $dbUnion = null;
+        foreach ($dbTables as $table) {
+            $q = DB::table($table)
+                ->join('environments', "{$table}.environment_id", '=', 'environments.id')
+                ->join('projects', 'environments.project_id', '=', 'projects.id')
+                ->whereIn('projects.team_id', $teamIds)
+                ->select('projects.team_id as team_id');
+            $dbUnion = $dbUnion ? $dbUnion->unionAll($q) : $q;
+        }
+        $dbCounts = DB::query()
+            ->fromSub($dbUnion, 'all_dbs')
+            ->selectRaw('team_id, COUNT(*) as cnt')
+            ->groupBy('team_id')
+            ->get()
+            ->keyBy('team_id');
+
+        // Preload deployment stats per team in a single query (total + success in one pass)
+        $deploymentStats = DB::table('application_deployment_queues')
+            ->join('applications', 'application_deployment_queues.application_id', '=', 'applications.id')
+            ->join('environments', 'applications.environment_id', '=', 'environments.id')
+            ->join('projects', 'environments.project_id', '=', 'projects.id')
+            ->whereIn('projects.team_id', $teamIds)
+            ->where('application_deployment_queues.created_at', '>=', now()->subDays(30))
+            ->selectRaw("projects.team_id, COUNT(*) as total, SUM(CASE WHEN application_deployment_queues.status = 'finished' THEN 1 ELSE 0 END) as success_count")
+            ->groupBy('projects.team_id')
+            ->get()
+            ->keyBy('team_id');
+
+        return $teams->map(function ($team) use ($appCounts, $dbCounts, $deploymentStats) {
+            $deployStats = $deploymentStats->get($team->id);
+            $totalDeploys = (int) ($deployStats !== null ? $deployStats->total : 0);
+            $successDeploys = (int) ($deployStats !== null ? $deployStats->success_count : 0);
+            $appStat = $appCounts->get($team->id);
+            $dbStat = $dbCounts->get($team->id);
 
             return [
                 'id' => $team->id,
@@ -170,8 +215,8 @@ class AdminMetricsController extends Controller
                 'members_count' => $team->members_count,
                 'servers_count' => $team->servers_count,
                 'projects_count' => $team->projects_count,
-                'applications' => $usage['applications']['current'],
-                'databases' => $usage['databases']['current'],
+                'applications' => (int) ($appStat !== null ? $appStat->cnt : 0),
+                'databases' => (int) ($dbStat !== null ? $dbStat->cnt : 0),
                 'deployments_30d' => $totalDeploys,
                 'success_rate' => $totalDeploys > 0 ? round(($successDeploys / $totalDeploys) * 100, 1) : 0,
                 'quotas' => [

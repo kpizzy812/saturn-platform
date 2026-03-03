@@ -15,6 +15,7 @@ use App\Models\GitlabApp;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
+use App\Traits\Deployment\HandlesAutoRollback;
 use App\Traits\Deployment\HandlesBuildSecrets;
 use App\Traits\Deployment\HandlesBuildtimeEnvGeneration;
 use App\Traits\Deployment\HandlesCanaryDeployment;
@@ -31,6 +32,7 @@ use App\Traits\Deployment\HandlesHealthCheck;
 use App\Traits\Deployment\HandlesImageBuilding;
 use App\Traits\Deployment\HandlesImageRegistry;
 use App\Traits\Deployment\HandlesNixpacksBuildpack;
+use App\Traits\Deployment\HandlesRailpackBuildpack;
 use App\Traits\Deployment\HandlesRuntimeEnvGeneration;
 use App\Traits\Deployment\HandlesSaturnEnvVariables;
 use App\Traits\Deployment\HandlesStaticBuildpack;
@@ -45,20 +47,24 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use Throwable;
 use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
-    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesAutoRollback, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRailpackBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
 
     public const BUILD_TIME_ENV_PATH = '/artifacts/build-time.env';
 
     private const BUILD_SCRIPT_PATH = '/artifacts/build.sh';
 
     private const NIXPACKS_PLAN_PATH = '/artifacts/thegameplan.json';
+
+    private const RAILPACK_PLAN_PATH = '/artifacts/railpack-plan.json';
 
     /**
      * Max queue-level attempts. Only relevant when the job calls $this->release()
@@ -276,7 +282,17 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         if ($source) {
             $this->source = $source->getMorphClass()::where('id', $source->getKey())->first();
         }
-        $this->server = Server::find($this->application_deployment_queue->server_id);
+        $foundServer = Server::find($this->application_deployment_queue->server_id);
+
+        // D2: Guard against deleted/missing server to prevent null pointer errors
+        if ($foundServer === null) {
+            $this->application_deployment_queue->update(['status' => ApplicationDeploymentStatus::FAILED->value]);
+            $this->fail(new \RuntimeException("Server #{$this->application_deployment_queue->server_id} not found or was deleted"));
+
+            return;
+        }
+        $this->server = $foundServer;
+
         $this->timeout = $this->server->settings->dynamic_timeout;
         $this->destination = $this->server->destinations()->where('id', $this->application_deployment_queue->destination_id)->first();
         $this->server = $this->mainServer = $this->destination->server;
@@ -331,7 +347,24 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // Check if deployment requires approval
         if ($this->application_deployment_queue->requires_approval) {
             if ($this->application_deployment_queue->approval_status === 'pending') {
-                $this->application_deployment_queue->addLogEntry('Deployment is waiting for approval. Please approve via admin panel or API.');
+                // Guard against infinite release loops: track how many times we have released
+                // this deployment back to the queue while waiting for approval.
+                // After MAX_APPROVAL_WAIT_RELEASES attempts (~30 minutes) we give up and fail.
+                $approvalReleaseKey = 'deploy_approval_release_count_'.$this->deployment_uuid;
+                $approvalReleaseCount = (int) Cache::get($approvalReleaseKey, 0) + 1;
+                $maxApprovalReleases = 30; // 30 × 60 s = 30 minutes maximum wait
+
+                if ($approvalReleaseCount > $maxApprovalReleases) {
+                    Cache::forget($approvalReleaseKey);
+                    $this->application_deployment_queue->addLogEntry('Deployment timed out waiting for approval after 30 minutes. Marking as failed.');
+                    $this->fail('Deployment timed out waiting for approval.');
+
+                    return;
+                }
+
+                Cache::put($approvalReleaseKey, $approvalReleaseCount, now()->addHours(2));
+
+                $this->application_deployment_queue->addLogEntry("Deployment is waiting for approval (attempt {$approvalReleaseCount}/{$maxApprovalReleases}). Please approve via admin panel or API.");
                 $this->application_deployment_queue->update([
                     'status' => ApplicationDeploymentStatus::QUEUED->value,
                 ]);
@@ -388,8 +421,25 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         });
 
         if (! $canProceed) {
-            // Another deployment is already running — re-queue with backoff
-            $this->application_deployment_queue->addLogEntry('Another deployment is already in progress. Waiting...');
+            // Guard against infinite release loops: track how many times we have waited
+            // for a concurrent deployment to finish.
+            // After MAX_CONCURRENT_WAIT_RELEASES attempts (~10 minutes) we give up and fail
+            // rather than endlessly queuing behind a potentially stuck deployment.
+            $concurrentReleaseKey = 'deploy_concurrent_release_count_'.$this->deployment_uuid;
+            $concurrentReleaseCount = (int) Cache::get($concurrentReleaseKey, 0) + 1;
+            $maxConcurrentReleases = 20; // 20 × 30 s = 10 minutes maximum wait
+
+            if ($concurrentReleaseCount > $maxConcurrentReleases) {
+                Cache::forget($concurrentReleaseKey);
+                $this->application_deployment_queue->addLogEntry('Deployment timed out after waiting 10 minutes for a concurrent deployment to finish. Marking as failed.');
+                $this->fail('Deployment timed out waiting for a concurrent deployment to complete.');
+
+                return;
+            }
+
+            Cache::put($concurrentReleaseKey, $concurrentReleaseCount, now()->addHours(1));
+
+            $this->application_deployment_queue->addLogEntry("Another deployment is already in progress. Waiting... (attempt {$concurrentReleaseCount}/{$maxConcurrentReleases})");
             $this->release(30);
 
             return;
@@ -401,6 +451,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             return;
         }
+
+        if ($this->server->isDiskFull()) {
+            $this->application_deployment_queue->addLogEntry('Server disk usage is critically high (>= 95%). Deployment blocked to prevent data loss. Free disk space and retry.');
+            $this->fail('Server disk usage is critically high. Deployment blocked.');
+
+            return;
+        }
+
         try {
             // Make sure the private key is stored in the filesystem
             $this->server->privateKey->storeInFileSystem();
@@ -475,6 +533,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->detectBuildKitCapabilities();
             $this->decide_what_to_do();
         } catch (Exception $e) {
+            // Attempt auto-rollback to previous successful deployment before failing
+            $this->attemptAutoRollback($e);
+
             if ($this->pull_request_id !== 0 && $this->application->is_github_based()) {
                 ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::ERROR);
             }
@@ -540,6 +601,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->deploy_dockerfile_buildpack();
         } elseif ($this->application->build_pack === 'static') {
             $this->deploy_static_buildpack();
+        } elseif ($this->application->build_pack === 'railpack') {
+            $this->deploy_railpack_buildpack();
         } else {
             $this->deploy_nixpacks_buildpack();
         }
@@ -564,6 +627,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->initiate_canary($this->container_name, $this->stableContainerName);
             } catch (\Throwable $e) {
                 Log::error("Failed to initiate canary deployment for {$this->application->name}: {$e->getMessage()}");
+                // D9: Attempt to reset canary traffic to 0% so stable container serves all traffic
+                try {
+                    $this->update_canary_traffic(0, $this->container_name, $this->stableContainerName);
+                } catch (\Throwable $rollbackErr) {
+                    Log::error("Canary traffic rollback also failed for {$this->application->name}: {$rollbackErr->getMessage()}");
+                }
                 // Non-fatal: deployment is already marked finished, log and continue
             }
 
@@ -756,7 +825,42 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->generate_image_names();
         $this->check_image_locally_or_remotely();
         $this->should_skip_build();
+
+        // Verify the container is actually running after restart
+        $this->verify_container_running_after_restart();
+
         $this->completeDeployment();
+    }
+
+    /**
+     * Verify the container is actually running after a restart-only deployment.
+     * Warns in logs if the container is not found in running state.
+     * Does not throw — restart-only is best-effort and the user may be aware the container is stopped.
+     */
+    private function verify_container_running_after_restart(): void
+    {
+        if (! $this->container_name) {
+            return;
+        }
+
+        Sleep::for(3)->seconds();
+
+        $runningCheck = instant_remote_process(
+            ['docker ps --filter name='.escapeshellarg($this->container_name).' --filter status=running -q'],
+            $this->server,
+            throwError: false
+        );
+
+        if (empty(trim((string) $runningCheck))) {
+            $this->application_deployment_queue->addLogEntry(
+                "Warning: Container '{$this->container_name}' may not be running after restart. Check server logs for details.",
+                'stderr'
+            );
+        } else {
+            $this->application_deployment_queue->addLogEntry(
+                "Container '{$this->container_name}' confirmed running after restart."
+            );
+        }
     }
 
     private function should_skip_build()
@@ -1053,19 +1157,25 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 continue;
             }
             $deployment_uuid = new Cuid2;
-            queue_application_deployment(
-                deployment_uuid: $deployment_uuid,
-                application: $this->application,
-                server: $server,
-                destination: $destination,
-                no_questions_asked: true,
-            );
-            $this->application_deployment_queue->addLogEntry("Deployment to {$server->name}. Logs: ".route('project.application.deployment.show', [
-                'project_uuid' => data_get($this->application, 'environment.project.uuid'),
-                'application_uuid' => data_get($this->application, 'uuid'),
-                'deployment_uuid' => $deployment_uuid,
-                'environment_uuid' => data_get($this->application, 'environment.uuid'),
-            ]));
+            // D5: Catch queue errors so one failed destination does not block the others
+            try {
+                queue_application_deployment(
+                    deployment_uuid: $deployment_uuid,
+                    application: $this->application,
+                    server: $server,
+                    destination: $destination,
+                    no_questions_asked: true,
+                );
+                $this->application_deployment_queue->addLogEntry("Deployment to {$server->name}. Logs: ".route('project.application.deployment.show', [
+                    'project_uuid' => data_get($this->application, 'environment.project.uuid'),
+                    'application_uuid' => data_get($this->application, 'uuid'),
+                    'deployment_uuid' => $deployment_uuid,
+                    'environment_uuid' => data_get($this->application, 'environment.uuid'),
+                ]));
+            } catch (\Throwable $e) {
+                Log::error("Failed to queue deployment to additional destination {$server->name}: {$e->getMessage()}");
+                $this->application_deployment_queue->addLogEntry("Failed to queue deployment to {$server->name}: {$e->getMessage()}");
+            }
         }
     }
 

@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -74,6 +75,27 @@ class MonitorCanaryDeploymentJob implements ShouldQueue
 
         $settings = $this->application->settings;
         $steps = $settings->canary_steps ?? [10, 25, 50, 100];
+
+        // BUG #13 fix: enforce a global maximum duration for the entire canary cycle.
+        // If started_at + canary_max_duration_minutes has elapsed, we must not keep
+        // re-scheduling forever — promote or rollback depending on current health.
+        $canaryState = $this->deployment->canary_state ?? [];
+        $startedAt = data_get($canaryState, 'started_at');
+
+        if ($startedAt) {
+            $maxMinutes = (int) ($settings->canary_max_duration_minutes ?? 60);
+            $deadline = Carbon::parse($startedAt)->addMinutes($maxMinutes);
+
+            if (now()->greaterThan($deadline)) {
+                Log::warning("Canary monitor: global timeout reached for {$this->application->name} (max {$maxMinutes} min). Promoting to finish the canary cycle.");
+                $this->deployment->addLogEntry(
+                    "Canary global timeout reached ({$maxMinutes} min). Promoting canary to 100% traffic to finalise the deployment."
+                );
+                $this->performPromote();
+
+                return;
+            }
+        }
 
         if (empty($steps)) {
             $steps = [10, 25, 50, 100];
@@ -158,6 +180,67 @@ class MonitorCanaryDeploymentJob implements ShouldQueue
             'application_id' => $this->deployment->application_id,
             'error' => $exception->getMessage(),
         ]);
+
+        // BUG #9 fix: when the job fails permanently (e.g. exception exceeds tries),
+        // we must restore the system to a consistent state:
+        //   1. Roll back traffic to stable container if we have one.
+        //   2. Mark the deployment as 'failed' so the UI reflects reality.
+        //   3. Clear canary_state so a future deploy doesn't inherit stale data.
+
+        // Bootstrap properties required by HandlesCanaryDeployment (not set via constructor)
+        $this->application_deployment_queue = $this->deployment;
+        $this->application = $this->deployment->application;
+
+        if ($this->application) {
+            $this->server = $this->application->destination?->server;
+        }
+
+        // Step 1: attempt traffic rollback to stable container
+        if ($this->server && $this->stableContainer) {
+            try {
+                $this->rollback_canary(
+                    $this->canaryContainer,
+                    $this->stableContainer,
+                    'job_failed: '.$exception->getMessage()
+                );
+            } catch (\Throwable $rollbackErr) {
+                Log::error("Canary failed() rollback also failed for deployment {$this->deployment->deployment_uuid}: {$rollbackErr->getMessage()}");
+
+                // At minimum try to remove the canary Traefik config so traffic is not split
+                try {
+                    $this->remove_canary_config();
+                } catch (\Throwable) {
+                    // Silently swallow — nothing more we can do here
+                }
+            }
+        } else {
+            // No server context — still remove the Traefik config if possible
+            if ($this->application) {
+                $this->server = $this->application->destination?->server;
+                try {
+                    $this->remove_canary_config();
+                } catch (\Throwable) {
+                    // Silently swallow
+                }
+            }
+        }
+
+        // Step 2: mark deployment as failed so the UI shows the correct status
+        try {
+            $this->deployment->addLogEntry(
+                'Canary monitoring job failed permanently: '.$exception->getMessage().'. Deployment marked as failed.'
+            );
+            $this->deployment->setStatus('failed');
+        } catch (\Throwable $statusErr) {
+            Log::error("Canary failed(): could not update deployment status: {$statusErr->getMessage()}");
+        }
+
+        // Step 3: clear canary_state so future deployments start clean
+        try {
+            $this->deployment->update(['canary_state' => null]);
+        } catch (\Throwable $stateErr) {
+            Log::error("Canary failed(): could not clear canary_state: {$stateErr->getMessage()}");
+        }
     }
 
     /**

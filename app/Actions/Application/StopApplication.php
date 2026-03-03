@@ -39,10 +39,14 @@ class StopApplication
 
                 foreach ($containersToStop as $containerName) {
                     $escapedName = escapeshellarg($containerName);
+                    // throwError: true (default) — surface SSH/daemon failures so callers
+                    // know the container was NOT stopped (e.g. during resource deletion).
+                    // Individual "container not found" exits are acceptable; Docker returns 1
+                    // only for genuine errors when the container name was retrieved above.
                     instant_remote_process(command: [
                         "docker stop -t 30 $escapedName",
                         "docker rm -f $escapedName",
-                    ], server: $server, throwError: false);
+                    ], server: $server);
                 }
 
                 if ($application->build_pack === 'dockercompose') {

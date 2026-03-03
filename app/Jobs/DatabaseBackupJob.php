@@ -619,14 +619,15 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $commands[] = 'mkdir -p '.$this->backup_dir;
             $escapedContainerName = escapeshellarg($this->container_name);
+            // B2: Pass MySQL password via MYSQL_PWD env var to avoid exposure in ps aux
             $escapedMysqlPassword = escapeshellarg($this->database->mysql_root_password);
             if ($this->backup->dump_all) {
-                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p{$escapedMysqlPassword} --all-databases --single-transaction --quick --lock-tables=false --compress | gzip > $this->backup_location";
+                $commands[] = "docker exec -e MYSQL_PWD={$escapedMysqlPassword} {$escapedContainerName} mysqldump -u root --all-databases --single-transaction --quick --lock-tables=false --compress | gzip > $this->backup_location";
             } else {
                 // Validate and escape database name to prevent command injection
                 validateShellSafePath($database, 'database name');
                 $escapedDatabase = escapeshellarg($database);
-                $commands[] = "docker exec {$escapedContainerName} mysqldump -u root -p{$escapedMysqlPassword} --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
+                $commands[] = "docker exec -e MYSQL_PWD={$escapedMysqlPassword} {$escapedContainerName} mysqldump -u root --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
             }
             $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
             $this->backup_output = trim($this->backup_output);
@@ -644,14 +645,15 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
         try {
             $commands[] = 'mkdir -p '.$this->backup_dir;
             $escapedContainerName = escapeshellarg($this->container_name);
+            // B2: Pass MariaDB password via MYSQL_PWD env var to avoid exposure in ps aux
             $escapedMariaPassword = escapeshellarg($this->database->mariadb_root_password);
             if ($this->backup->dump_all) {
-                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p{$escapedMariaPassword} --all-databases --single-transaction --quick --lock-tables=false --compress > $this->backup_location";
+                $commands[] = "docker exec -e MYSQL_PWD={$escapedMariaPassword} {$escapedContainerName} mariadb-dump -u root --all-databases --single-transaction --quick --lock-tables=false --compress > $this->backup_location";
             } else {
                 // Validate and escape database name to prevent command injection
                 validateShellSafePath($database, 'database name');
                 $escapedDatabase = escapeshellarg($database);
-                $commands[] = "docker exec {$escapedContainerName} mariadb-dump -u root -p{$escapedMariaPassword} --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
+                $commands[] = "docker exec -e MYSQL_PWD={$escapedMariaPassword} {$escapedContainerName} mariadb-dump -u root --single-transaction --quick --routines --events $escapedDatabase > $this->backup_location";
             }
             $this->backup_output = instant_remote_process($commands, $this->server, true, false, $this->timeout, disableMultiplexing: true);
             $this->backup_output = trim($this->backup_output);
@@ -715,16 +717,18 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
             $escapedUser = escapeshellarg($user);
             $escapedPassword = escapeshellarg($password);
 
-            $tmpDir = '/tmp/ch_backup_'.Carbon::now()->timestamp;
+            // B11: Use uniqid to prevent predictable tmpDir names (race/symlink attacks)
+            $tmpDir = '/tmp/ch_backup_'.uniqid('', true);
 
             // Build a shell script that runs inside the container:
-            // 1. Get list of tables
-            // 2. For each table: dump CREATE TABLE DDL + data in Native format
+            // 1. Get list of tables with name validation against path traversal
+            // 2. For each valid table: dump CREATE TABLE DDL + data in Native format
             // 3. Package everything into tar.gz
             $script = implode(' && ', [
                 "mkdir -p {$tmpDir}",
-                // Dump DDL for all tables
+                // Dump DDL for all tables — validate names to prevent path traversal (only [a-zA-Z0-9_] allowed)
                 "clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query 'SHOW TABLES' | while read -r tbl; do "
+                    ."if ! echo \"\${tbl}\" | grep -qE '^[a-zA-Z0-9_]+$'; then echo \"Skipping invalid table name: \${tbl}\" >&2; continue; fi; "
                     ."clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query \"SHOW CREATE TABLE \\\"\${tbl}\\\"\" --format TSVRaw > {$tmpDir}/\${tbl}.sql; "
                     ."clickhouse-client --user {$escapedUser} --password {$escapedPassword} -d {$escapedDatabase} --query \"SELECT * FROM \\\"\${tbl}\\\" FORMAT Native\" > {$tmpDir}/\${tbl}.native; "
                     .'done',
@@ -758,7 +762,10 @@ class DatabaseBackupJob implements ShouldBeEncrypted, ShouldQueue
 
     private function calculate_size()
     {
-        return instant_remote_process(["du -b $this->backup_location | cut -f1"], $this->server, false, false, null, disableMultiplexing: true);
+        // B6: Escape backup_location to prevent command injection via malicious path
+        $escapedLocation = escapeshellarg($this->backup_location);
+
+        return instant_remote_process(["du -b {$escapedLocation} | cut -f1"], $this->server, false, false, null, disableMultiplexing: true);
     }
 
     private function upload_to_s3(): void

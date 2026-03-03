@@ -98,6 +98,15 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
         });
     };
 
+    // Stop polling when all restores are finished (must be before any early return)
+    const hasActiveRestore = backups?.some(b => b.restore_status === 'pending' || b.restore_status === 'in_progress');
+    useEffect(() => {
+        if (!hasActiveRestore && pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+        }
+    }, [hasActiveRestore]);
+
     // Show loading state when backups data is not yet available
     if (!backups) {
         return (
@@ -166,15 +175,6 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
             });
         }
     };
-
-    // Stop polling when all restores are finished
-    const hasActiveRestore = backups?.some(b => b.restore_status === 'pending' || b.restore_status === 'in_progress');
-    useEffect(() => {
-        if (!hasActiveRestore && pollTimerRef.current) {
-            clearInterval(pollTimerRef.current);
-            pollTimerRef.current = null;
-        }
-    }, [hasActiveRestore]);
 
     const handleDownload = (backupId: number) => {
         window.location.href = `/download/backup/${backupId}`;

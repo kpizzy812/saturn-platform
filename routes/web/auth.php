@@ -103,71 +103,80 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
             return redirect()->route('login', ['redirect' => "/invitations/{$uuid}"]);
         }
 
-        $invitation = \App\Models\TeamInvitation::where('uuid', $uuid)->firstOrFail();
+        // A6: Wrap in transaction with row-level lock to prevent double-accept race condition
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($uuid, $user) {
+            $invitation = \App\Models\TeamInvitation::where('uuid', $uuid)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $invitation->isValid()) {
-            return redirect()->back()->with('error', 'This invitation has expired.');
-        }
+            if (! $invitation) {
+                return redirect()->back()->with('error', 'This invitation has expired or is no longer valid.');
+            }
 
-        // Check if email matches
-        if (strtolower($user->email) !== strtolower($invitation->email)) {
-            return redirect()->back()->with('error', 'This invitation was sent to a different email address.');
-        }
+            if (! $invitation->isValid()) {
+                return redirect()->back()->with('error', 'This invitation has expired.');
+            }
 
-        $team = $invitation->team;
+            // Check if email matches
+            if (strtolower($user->email) !== strtolower($invitation->email)) {
+                return redirect()->back()->with('error', 'This invitation was sent to a different email address.');
+            }
 
-        // Check if already a member
-        if ($team->members()->where('user_id', $user->id)->exists()) {
+            $team = $invitation->team;
+
+            // Check if already a member
+            if ($team->members()->where('user_id', $user->id)->exists()) {
+                $invitation->delete();
+
+                return redirect('/dashboard')->with('info', 'You are already a member of this team.');
+            }
+
+            // Add user to team with invitation settings
+            $pivotData = [
+                'role' => $invitation->role ?? 'member',
+                'invited_by' => $invitation->invited_by,
+                'allowed_projects' => $invitation->allowed_projects,
+            ];
+
+            // If a permission set was specified, assign it directly
+            if ($invitation->permission_set_id) {
+                $pivotData['permission_set_id'] = $invitation->permission_set_id;
+            }
+
+            // Delete invitation before attaching (prevents concurrent accepts)
             $invitation->delete();
 
-            return redirect('/dashboard')->with('info', 'You are already a member of this team.');
-        }
+            $team->members()->attach($user->id, $pivotData);
 
-        // Add user to team with invitation settings
-        $pivotData = [
-            'role' => $invitation->role ?? 'member',
-            'invited_by' => $invitation->invited_by,
-            'allowed_projects' => $invitation->allowed_projects,
-        ];
+            // If custom permissions were stored, create a personal permission set
+            /** @var array<int, array{permission_id: int, environment_restrictions: array<string, bool>}>|null $customPerms */
+            $customPerms = $invitation->custom_permissions;
+            if (! empty($customPerms)) {
+                $personalSet = \App\Models\PermissionSet::create([
+                    'name' => "Personal - {$user->name}",
+                    'slug' => 'personal-'.$user->id.'-'.time(),
+                    'description' => 'Custom permissions assigned during invitation',
+                    'team_id' => $team->id,
+                    'is_system' => false,
+                ]);
 
-        // If a permission set was specified, assign it directly
-        if ($invitation->permission_set_id) {
-            $pivotData['permission_set_id'] = $invitation->permission_set_id;
-        }
+                foreach ($customPerms as $perm) {
+                    $personalSet->permissions()->attach($perm['permission_id'], [
+                        'environment_restrictions' => json_encode($perm['environment_restrictions']),
+                    ]);
+                }
 
-        $team->members()->attach($user->id, $pivotData);
-
-        // If custom permissions were stored, create a personal permission set
-        /** @var array<int, array{permission_id: int, environment_restrictions: array<string, bool>}>|null $customPerms */
-        $customPerms = $invitation->custom_permissions;
-        if (! empty($customPerms)) {
-            $personalSet = \App\Models\PermissionSet::create([
-                'name' => "Personal - {$user->name}",
-                'slug' => 'personal-'.$user->id.'-'.time(),
-                'description' => 'Custom permissions assigned during invitation',
-                'team_id' => $team->id,
-                'is_system' => false,
-            ]);
-
-            foreach ($customPerms as $perm) {
-                $personalSet->permissions()->attach($perm['permission_id'], [
-                    'environment_restrictions' => json_encode($perm['environment_restrictions']),
+                // Update the pivot to use the personal set
+                $team->members()->updateExistingPivot($user->id, [
+                    'permission_set_id' => $personalSet->id,
                 ]);
             }
 
-            // Update the pivot to use the personal set
-            $team->members()->updateExistingPivot($user->id, [
-                'permission_set_id' => $personalSet->id,
-            ]);
-        }
+            // Switch to the new team
+            $user->update(['current_team_id' => $team->id]);
 
-        // Delete the invitation
-        $invitation->delete();
-
-        // Switch to the new team
-        $user->update(['current_team_id' => $team->id]);
-
-        return redirect('/dashboard')->with('success', "You have joined {$team->name}!");
+            return redirect('/dashboard')->with('success', "You have joined {$team->name}!");
+        });
     })->name('auth.accept-invite.store');
 
     Route::post('/invitations/{uuid}/decline', function (string $uuid) {

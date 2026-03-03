@@ -150,7 +150,7 @@ use Visus\Cuid2\Cuid2;
         new OA\Property(property: 'git_full_url', type: 'string', nullable: true, description: 'Git full URL.'),
         new OA\Property(property: 'docker_registry_image_name', type: 'string', nullable: true, description: 'Docker registry image name.'),
         new OA\Property(property: 'docker_registry_image_tag', type: 'string', nullable: true, description: 'Docker registry image tag.'),
-        new OA\Property(property: 'build_pack', type: 'string', description: 'Build pack.', enum: ['nixpacks', 'static', 'dockerfile', 'dockercompose']),
+        new OA\Property(property: 'build_pack', type: 'string', description: 'Build pack.', enum: ['railpack', 'nixpacks', 'static', 'dockerfile', 'dockercompose']),
         new OA\Property(property: 'application_type', type: 'string', description: 'Application type. "web" for HTTP services, "worker" for background processes (no port), "both" for apps with web + worker.', enum: ['web', 'worker', 'both']),
         new OA\Property(property: 'static_image', type: 'string', description: 'Static image used when static site is deployed.'),
         new OA\Property(property: 'install_command', type: 'string', description: 'Install command.'),
@@ -1206,6 +1206,22 @@ class Application extends BaseModel
         return $this->morphMany(EnvironmentVariable::class, 'resourceable')
             ->where('is_preview', true)
             ->where('key', 'like', 'NIXPACKS_%');
+    }
+
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function railpack_environment_variables(): MorphMany
+    {
+        return $this->morphMany(EnvironmentVariable::class, 'resourceable')
+            ->where('is_preview', false)
+            ->where('key', 'like', 'RAILPACK_%');
+    }
+
+    /** @return MorphMany<EnvironmentVariable, $this> */
+    public function railpack_environment_variables_preview(): MorphMany
+    {
+        return $this->morphMany(EnvironmentVariable::class, 'resourceable')
+            ->where('is_preview', true)
+            ->where('key', 'like', 'RAILPACK_%');
     }
 
     public function scheduled_tasks(): HasMany
