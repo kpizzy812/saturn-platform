@@ -12,6 +12,7 @@ interface ApplicationSettings {
     rollback_on_health_check_fail: boolean;
     rollback_on_crash_loop: boolean;
     docker_images_to_keep: number;
+    wait_for_ci: boolean;
 }
 
 interface Props {
@@ -40,6 +41,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
         memory_limit: application.limits_memory || '',
         build_pack: application.build_pack || 'nixpacks',
         deploy_on_push: application.is_auto_deploy_enabled ?? true,
+        wait_for_ci: applicationSettings?.wait_for_ci ?? false,
         // Rollback settings
         auto_rollback_enabled: applicationSettings?.auto_rollback_enabled ?? false,
         rollback_validation_seconds: applicationSettings?.rollback_validation_seconds ?? 300,
@@ -362,6 +364,30 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                         <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
                                     </label>
                                 </div>
+
+                                {/* Wait for CI */}
+                                {settings.deploy_on_push && (
+                                <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-background-secondary">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-medium text-foreground">Wait for CI</p>
+                                        </div>
+                                        <p className="text-sm text-foreground-muted mt-0.5">
+                                            Deploy only after all GitHub Actions checks pass successfully.
+                                            Requires <code className="text-xs bg-background px-1 py-0.5 rounded">check_suite</code> event enabled on your webhook.
+                                        </p>
+                                    </div>
+                                    <label className="relative inline-flex cursor-pointer items-center ml-4 shrink-0">
+                                        <input
+                                            type="checkbox"
+                                            className="peer sr-only"
+                                            checked={settings.wait_for_ci}
+                                            onChange={(e) => setSettings({ ...settings, wait_for_ci: e.target.checked })}
+                                        />
+                                        <div className="peer h-6 w-11 rounded-full bg-gray-600 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full"></div>
+                                    </label>
+                                </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

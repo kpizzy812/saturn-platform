@@ -874,6 +874,7 @@ Route::get('/applications/{uuid}/settings', function (string $uuid) {
             'rollback_on_health_check_fail' => $settings->rollback_on_health_check_fail ?? true,
             'rollback_on_crash_loop' => $settings->rollback_on_crash_loop ?? true,
             'docker_images_to_keep' => $settings->docker_images_to_keep ?? 2,
+            'wait_for_ci' => $settings->wait_for_ci ?? false,
         ],
         'projectUuid' => $project->uuid,
         'projectName' => $project->name,
@@ -917,6 +918,8 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'rollback_on_health_check_fail' => 'sometimes|boolean',
         'rollback_on_crash_loop' => 'sometimes|boolean',
         'docker_images_to_keep' => 'sometimes|integer|min:1|max:20',
+        // CI integration
+        'wait_for_ci' => 'sometimes|boolean',
     ]);
 
     // Map frontend field names to application model field names
@@ -941,6 +944,7 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'rollback_on_health_check_fail' => 'rollback_on_health_check_fail',
         'rollback_on_crash_loop' => 'rollback_on_crash_loop',
         'docker_images_to_keep' => 'docker_images_to_keep',
+        'wait_for_ci' => 'wait_for_ci',
     ];
 
     $settingsUpdate = [];

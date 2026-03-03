@@ -64,6 +64,7 @@ interface ApplicationData {
     };
     // Auto-deploy fields
     is_auto_deploy_enabled?: boolean;
+    wait_for_ci?: boolean;
     auto_deploy_status?: 'automatic' | 'manual_webhook' | 'not_configured';
     has_webhook_secret?: boolean;
     manual_webhook_secret_github?: string | null;
@@ -106,6 +107,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
 
     // Auto-deploy state
     const [autoDeployEnabled, setAutoDeployEnabled] = useState(false);
+    const [waitForCi, setWaitForCi] = useState(false);
     const [showWebhookSecret, setShowWebhookSecret] = useState(false);
     const [githubApps, setGithubApps] = useState<GithubAppOption[]>([]);
     const [isLinkingApp, setIsLinkingApp] = useState(false);
@@ -145,6 +147,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     fetchBranches(data.git_repository, appId);
                 }
                 setAutoDeployEnabled(data.is_auto_deploy_enabled ?? false);
+                setWaitForCi(data.wait_for_ci ?? false);
             } else {
                 addToast('error', 'Failed to load application settings');
             }
@@ -198,6 +201,31 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
         } catch {
             setAutoDeployEnabled(!enabled);
             addToast('error', 'Failed to update auto-deploy setting');
+        }
+    };
+
+    const handleToggleWaitForCi = async (enabled: boolean) => {
+        setWaitForCi(enabled);
+        try {
+            const response = await fetch(`/web-api/applications/${service.uuid}`, {
+                method: 'PATCH',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                credentials: 'include',
+                body: JSON.stringify({ wait_for_ci: enabled }),
+            });
+            if (!response.ok) {
+                setWaitForCi(!enabled);
+                addToast('error', 'Failed to update Wait for CI setting');
+            } else {
+                addToast('success', enabled ? 'Wait for CI enabled' : 'Wait for CI disabled');
+            }
+        } catch {
+            setWaitForCi(!enabled);
+            addToast('error', 'Failed to update Wait for CI setting');
         }
     };
 
@@ -417,6 +445,8 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     app={app}
                     autoDeployEnabled={autoDeployEnabled}
                     onToggleAutoDeploy={handleToggleAutoDeploy}
+                    waitForCi={waitForCi}
+                    onToggleWaitForCi={handleToggleWaitForCi}
                     deployStatus={deployStatus}
                     showWebhookSecret={showWebhookSecret}
                     onToggleShowSecret={() => setShowWebhookSecret(!showWebhookSecret)}
@@ -739,6 +769,8 @@ function AutoDeploySection({
     app,
     autoDeployEnabled,
     onToggleAutoDeploy,
+    waitForCi,
+    onToggleWaitForCi,
     deployStatus,
     showWebhookSecret,
     onToggleShowSecret,
@@ -752,6 +784,8 @@ function AutoDeploySection({
     app: ApplicationData;
     autoDeployEnabled: boolean;
     onToggleAutoDeploy: (enabled: boolean) => void;
+    waitForCi: boolean;
+    onToggleWaitForCi: (enabled: boolean) => void;
     deployStatus: string;
     showWebhookSecret: boolean;
     onToggleShowSecret: () => void;
@@ -792,7 +826,7 @@ function AutoDeploySection({
     const status = statusConfig[deployStatus as keyof typeof statusConfig] || statusConfig.not_configured;
 
     return (
-        <div>
+        <div className="space-y-3">
             <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-medium text-foreground">Auto Deploy</h3>
                 <button
@@ -805,6 +839,27 @@ function AutoDeploySection({
                     <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${autoDeployEnabled ? 'left-[18px]' : 'left-0.5'}`} />
                 </button>
             </div>
+
+            {/* Wait for CI toggle — only shown when auto-deploy is enabled */}
+            {autoDeployEnabled && (
+                <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-foreground">Wait for CI</p>
+                        <p className="text-xs text-foreground-muted">
+                            Deploy only after all GitHub Actions pass
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => onToggleWaitForCi(!waitForCi)}
+                        role="switch"
+                        aria-checked={waitForCi}
+                        aria-label="Toggle wait for CI"
+                        className={`relative ml-3 h-5 w-9 shrink-0 rounded-full transition-colors ${waitForCi ? 'bg-primary' : 'bg-background-tertiary'}`}
+                    >
+                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${waitForCi ? 'left-[18px]' : 'left-0.5'}`} />
+                    </button>
+                </div>
+            )}
 
             <div className={`rounded-lg border ${status.borderColor} ${status.bgColor} p-4`}>
                 {/* Status indicator */}
