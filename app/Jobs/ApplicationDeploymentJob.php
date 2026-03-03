@@ -279,6 +279,15 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->source = $source->getMorphClass()::where('id', $source->getKey())->first();
         }
         $this->server = Server::find($this->application_deployment_queue->server_id);
+
+        // D2: Guard against deleted/missing server to prevent null pointer errors
+        if (! $this->server) {
+            $this->application_deployment_queue->update(['status' => ApplicationDeploymentStatus::FAILED->value]);
+            $this->fail(new \RuntimeException("Server #{$this->application_deployment_queue->server_id} not found or was deleted"));
+
+            return;
+        }
+
         $this->timeout = $this->server->settings->dynamic_timeout;
         $this->destination = $this->server->destinations()->where('id', $this->application_deployment_queue->destination_id)->first();
         $this->server = $this->mainServer = $this->destination->server;
@@ -577,6 +586,12 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 $this->initiate_canary($this->container_name, $this->stableContainerName);
             } catch (\Throwable $e) {
                 Log::error("Failed to initiate canary deployment for {$this->application->name}: {$e->getMessage()}");
+                // D9: Attempt to reset canary traffic to 0% so stable container serves all traffic
+                try {
+                    $this->update_canary_traffic(0, $this->container_name, $this->stableContainerName);
+                } catch (\Throwable $rollbackErr) {
+                    Log::error("Canary traffic rollback also failed for {$this->application->name}: {$rollbackErr->getMessage()}");
+                }
                 // Non-fatal: deployment is already marked finished, log and continue
             }
 
@@ -1101,19 +1116,25 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
                 continue;
             }
             $deployment_uuid = new Cuid2;
-            queue_application_deployment(
-                deployment_uuid: $deployment_uuid,
-                application: $this->application,
-                server: $server,
-                destination: $destination,
-                no_questions_asked: true,
-            );
-            $this->application_deployment_queue->addLogEntry("Deployment to {$server->name}. Logs: ".route('project.application.deployment.show', [
-                'project_uuid' => data_get($this->application, 'environment.project.uuid'),
-                'application_uuid' => data_get($this->application, 'uuid'),
-                'deployment_uuid' => $deployment_uuid,
-                'environment_uuid' => data_get($this->application, 'environment.uuid'),
-            ]));
+            // D5: Catch queue errors so one failed destination does not block the others
+            try {
+                queue_application_deployment(
+                    deployment_uuid: $deployment_uuid,
+                    application: $this->application,
+                    server: $server,
+                    destination: $destination,
+                    no_questions_asked: true,
+                );
+                $this->application_deployment_queue->addLogEntry("Deployment to {$server->name}. Logs: ".route('project.application.deployment.show', [
+                    'project_uuid' => data_get($this->application, 'environment.project.uuid'),
+                    'application_uuid' => data_get($this->application, 'uuid'),
+                    'deployment_uuid' => $deployment_uuid,
+                    'environment_uuid' => data_get($this->application, 'environment.uuid'),
+                ]));
+            } catch (\Throwable $e) {
+                Log::error("Failed to queue deployment to additional destination {$server->name}: {$e->getMessage()}");
+                $this->application_deployment_queue->addLogEntry("Failed to queue deployment to {$server->name}: {$e->getMessage()}");
+            }
         }
     }
 

@@ -56,7 +56,9 @@ class MysqlTransferStrategy extends AbstractTransferStrategy
                 }
             }
 
-            $command = "docker exec {$containerName} mysqldump -u root -p\"{$password}\" --single-transaction --quick --lock-tables=false {$dbName}{$tableFlags} > {$dumpPath}";
+            // B2: Pass password via MYSQL_PWD env var to avoid exposure in ps aux
+            $escapedPassword = escapeshellarg($password);
+            $command = "docker exec -e MYSQL_PWD={$escapedPassword} {$containerName} mysqldump -u root --single-transaction --quick --lock-tables=false {$dbName}{$tableFlags} > {$dumpPath}";
 
             $this->executeCommand([$command], $server, true, 3600);
 
@@ -109,7 +111,9 @@ class MysqlTransferStrategy extends AbstractTransferStrategy
                 ];
             }
 
-            $command = "docker exec -i {$containerName} mysql -u root -p\"{$password}\" {$dbName} < {$dumpPath}";
+            // B2: Pass password via MYSQL_PWD env var to avoid exposure in ps aux
+            $escapedPassword = escapeshellarg($password);
+            $command = "docker exec -i -e MYSQL_PWD={$escapedPassword} {$containerName} mysql -u root {$dbName} < {$dumpPath}";
 
             $this->executeCommand([$command], $server, true, 3600);
 
@@ -137,10 +141,13 @@ class MysqlTransferStrategy extends AbstractTransferStrategy
             $dbName = $database->mysql_database;
             $password = $database->mysql_root_password;
 
-            // Query to get tables with their sizes
-            $query = "SELECT table_name, CONCAT(ROUND(data_length / 1024 / 1024, 2), ' MB') as size, data_length as size_bytes FROM information_schema.tables WHERE table_schema = '{$dbName}' ORDER BY data_length DESC;";
+            // B4: Escape dbName to prevent SQL injection in schema query
+            $escapedDbName = str_replace(['\\', "'"], ['\\\\', "''"], $dbName);
+            $query = "SELECT table_name, CONCAT(ROUND(data_length / 1024 / 1024, 2), ' MB') as size, data_length as size_bytes FROM information_schema.tables WHERE table_schema = '{$escapedDbName}' ORDER BY data_length DESC;";
 
-            $command = "docker exec {$containerName} mysql -u root -p\"{$password}\" -N -e \"{$query}\"";
+            // B2: Pass password via MYSQL_PWD env var to avoid exposure in ps aux
+            $escapedPassword = escapeshellarg($password);
+            $command = "docker exec -e MYSQL_PWD={$escapedPassword} {$containerName} mysql -u root -N -e \"{$query}\"";
 
             $output = $this->executeCommand([$command], $server, false);
 
@@ -192,11 +199,14 @@ class MysqlTransferStrategy extends AbstractTransferStrategy
                 $escapedDbName = str_replace("'", "''", $dbName);
                 $query = "SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = '{$escapedDbName}' AND table_name IN ({$tableListStr});";
             } else {
-                // Calculate total database size
-                $query = "SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = '{$dbName}';";
+                // B4: Escape dbName to prevent SQL injection in schema query
+                $escapedDbNameFull = str_replace(['\\', "'"], ['\\\\', "''"], $dbName);
+                $query = "SELECT SUM(data_length + index_length) FROM information_schema.tables WHERE table_schema = '{$escapedDbNameFull}';";
             }
 
-            $command = "docker exec {$containerName} mysql -u root -p\"{$password}\" -N -e \"{$query}\"";
+            // B2: Pass password via MYSQL_PWD env var to avoid exposure in ps aux
+            $escapedPassword = escapeshellarg($password);
+            $command = "docker exec -e MYSQL_PWD={$escapedPassword} {$containerName} mysql -u root -N -e \"{$query}\"";
 
             $output = $this->executeCommand([$command], $server, false);
 

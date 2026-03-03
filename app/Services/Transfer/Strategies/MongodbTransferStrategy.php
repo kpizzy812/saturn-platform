@@ -87,10 +87,13 @@ class MongodbTransferStrategy extends AbstractTransferStrategy
                 'error' => null,
             ];
         } catch (\Throwable $e) {
+            // B8: Mask MongoDB URI credentials to prevent them leaking into logs/responses
+            $maskedMessage = preg_replace('/(\w+:\/\/)([^:]+):([^@]+)@/', '$1***:***@', $e->getMessage());
+
             return [
                 'success' => false,
                 'size' => 0,
-                'error' => $e->getMessage(),
+                'error' => $maskedMessage,
             ];
         }
     }
@@ -132,9 +135,12 @@ class MongodbTransferStrategy extends AbstractTransferStrategy
                 'error' => null,
             ];
         } catch (\Throwable $e) {
+            // B8: Mask MongoDB URI credentials to prevent them leaking into logs/responses
+            $maskedMessage = preg_replace('/(\w+:\/\/)([^:]+):([^@]+)@/', '$1***:***@', $e->getMessage());
+
             return [
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => $maskedMessage,
             ];
         }
     }

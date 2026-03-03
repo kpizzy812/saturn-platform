@@ -121,6 +121,17 @@ class Team extends Model implements SendsDiscord, SendsEmail, SendsPushover, Sen
             $team->webhookNotificationSettings()->create();
         });
 
+        static::creating(function ($team) {
+            // A7: Enforce team creation quota per user (skip for root user id=0)
+            $user = auth()->user();
+            if ($user && $user->id !== 0 && ! $user->isOwner()) {
+                $maxTeams = (int) config('constants.saturn.max_teams_per_user', 5);
+                if ($user->teams()->count() >= $maxTeams) {
+                    throw new \Exception("Team creation limit of {$maxTeams} reached.");
+                }
+            }
+        });
+
         static::saving(function ($team) {
             if (auth()->user()?->isMember()) {
                 throw new \Exception('You are not allowed to update this team.');

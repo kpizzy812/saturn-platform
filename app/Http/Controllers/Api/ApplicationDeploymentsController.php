@@ -176,6 +176,9 @@ class ApplicationDeploymentsController extends Controller
         );
 
         if ($result['status'] === 'queue_full') {
+            // D8: Clean up the orphaned deployment queue entry to avoid ghost records
+            ApplicationDeploymentQueue::where('deployment_uuid', $rollback_deployment_uuid)->delete();
+
             return response()->json([
                 'message' => $result['message'],
             ], 429)->header('Retry-After', '60');
