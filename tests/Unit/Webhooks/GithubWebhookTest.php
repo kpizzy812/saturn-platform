@@ -51,7 +51,7 @@ test('github ping event returns pong', function () {
 test('github push event without ref returns no branch message', function () {
     $request = makeGithubRequest(
         ['HTTP_X_GITHUB_EVENT' => 'push'],
-        ['repository' => ['full_name' => 'org/repo']]
+        ['repository' => ['full_name' => 'org/repo'], 'commits' => []]
     );
 
     $response = (new Github)->manual($request);
@@ -67,6 +67,7 @@ test('github push event parses branch from refs/heads/main', function () {
         [
             'ref' => 'refs/heads/main',
             'repository' => ['full_name' => 'nonexistent-org/nonexistent-repo'],
+            'commits' => [],
         ]
     );
 
@@ -83,6 +84,7 @@ test('github push event parses branch from refs/heads/feature-branch', function 
         [
             'ref' => 'refs/heads/feature-branch',
             'repository' => ['full_name' => 'nonexistent-org/nonexistent-repo'],
+            'commits' => [],
         ]
     );
 
@@ -99,6 +101,7 @@ test('github push with valid branch but no applications returns no applications 
         [
             'ref' => 'refs/heads/main',
             'repository' => ['full_name' => 'nonexistent-org/nonexistent-repo'],
+            'commits' => [],
         ]
     );
 

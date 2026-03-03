@@ -12,8 +12,6 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-uses(Tests\TestCase::class);
-
 // ---------------------------------------------------------------------------
 // SendMessageToDiscordJob
 // ---------------------------------------------------------------------------

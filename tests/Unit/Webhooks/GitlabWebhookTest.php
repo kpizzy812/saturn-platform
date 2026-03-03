@@ -99,6 +99,7 @@ test('gitlab push event without ref returns no branch message', function () {
         [
             'object_kind' => 'push',
             'project' => ['path_with_namespace' => 'org/repo'],
+            'commits' => [],
             // intentionally omit 'ref'
         ]
     );
@@ -142,6 +143,7 @@ test('gitlab push event parses branch from refs/heads/feature', function () {
             'object_kind' => 'push',
             'ref' => 'refs/heads/feature',
             'project' => ['path_with_namespace' => 'nonexistent-org/nonexistent-repo'],
+            'commits' => [],
         ]
     );
 
@@ -160,6 +162,7 @@ test('gitlab push uses plain branch name without refs/heads prefix', function ()
             'object_kind' => 'push',
             'ref' => 'develop',
             'project' => ['path_with_namespace' => 'nonexistent-org/nonexistent-repo'],
+            'commits' => [],
         ]
     );
 
@@ -177,6 +180,7 @@ test('gitlab push with valid branch but no applications returns no applications 
             'object_kind' => 'push',
             'ref' => 'refs/heads/main',
             'project' => ['path_with_namespace' => 'nonexistent-org/nonexistent-repo'],
+            'commits' => [],
         ]
     );
 

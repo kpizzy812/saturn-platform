@@ -13,8 +13,6 @@ use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Mockery;
 
-uses(Tests\TestCase::class);
-
 afterEach(fn () => Mockery::close());
 
 // ─── StartSentinel: class structure ──────────────────────────────────────────

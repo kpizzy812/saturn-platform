@@ -26,6 +26,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property int $rollback_error_rate_threshold
  * @property int $rollback_consecutive_failures
  * @property bool $is_auto_deploy_enabled
+ * @property bool $wait_for_ci
  * @property bool $is_preview_deployments_enabled
  * @property bool $inject_build_args_to_dockerfile
  * @property bool $is_git_submodules_enabled
@@ -62,6 +63,7 @@ class ApplicationSetting extends Model
         'inject_build_args_to_dockerfile',
         'include_source_commit_in_build',
         'is_auto_deploy_enabled',
+        'wait_for_ci',
         'is_force_https_enabled',
         'is_debug_enabled',
         'is_preview_deployments_enabled',
@@ -97,6 +99,7 @@ class ApplicationSetting extends Model
         'inject_build_args_to_dockerfile' => 'boolean',
         'include_source_commit_in_build' => 'boolean',
         'is_auto_deploy_enabled' => 'boolean',
+        'wait_for_ci' => 'boolean',
         'is_force_https_enabled' => 'boolean',
         'is_debug_enabled' => 'boolean',
         'is_preview_deployments_enabled' => 'boolean',

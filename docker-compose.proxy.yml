@@ -49,6 +49,11 @@ services:
       - --providers.file.directory=/etc/traefik/dynamic
       - --providers.file.watch=true
 
+      # Docker provider: auto-discover containers with traefik.enable=true label
+      - --providers.docker=true
+      - --providers.docker.network=saturn
+      - --providers.docker.exposedByDefault=false
+
       # Let's Encrypt (HTTP-01 challenge via http entrypoint)
       - --certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-admin@saturn.ac}
       - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
@@ -61,6 +66,8 @@ services:
       # Healthcheck uses docker exec / internal network only.
 
     volumes:
+      # Docker socket: required for Docker provider (read-only, never writable)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
       # Dynamic routing config (managed by setup-proxy.sh, auto-reloaded by Traefik)
       - /data/saturn/proxy/dynamic:/etc/traefik/dynamic:ro
       # ACME certificates storage (must survive container restarts)

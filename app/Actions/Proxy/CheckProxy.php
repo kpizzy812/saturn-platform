@@ -157,16 +157,33 @@ class CheckProxy
     }
 
     /**
+     * Validate that a port number is within the valid TCP/IP range (1-65535).
+     * Throws InvalidArgumentException if the port is invalid.
+     */
+    private function validatePort(mixed $port): int
+    {
+        $portInt = (int) $port;
+        if ($portInt < 1 || $portInt > 65535) {
+            throw new \InvalidArgumentException("Invalid port number: {$port}");
+        }
+
+        return $portInt;
+    }
+
+    /**
      * Build the SSH command for checking a specific port
      */
     private function buildPortCheckCommands(Server $server, string $port, string $proxyContainerName): array
     {
+        // Validate and cast port to integer to prevent command injection
+        $safePort = $this->validatePort($port);
+
         // First check if our own proxy is using this port (which is fine)
         $getProxyContainerId = "docker ps -a --filter name=$proxyContainerName --format '{{.ID}}'";
         $checkProxyPortScript = "
             CONTAINER_ID=\$($getProxyContainerId);
             if [ ! -z \"\$CONTAINER_ID\" ]; then
-                if docker inspect \$CONTAINER_ID --format '{{json .NetworkSettings.Ports}}' | grep -q '\"$port/tcp\"'; then
+                if docker inspect \$CONTAINER_ID --format '{{json .NetworkSettings.Ports}}' | grep -q '\"$safePort/tcp\"'; then
                     echo 'proxy_using_port';
                     exit 0;
                 fi;
@@ -176,15 +193,15 @@ class CheckProxy
         // Command sets for different ways to check ports, ordered by preference
         $portCheckScript = "
             $checkProxyPortScript
-            
+
             # Try ss command first
             if command -v ss >/dev/null 2>&1; then
-                ss_output=\$(ss -Htuln state listening sport = :$port 2>/dev/null);
+                ss_output=\$(ss -Htuln state listening sport = :$safePort 2>/dev/null);
                 if [ -z \"\$ss_output\" ]; then
                     echo 'port_free';
                     exit 0;
                 fi;
-                count=\$(echo \"\$ss_output\" | grep -c ':$port ');
+                count=\$(echo \"\$ss_output\" | grep -c ':$safePort ');
                 if [ \$count -eq 0 ]; then
                     echo 'port_free';
                     exit 0;
@@ -197,10 +214,10 @@ class CheckProxy
                 echo \"port_conflict|\$ss_output\";
                 exit 0;
             fi;
-            
+
             # Try netstat as fallback
             if command -v netstat >/dev/null 2>&1; then
-                netstat_output=\$(netstat -tuln 2>/dev/null | grep ':$port ');
+                netstat_output=\$(netstat -tuln 2>/dev/null | grep ':$safePort ');
                 if [ -z \"\$netstat_output\" ]; then
                     echo 'port_free';
                     exit 0;
@@ -217,9 +234,9 @@ class CheckProxy
                 echo \"port_conflict|\$netstat_output\";
                 exit 0;
             fi;
-            
+
             # Final fallback using nc
-            if nc -z -w1 127.0.0.1 $port >/dev/null 2>&1; then
+            if nc -z -w1 127.0.0.1 $safePort >/dev/null 2>&1; then
                 echo 'port_conflict|nc_detected';
             else
                 echo 'port_free';
