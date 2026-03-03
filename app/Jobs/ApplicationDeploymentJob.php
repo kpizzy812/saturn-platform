@@ -46,6 +46,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -342,7 +343,24 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // Check if deployment requires approval
         if ($this->application_deployment_queue->requires_approval) {
             if ($this->application_deployment_queue->approval_status === 'pending') {
-                $this->application_deployment_queue->addLogEntry('Deployment is waiting for approval. Please approve via admin panel or API.');
+                // Guard against infinite release loops: track how many times we have released
+                // this deployment back to the queue while waiting for approval.
+                // After MAX_APPROVAL_WAIT_RELEASES attempts (~30 minutes) we give up and fail.
+                $approvalReleaseKey = 'deploy_approval_release_count_'.$this->deployment_uuid;
+                $approvalReleaseCount = (int) Cache::get($approvalReleaseKey, 0) + 1;
+                $maxApprovalReleases = 30; // 30 × 60 s = 30 minutes maximum wait
+
+                if ($approvalReleaseCount > $maxApprovalReleases) {
+                    Cache::forget($approvalReleaseKey);
+                    $this->application_deployment_queue->addLogEntry('Deployment timed out waiting for approval after 30 minutes. Marking as failed.');
+                    $this->fail('Deployment timed out waiting for approval.');
+
+                    return;
+                }
+
+                Cache::put($approvalReleaseKey, $approvalReleaseCount, now()->addHours(2));
+
+                $this->application_deployment_queue->addLogEntry("Deployment is waiting for approval (attempt {$approvalReleaseCount}/{$maxApprovalReleases}). Please approve via admin panel or API.");
                 $this->application_deployment_queue->update([
                     'status' => ApplicationDeploymentStatus::QUEUED->value,
                 ]);
@@ -399,8 +417,25 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         });
 
         if (! $canProceed) {
-            // Another deployment is already running — re-queue with backoff
-            $this->application_deployment_queue->addLogEntry('Another deployment is already in progress. Waiting...');
+            // Guard against infinite release loops: track how many times we have waited
+            // for a concurrent deployment to finish.
+            // After MAX_CONCURRENT_WAIT_RELEASES attempts (~10 minutes) we give up and fail
+            // rather than endlessly queuing behind a potentially stuck deployment.
+            $concurrentReleaseKey = 'deploy_concurrent_release_count_'.$this->deployment_uuid;
+            $concurrentReleaseCount = (int) Cache::get($concurrentReleaseKey, 0) + 1;
+            $maxConcurrentReleases = 20; // 20 × 30 s = 10 minutes maximum wait
+
+            if ($concurrentReleaseCount > $maxConcurrentReleases) {
+                Cache::forget($concurrentReleaseKey);
+                $this->application_deployment_queue->addLogEntry('Deployment timed out after waiting 10 minutes for a concurrent deployment to finish. Marking as failed.');
+                $this->fail('Deployment timed out waiting for a concurrent deployment to complete.');
+
+                return;
+            }
+
+            Cache::put($concurrentReleaseKey, $concurrentReleaseCount, now()->addHours(1));
+
+            $this->application_deployment_queue->addLogEntry("Another deployment is already in progress. Waiting... (attempt {$concurrentReleaseCount}/{$maxConcurrentReleases})");
             $this->release(30);
 
             return;

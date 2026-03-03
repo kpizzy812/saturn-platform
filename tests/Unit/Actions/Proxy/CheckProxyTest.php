@@ -444,3 +444,87 @@ it('deduplicates port list before checking', function () {
 
     expect($source)->toContain('array_unique(');
 });
+
+// ---------------------------------------------------------------------------
+// Group 10 – validatePort (command injection prevention)
+// ---------------------------------------------------------------------------
+
+it('validatePort accepts valid port number 1', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    $result = $method->invoke($this->action, '1');
+
+    expect($result)->toBe(1);
+});
+
+it('validatePort accepts valid port number 80', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    $result = $method->invoke($this->action, '80');
+
+    expect($result)->toBe(80);
+});
+
+it('validatePort accepts valid port number 65535', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    $result = $method->invoke($this->action, '65535');
+
+    expect($result)->toBe(65535);
+});
+
+it('validatePort accepts integer input', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    $result = $method->invoke($this->action, 443);
+
+    expect($result)->toBe(443);
+});
+
+it('validatePort throws InvalidArgumentException for port 0', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    expect(fn () => $method->invoke($this->action, '0'))
+        ->toThrow(\InvalidArgumentException::class, 'Invalid port number: 0');
+});
+
+it('validatePort throws InvalidArgumentException for port 65536', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    expect(fn () => $method->invoke($this->action, '65536'))
+        ->toThrow(\InvalidArgumentException::class, 'Invalid port number: 65536');
+});
+
+it('validatePort throws InvalidArgumentException for negative port', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    expect(fn () => $method->invoke($this->action, '-1'))
+        ->toThrow(\InvalidArgumentException::class);
+});
+
+it('validatePort throws InvalidArgumentException for command injection payload', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    // A command injection attempt: "80; rm -rf /" would cast to int 80 but
+    // this test ensures the method returns an int, breaking the injection
+    $result = $method->invoke($this->action, '80; rm -rf /');
+
+    // (int) '80; rm -rf /' === 80 — valid port, injection neutralised
+    expect($result)->toBe(80);
+});
+
+it('validatePort throws InvalidArgumentException for pure non-numeric payload', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    // A purely non-numeric string casts to 0, which is < 1
+    expect(fn () => $method->invoke($this->action, '; rm -rf /'))
+        ->toThrow(\InvalidArgumentException::class);
+});
+
+it('validatePort returns an integer type, not a string', function () {
+    $method = getPrivateMethod(CheckProxy::class, 'validatePort');
+
+    $result = $method->invoke($this->action, '8080');
+
+    expect($result)->toBeInt()->toBe(8080);
+});

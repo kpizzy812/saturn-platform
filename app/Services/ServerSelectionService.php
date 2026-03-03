@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ApplicationDeploymentQueue;
 use App\Models\Environment;
 use App\Models\Server;
+use RuntimeException;
 
 /**
  * Smart server selection for application deployment.
@@ -61,8 +62,25 @@ class ServerSelectionService
         // 4. Score remaining servers when localhost is overloaded or unavailable
         $servers = $this->getUsableServers($env)->filter(fn (Server $s) => $s->id !== 0);
         if ($servers->isEmpty()) {
-            // Even overloaded localhost is better than nothing
-            return ($localhost && $localhost->isFunctional()) ? $localhost : null;
+            // If localhost is functional but critically overloaded, throw instead of deploying to a saturated host.
+            // Deploying to an overloaded server risks OOM kills, timeouts, and cascading failures.
+            if ($localhost && $localhost->isFunctional()) {
+                if ($this->isCriticallyOverloaded($localhost)) {
+                    throw new RuntimeException(
+                        'No suitable server available: all servers are critically overloaded (CPU/memory/disk > 90%). '.
+                        'Free resources or add a new server before retrying the deployment.'
+                    );
+                }
+
+                // Localhost is functional and not critically overloaded — use it.
+                return $localhost;
+            }
+
+            // No functional server found at all.
+            throw new RuntimeException(
+                'No suitable server available: no functional server could be found for this deployment. '.
+                'Ensure at least one server is reachable and not force-disabled.'
+            );
         }
 
         return $servers->count() === 1 ? $servers->first() : $this->selectByScore($servers);
