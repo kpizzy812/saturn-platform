@@ -208,7 +208,8 @@ class TransferDatabaseDataAction
             $targetPort = escapeshellarg((string) ($targetServer->port ?? 22));
 
             // Using rsync for better reliability and progress
-            $rsyncCommand = "rsync -avz --progress -e 'ssh -p {$targetPort} -o StrictHostKeyChecking=no' {$sourcePath} {$targetUser}@{$targetIp}:{$targetPath}";
+            // Security: accept-new accepts unknown hosts on first connect (TOFU) but rejects changed keys, preventing MITM on subsequent transfers
+            $rsyncCommand = "rsync -avz --progress -e 'ssh -p {$targetPort} -o StrictHostKeyChecking=accept-new' {$sourcePath} {$targetUser}@{$targetIp}:{$targetPath}";
 
             instant_remote_process([$rsyncCommand], $sourceServer, true, false, 3600, disableMultiplexing: true);
 

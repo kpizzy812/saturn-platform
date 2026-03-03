@@ -52,7 +52,7 @@ class Bitbucket extends Controller
                 $pull_request_html_url = data_get($payload, 'pullrequest.links.html.href');
                 $commit = data_get($payload, 'pullrequest.source.commit.hash');
             }
-            $applications = Application::with(['destination.server'])->where('git_repository', 'like', "%$full_name%");
+            $applications = Application::with(['destination.server'])->where('git_repository', 'like', '%'.str_replace(['%', '_'], ['\\%', '\\_'], (string) $full_name).'%');
             $applications = $applications->where('git_branch', $branch)->get();
             if ($applications->isEmpty()) {
                 return response([
@@ -62,8 +62,28 @@ class Bitbucket extends Controller
             }
             foreach ($applications as $application) {
                 $webhook_secret = data_get($application, 'manual_webhook_secret_bitbucket');
+                // Security: Reject if webhook secret is not configured to prevent bypass
+                if (empty($webhook_secret)) {
+                    $return_payloads->push([
+                        'application' => $application->name,
+                        'status' => 'failed',
+                        'message' => 'Webhook secret not configured.',
+                    ]);
+
+                    continue;
+                }
                 $payload = $request->getContent();
 
+                // Security: Validate signature header format before parsing
+                if (! str_contains($x_bitbucket_token, '=')) {
+                    $return_payloads->push([
+                        'application' => $application->name,
+                        'status' => 'failed',
+                        'message' => 'Invalid signature format.',
+                    ]);
+
+                    continue;
+                }
                 [$algo, $hash] = explode('=', $x_bitbucket_token, 2);
                 $payloadHash = hash_hmac($algo, $payload, $webhook_secret);
                 // Security: Always validate signature - never skip in dev mode
