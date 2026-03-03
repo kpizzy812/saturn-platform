@@ -5,6 +5,7 @@ namespace App\Traits\Deployment;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Models\ApplicationDeploymentQueue;
 use Illuminate\Support\Facades\Log;
+use Visus\Cuid2\Cuid2;
 
 /**
  * Trait for handling automatic rollback logic during deployment failures.
@@ -70,6 +71,7 @@ trait HandlesAutoRollback
         try {
             queue_application_deployment(
                 application: $this->application,
+                deployment_uuid: new Cuid2,
                 server: $this->server,
                 destination: $this->destination,
                 commit: $lastSuccessful->commit,

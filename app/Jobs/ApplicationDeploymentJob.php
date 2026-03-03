@@ -279,15 +279,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         if ($source) {
             $this->source = $source->getMorphClass()::where('id', $source->getKey())->first();
         }
-        $this->server = Server::find($this->application_deployment_queue->server_id);
+        $foundServer = Server::find($this->application_deployment_queue->server_id);
 
         // D2: Guard against deleted/missing server to prevent null pointer errors
-        if (! $this->server) {
+        if ($foundServer === null) {
             $this->application_deployment_queue->update(['status' => ApplicationDeploymentStatus::FAILED->value]);
             $this->fail(new \RuntimeException("Server #{$this->application_deployment_queue->server_id} not found or was deleted"));
 
             return;
         }
+        $this->server = $foundServer;
 
         $this->timeout = $this->server->settings->dynamic_timeout;
         $this->destination = $this->server->destinations()->where('id', $this->application_deployment_queue->destination_id)->first();

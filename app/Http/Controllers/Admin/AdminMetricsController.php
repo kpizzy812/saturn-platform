@@ -203,8 +203,11 @@ class AdminMetricsController extends Controller
             ->keyBy('team_id');
 
         return $teams->map(function ($team) use ($appCounts, $dbCounts, $deploymentStats) {
-            $totalDeploys = (int) ($deploymentStats->get($team->id)?->total ?? 0);
-            $successDeploys = (int) ($deploymentStats->get($team->id)?->success_count ?? 0);
+            $deployStats = $deploymentStats->get($team->id);
+            $totalDeploys = (int) ($deployStats !== null ? $deployStats->total : 0);
+            $successDeploys = (int) ($deployStats !== null ? $deployStats->success_count : 0);
+            $appStat = $appCounts->get($team->id);
+            $dbStat = $dbCounts->get($team->id);
 
             return [
                 'id' => $team->id,
@@ -212,8 +215,8 @@ class AdminMetricsController extends Controller
                 'members_count' => $team->members_count,
                 'servers_count' => $team->servers_count,
                 'projects_count' => $team->projects_count,
-                'applications' => (int) ($appCounts->get($team->id)?->cnt ?? 0),
-                'databases' => (int) ($dbCounts->get($team->id)?->cnt ?? 0),
+                'applications' => (int) ($appStat !== null ? $appStat->cnt : 0),
+                'databases' => (int) ($dbStat !== null ? $dbStat->cnt : 0),
                 'deployments_30d' => $totalDeploys,
                 'success_rate' => $totalDeploys > 0 ? round(($successDeploys / $totalDeploys) * 100, 1) : 0,
                 'quotas' => [
