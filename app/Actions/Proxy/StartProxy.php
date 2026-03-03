@@ -8,8 +8,8 @@ use App\Events\ProxyStatusChangedUI;
 use App\Models\Server;
 use Lorisleiva\Actions\Concerns\AsAction;
 use Spatie\Activitylog\Contracts\Activity;
-use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
+use Symfony\Component\Yaml\Yaml;
 
 class StartProxy
 {
@@ -40,7 +40,7 @@ class StartProxy
         try {
             Yaml::parse($configuration);
         } catch (ParseException $e) {
-            throw new \Exception('Invalid proxy configuration YAML: ' . $e->getMessage());
+            throw new \Exception('Invalid proxy configuration YAML: '.$e->getMessage());
         }
 
         SaveProxyConfiguration::run($server, $configuration);
