@@ -15,7 +15,6 @@ use App\Actions\Database\StopDatabase;
 use App\Models\Server;
 use App\Models\StandalonePostgresql;
 use Lorisleiva\Actions\Concerns\AsAction;
-use Mockery;
 
 afterEach(fn () => Mockery::close());
 
