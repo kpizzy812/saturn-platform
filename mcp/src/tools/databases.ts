@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SaturnClient } from '../client.js';
+import { summarizeDatabases } from '../helpers.js';
 
 export function registerDatabaseTools(server: McpServer, client: SaturnClient): void {
     // ── Read ──────────────────────────────────────────────────────────────
@@ -9,12 +10,14 @@ export function registerDatabaseTools(server: McpServer, client: SaturnClient): 
         'saturn_list_databases',
         {
             title: 'List Databases',
-            description: 'List all databases (PostgreSQL, MySQL, MongoDB, Redis, etc.) in Saturn.',
+            description:
+                'List all databases — PostgreSQL, MySQL, MongoDB, Redis, etc. (compact summary). ' +
+                'Use saturn_get_database for full details of a specific database.',
             inputSchema: z.object({}),
         },
         async () => {
-            const data = await client.get('/databases');
-            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+            const data = await client.get<any[]>('/databases');
+            return { content: [{ type: 'text', text: JSON.stringify(summarizeDatabases(data), null, 2) }] };
         },
     );
 

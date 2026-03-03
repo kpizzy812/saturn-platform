@@ -1,18 +1,21 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SaturnClient } from '../client.js';
+import { summarizeServers } from '../helpers.js';
 
 export function registerServerTools(server: McpServer, client: SaturnClient): void {
     server.registerTool(
         'saturn_list_servers',
         {
             title: 'List Servers',
-            description: 'List all servers registered in Saturn Platform.',
+            description:
+                'List all servers registered in Saturn Platform (compact summary). ' +
+                'Use saturn_get_server for full details of a specific server.',
             inputSchema: z.object({}),
         },
         async () => {
-            const data = await client.get('/servers');
-            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+            const data = await client.get<any[]>('/servers');
+            return { content: [{ type: 'text', text: JSON.stringify(summarizeServers(data), null, 2) }] };
         },
     );
 

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SaturnClient } from '../client.js';
+import { summarizeApps } from '../helpers.js';
 
 export function registerApplicationTools(server: McpServer, client: SaturnClient): void {
     // ── Read ──────────────────────────────────────────────────────────────
@@ -9,12 +10,14 @@ export function registerApplicationTools(server: McpServer, client: SaturnClient
         'saturn_list_applications',
         {
             title: 'List Applications',
-            description: 'List all Saturn applications accessible with the current API token.',
+            description:
+                'List all Saturn applications (compact summary). ' +
+                'Use saturn_get_application for full details of a specific app.',
             inputSchema: z.object({}),
         },
         async () => {
-            const data = await client.get('/applications');
-            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+            const data = await client.get<any[]>('/applications');
+            return { content: [{ type: 'text', text: JSON.stringify(summarizeApps(data), null, 2) }] };
         },
     );
 

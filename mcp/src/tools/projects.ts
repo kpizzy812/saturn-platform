@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SaturnClient } from '../client.js';
+import { summarizeApps, summarizeServers, summarizeDatabases } from '../helpers.js';
 
 export function registerProjectTools(server: McpServer, client: SaturnClient): void {
     server.registerTool(
@@ -8,21 +9,26 @@ export function registerProjectTools(server: McpServer, client: SaturnClient): v
         {
             title: 'Saturn Overview',
             description:
-                'START HERE. Returns a full snapshot of the Saturn platform: ' +
-                'all applications (with uuid, name, status, fqdn), ' +
-                'all servers (with uuid, name, ip, status), ' +
-                'and all databases (with uuid, name, type, status). ' +
+                'START HERE. Returns a compact snapshot of the Saturn platform: ' +
+                'all applications (uuid, name, status, fqdn), ' +
+                'all servers (uuid, name, ip, status), ' +
+                'and all databases (uuid, name, type, status). ' +
                 'Use this first to find UUIDs before calling any other tool. ' +
+                'For full details on any resource, use the corresponding get_* tool. ' +
                 'Hierarchy: Project → Environment → Application/Database/Service.',
             inputSchema: z.object({}),
         },
         async () => {
             const [applications, servers, databases] = await Promise.all([
-                client.get('/applications'),
-                client.get('/servers'),
-                client.get('/databases'),
+                client.get<any[]>('/applications'),
+                client.get<any[]>('/servers'),
+                client.get<any[]>('/databases'),
             ]);
-            const overview = { applications, servers, databases };
+            const overview = {
+                applications: summarizeApps(applications),
+                servers: summarizeServers(servers),
+                databases: summarizeDatabases(databases),
+            };
             return { content: [{ type: 'text', text: JSON.stringify(overview, null, 2) }] };
         },
     );
