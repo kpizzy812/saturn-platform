@@ -11,15 +11,13 @@
 use App\Http\Controllers\Webhook\Github;
 use Illuminate\Http\Request;
 
-uses(Tests\TestCase::class);
-
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
 /**
  * Build an Illuminate Request mimicking a GitHub webhook POST.
  *
  * @param  array<string, string>  $serverVars  HTTP server vars (headers become HTTP_* keys)
- * @param  array<string, mixed>   $payload     JSON body
+ * @param  array<string, mixed>  $payload  JSON body
  */
 function makeGithubRequest(array $serverVars = [], array $payload = []): Request
 {

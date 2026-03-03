@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\PrivateKey;
-use Illuminate\Encryption\Encrypter;
 
 // Security regression tests: SSH private key encryption at rest.
 // Verifies that the PrivateKey model encrypts data in the DB via Laravel's

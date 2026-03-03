@@ -93,7 +93,7 @@ trait HandlesContainerOperations
                         );
                         try {
                             $this->execute_remote_command(
-                                ["docker start ".escapeshellarg($oldContainerName), 'hidden' => true, 'ignore_errors' => true]
+                                ['docker start '.escapeshellarg($oldContainerName), 'hidden' => true, 'ignore_errors' => true]
                             );
                             $this->application_deployment_queue->addLogEntry(
                                 "Previous container {$oldContainerName} restarted successfully."

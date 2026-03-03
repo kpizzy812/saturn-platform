@@ -17,10 +17,12 @@ import { registerDatabaseTools } from './tools/databases.js';
 import { registerDeploymentTools } from './tools/deployments.js';
 import { registerProjectTools } from './tools/projects.js';
 import { registerServerTools } from './tools/servers.js';
+import { registerServiceTools } from './tools/services.js';
+import { registerTeamTools } from './tools/teams.js';
 
 const server = new McpServer({
     name: 'saturn',
-    version: '0.3.0',
+    version: '0.4.0',
 });
 
 const cliArgs = parseCliArgs();
@@ -38,11 +40,13 @@ registerDeploymentTools(server, client);
 registerServerTools(server, client);
 registerProjectTools(server, client);
 registerDatabaseTools(server, client);
+registerServiceTools(server, client);
+registerTeamTools(server, client);
 
 async function main() {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error(`[saturn-mcp] v0.3.0 connected to ${cliArgs.url ?? process.env.SATURN_API_URL ?? 'saturn.ac'}`);
+    console.error(`[saturn-mcp] v0.4.0 connected to ${cliArgs.url ?? process.env.SATURN_API_URL ?? 'saturn.ac'}`);
 }
 
 main().catch((err) => {

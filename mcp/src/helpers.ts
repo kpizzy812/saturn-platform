@@ -123,3 +123,31 @@ export function summarizeServers(servers: any[]): ServerSummary[] {
 export function summarizeDatabases(databases: any[]): DatabaseSummary[] {
     return Array.isArray(databases) ? databases.map(summarizeDatabase) : [];
 }
+
+export interface ServiceSummary {
+    uuid: string;
+    name: string;
+    description: string | null;
+    status: string | null;
+    environment_id: number | null;
+    server: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+export function summarizeService(svc: any): ServiceSummary {
+    return {
+        uuid: svc.uuid ?? '',
+        name: svc.name ?? '',
+        description: svc.description ?? null,
+        status: svc.status ?? null,
+        environment_id: svc.environment_id ?? null,
+        server: svc.destination?.server?.name ?? null,
+        created_at: svc.created_at ?? null,
+        updated_at: svc.updated_at ?? null,
+    };
+}
+
+export function summarizeServices(services: any[]): ServiceSummary[] {
+    return Array.isArray(services) ? services.map(summarizeService) : [];
+}

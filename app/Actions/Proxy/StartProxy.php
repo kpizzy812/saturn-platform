@@ -62,7 +62,7 @@ class StartProxy
             $commands = $commands->merge([
                 "mkdir -p $escaped_dynamic_path",
                 "cd $escaped_proxy_path",
-                "echo ".escapeshellarg($caddyfile)." > $escaped_caddyfile_path",
+                'echo '.escapeshellarg($caddyfile)." > $escaped_caddyfile_path",
                 "echo 'Creating required Docker Compose file.'",
                 "echo 'Pulling docker image.'",
                 'docker compose pull',

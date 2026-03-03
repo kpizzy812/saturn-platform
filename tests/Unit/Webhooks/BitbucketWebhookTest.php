@@ -13,15 +13,13 @@
 use App\Http\Controllers\Webhook\Bitbucket;
 use Illuminate\Http\Request;
 
-uses(Tests\TestCase::class);
-
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
 /**
  * Build an Illuminate Request mimicking a Bitbucket webhook POST.
  *
- * @param  string                $eventKey  Value for x-event-key header
- * @param  array<string, mixed>  $payload   JSON body
+ * @param  string  $eventKey  Value for x-event-key header
+ * @param  array<string, mixed>  $payload  JSON body
  */
 function makeBitbucketRequest(string $eventKey, array $payload = []): Request
 {

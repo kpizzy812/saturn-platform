@@ -65,4 +65,29 @@ export class SaturnClient {
         }
         return res.json() as Promise<T>;
     }
+
+    async patch<T>(path: string, body?: unknown): Promise<T> {
+        const res = await fetch(`${this.baseUrl}/api/v1${path}`, {
+            method: 'PATCH',
+            headers: this.headers(),
+            body: body !== undefined ? JSON.stringify(body) : undefined,
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Saturn API ${res.status} on PATCH ${path}: ${text}`);
+        }
+        return res.json() as Promise<T>;
+    }
+
+    async delete<T>(path: string): Promise<T> {
+        const res = await fetch(`${this.baseUrl}/api/v1${path}`, {
+            method: 'DELETE',
+            headers: this.headers(),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(`Saturn API ${res.status} on DELETE ${path}: ${text}`);
+        }
+        return res.json() as Promise<T>;
+    }
 }

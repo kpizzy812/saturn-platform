@@ -65,7 +65,7 @@ class DiskSpaceCriticalNotification extends CustomEmailNotification
         return new PushoverMessage(
             title: 'CRITICAL disk usage — deployments blocked',
             level: 'error',
-            message: "Server '{$this->server->name}' CRITICAL disk usage!<br/><br/><b>Disk usage:</b> {$this->disk_usage}%.<br/><b>Threshold:</b> ".self::CRITICAL_THRESHOLD."%.<br/>New deployments are blocked. Free disk space immediately.",
+            message: "Server '{$this->server->name}' CRITICAL disk usage!<br/><br/><b>Disk usage:</b> {$this->disk_usage}%.<br/><b>Threshold:</b> ".self::CRITICAL_THRESHOLD.'%.<br/>New deployments are blocked. Free disk space immediately.',
             buttons: [
                 'Manage server' => base_url().'/server/'.$this->server->uuid.'#advanced',
             ],

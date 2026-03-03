@@ -14,15 +14,13 @@
 use App\Http\Controllers\Webhook\Gitlab;
 use Illuminate\Http\Request;
 
-uses(Tests\TestCase::class);
-
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
 /**
  * Build an Illuminate Request mimicking a GitLab webhook POST.
  *
  * @param  array<string, string>  $serverVars  HTTP server vars
- * @param  array<string, mixed>   $payload     JSON body (object_kind goes here)
+ * @param  array<string, mixed>  $payload  JSON body (object_kind goes here)
  */
 function makeGitlabRequest(array $serverVars = [], array $payload = []): Request
 {

@@ -805,7 +805,7 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         Sleep::for(3)->seconds();
 
         $runningCheck = instant_remote_process(
-            ["docker ps --filter name=".escapeshellarg($this->container_name)." --filter status=running -q"],
+            ['docker ps --filter name='.escapeshellarg($this->container_name).' --filter status=running -q'],
             $this->server,
             throwError: false
         );
