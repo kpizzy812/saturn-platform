@@ -6,7 +6,7 @@ Allows AI agents (Claude Code, Cursor, Claude Desktop) to deploy apps, check log
 
 ### 1. Create an API token
 
-Go to **Saturn UI → Settings → Tokens → Create token**, select abilities (**read** + **deploy**), copy the token.
+Go to **Saturn UI → Settings → MCP / AI Tools** — create a token and copy the ready-made install command for your tool.
 
 ### 2. Add to your AI tool
 
@@ -55,15 +55,17 @@ Edit `~/.claude/claude_desktop_config.json`:
 
 ---
 
-## Tools (30)
+## Tools (96)
 
 | Domain | Tools |
 |--------|-------|
-| Applications | `saturn_list_applications`, `saturn_get_application`, `saturn_get_application_logs`, `saturn_list_application_envs`, `saturn_set_application_env`, `saturn_start_application`, `saturn_stop_application`, `saturn_restart_application` |
-| Deployments | `saturn_deploy`, `saturn_list_deployments`, `saturn_get_deployment`, `saturn_get_deployment_logs`, `saturn_list_application_deployments`, `saturn_cancel_deployment`, `saturn_approve_deployment`, `saturn_analyze_deployment`, `saturn_get_deployment_analysis` |
-| Servers | `saturn_list_servers`, `saturn_get_server`, `saturn_validate_server`, `saturn_get_server_metrics` |
-| Projects | `saturn_overview`, `saturn_list_projects`, `saturn_get_project`, `saturn_get_project_environment` |
-| Databases | `saturn_list_databases`, `saturn_get_database`, `saturn_get_database_logs`, `saturn_start_database`, `saturn_stop_database`, `saturn_restart_database` |
+| Applications | list, get, logs, create, update, delete, envs (list/set/delete/bulk), start, stop, restart, rollback, rollback-events |
+| Deployments | deploy, list, get, logs, list-by-app, cancel, approve, reject, pending-approvals, analyze, get-analysis, code-review, get-code-review |
+| Servers | list, get, validate, metrics, create, update, delete, reboot, domains, resources, hetzner-locations, hetzner-types, hetzner-create |
+| Projects | overview, list, get, environment, create, update, delete, list-envs, create-env, delete-env |
+| Databases | list, get, logs, create (8 types), update, delete, start, stop, restart, backups CRUD, restore, backup executions |
+| Services | list, get, logs, create, update, delete, envs (list/set/delete/bulk), start, stop, restart, healthcheck |
+| Teams | list-teams, members, activities, SSH keys CRUD, GitHub Apps, repositories, branches, webhooks CRUD, alerts CRUD |
 
 **Start with `saturn_overview`** — it returns all apps, servers, and databases with their UUIDs.
 

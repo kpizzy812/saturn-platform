@@ -2450,3 +2450,10 @@ Route::get('/settings/auto-provisioning', function () {
 
 Route::post('/settings/auto-provisioning', [\App\Http\Controllers\Web\WebAutoProvisioningController::class, 'update'])
     ->name('settings.auto-provisioning.update');
+
+// MCP / AI Tools Setup
+Route::get('/settings/mcp', function () {
+    return Inertia::render('Settings/MCP', [
+        'saturn_url' => rtrim(config('app.url'), '/'),
+    ]);
+})->name('settings.mcp');
