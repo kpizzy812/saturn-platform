@@ -1,8 +1,15 @@
 import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Modal, ModalFooter, Badge, useToast } from '@/components/ui';
-import { Terminal, Copy, Check, Plus, ExternalLink } from 'lucide-react';
+import { Terminal, Copy, Check, Plus, ExternalLink, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const ABILITIES: { id: string; label: string; description: string; required?: boolean }[] = [
+    { id: 'read',           label: 'read',           description: 'List and view all resources', required: true },
+    { id: 'deploy',         label: 'deploy',          description: 'Deploy, start/stop/restart, rollback, approve', required: true },
+    { id: 'write',          label: 'write',           description: 'Create, update, delete resources, manage envs and backups', required: true },
+    { id: 'read:sensitive', label: 'read:sensitive',  description: 'Read env var values (otherwise they are masked)' },
+];
 
 interface Props {
     saturn_url: string;
@@ -42,6 +49,7 @@ export default function MCPSettings({ saturn_url }: Props) {
     const [showCreateModal, setShowCreateModal] = React.useState(false);
     const [creating, setCreating] = React.useState(false);
     const [newTokenName, setNewTokenName] = React.useState('MCP Token');
+    const [selectedAbilities, setSelectedAbilities] = React.useState<string[]>(['read', 'deploy', 'write']);
     const [copied, setCopied] = React.useState<string | null>(null);
 
     const snippets = buildSnippets(saturn_url, token);
@@ -70,7 +78,7 @@ export default function MCPSettings({ saturn_url }: Props) {
                     'X-CSRF-TOKEN': csrfToken,
                     'X-XSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ name: newTokenName || 'MCP Token', abilities: ['read', 'deploy'] }),
+                body: JSON.stringify({ name: newTokenName || 'MCP Token', abilities: selectedAbilities }),
             });
 
             if (!response.ok) {
@@ -134,7 +142,9 @@ export default function MCPSettings({ saturn_url }: Props) {
                             <CardTitle className="text-base">Get an API Token</CardTitle>
                         </div>
                         <CardDescription>
-                            Paste an existing token or generate a new one with <Badge variant="outline">read</Badge> + <Badge variant="outline">deploy</Badge> abilities.
+                            Paste an existing token or generate a new one. For full access to all 96 tools, select{' '}
+                            <Badge variant="outline">read</Badge> + <Badge variant="outline">deploy</Badge> + <Badge variant="outline">write</Badge>.
+                            Add <Badge variant="outline">read:sensitive</Badge> to also read env var values.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -257,9 +267,35 @@ export default function MCPSettings({ saturn_url }: Props) {
                                 autoFocus
                             />
                         </div>
-                        <div className="flex gap-2">
-                            <Badge variant="outline">read</Badge>
-                            <Badge variant="outline">deploy</Badge>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">Abilities</label>
+                            {ABILITIES.map(ability => (
+                                <label key={ability.id} className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedAbilities.includes(ability.id)}
+                                        onChange={e => {
+                                            if (ability.required) return;
+                                            setSelectedAbilities(prev =>
+                                                e.target.checked
+                                                    ? [...prev, ability.id]
+                                                    : prev.filter(a => a !== ability.id)
+                                            );
+                                        }}
+                                        disabled={ability.required}
+                                        className="mt-0.5 h-4 w-4 rounded border-border"
+                                    />
+                                    <div>
+                                        <span className="text-sm font-mono text-foreground">{ability.label}</span>
+                                        {ability.required && <span className="ml-1.5 text-xs text-foreground-muted">(required)</span>}
+                                        <p className="text-xs text-foreground-muted">{ability.description}</p>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+                        <div className="flex items-start gap-2 rounded-lg bg-background-secondary p-3 text-xs text-foreground-muted">
+                            <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                            <span>For full access to all 96 MCP tools, keep <code className="font-mono">read + deploy + write</code> selected.</span>
                         </div>
                     </div>
                     <ModalFooter>
