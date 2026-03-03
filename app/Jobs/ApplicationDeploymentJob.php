@@ -32,6 +32,7 @@ use App\Traits\Deployment\HandlesHealthCheck;
 use App\Traits\Deployment\HandlesImageBuilding;
 use App\Traits\Deployment\HandlesImageRegistry;
 use App\Traits\Deployment\HandlesNixpacksBuildpack;
+use App\Traits\Deployment\HandlesRailpackBuildpack;
 use App\Traits\Deployment\HandlesRuntimeEnvGeneration;
 use App\Traits\Deployment\HandlesSaturnEnvVariables;
 use App\Traits\Deployment\HandlesStaticBuildpack;
@@ -55,13 +56,15 @@ use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
-    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesAutoRollback, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesAutoRollback, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRailpackBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
 
     public const BUILD_TIME_ENV_PATH = '/artifacts/build-time.env';
 
     private const BUILD_SCRIPT_PATH = '/artifacts/build.sh';
 
     private const NIXPACKS_PLAN_PATH = '/artifacts/thegameplan.json';
+
+    private const RAILPACK_PLAN_PATH = '/artifacts/railpack-plan.json';
 
     /**
      * Max queue-level attempts. Only relevant when the job calls $this->release()
@@ -598,6 +601,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->deploy_dockerfile_buildpack();
         } elseif ($this->application->build_pack === 'static') {
             $this->deploy_static_buildpack();
+        } elseif ($this->application->build_pack === 'railpack') {
+            $this->deploy_railpack_buildpack();
         } else {
             $this->deploy_nixpacks_buildpack();
         }

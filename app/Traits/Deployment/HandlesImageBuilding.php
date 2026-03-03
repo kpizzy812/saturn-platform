@@ -76,6 +76,11 @@ trait HandlesImageBuilding
 
         if ($this->application->build_pack === 'nixpacks') {
             $this->buildStaticWithNixpacks();
+        } elseif ($this->application->build_pack === 'railpack') {
+            // Railpack handles static sites natively — build_railpack_image() is called
+            // from deploy_railpack_buildpack() and produces the build image directly.
+            // Static wrapping (nginx) happens via createFinalStaticImage() below.
+            $this->build_railpack_image();
         } else {
             $this->buildStaticWithDockerfile();
         }

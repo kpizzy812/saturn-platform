@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Badge, Button, useConfirm } from '@/components/ui';
+import { Badge, Button, Modal, ModalFooter, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2, Zap, Webhook, AlertCircle, Check, Eye, EyeOff, ChevronDown, Plus } from 'lucide-react';
+import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2, Zap, Webhook, AlertCircle, Check, Eye, EyeOff, ChevronDown, Plus, HelpCircle, Info } from 'lucide-react';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { BranchSelector } from '@/components/ui/BranchSelector';
 import type { SelectedService } from '../../types';
@@ -352,7 +352,8 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
 
     const buildPackLabel = (bp: string | null) => {
         switch (bp) {
-            case 'nixpacks': return 'Nixpacks';
+            case 'railpack': return 'Railpack';
+            case 'nixpacks': return 'Nixpacks (Legacy)';
             case 'static': return 'Static';
             case 'dockerfile': return 'Dockerfile';
             case 'dockercompose': return 'Docker Compose';
@@ -824,6 +825,7 @@ function AutoDeploySection({
     };
 
     const status = statusConfig[deployStatus as keyof typeof statusConfig] || statusConfig.not_configured;
+    const [showCiGuide, setShowCiGuide] = useState(false);
 
     return (
         <div className="space-y-3">
@@ -844,7 +846,17 @@ function AutoDeploySection({
             {autoDeployEnabled && (
                 <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary px-3 py-2.5">
                     <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-foreground">Wait for CI</p>
+                        <div className="flex items-center gap-1.5">
+                            <p className="text-xs font-medium text-foreground">Wait for CI</p>
+                            <button
+                                type="button"
+                                onClick={() => setShowCiGuide(true)}
+                                className="text-foreground-muted hover:text-foreground transition-colors"
+                                title="How to set up CI gating"
+                            >
+                                <HelpCircle className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
                         <p className="text-xs text-foreground-muted">
                             Deploy only after all GitHub Actions pass
                         </p>
@@ -860,6 +872,53 @@ function AutoDeploySection({
                     </button>
                 </div>
             )}
+
+            {/* CI Gate Setup Guide Modal */}
+            <Modal
+                isOpen={showCiGuide}
+                onClose={() => setShowCiGuide(false)}
+                title="Wait for CI — Setup Guide"
+                description="Enable the check_suite event so Saturn waits for GitHub Actions before deploying"
+                size="lg"
+            >
+                <div className="space-y-5">
+                    <div className="flex gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold flex-shrink-0">1</div>
+                        <div>
+                            <p className="text-sm font-medium text-foreground mb-0.5">Open your GitHub webhook</p>
+                            <p className="text-xs text-foreground-muted">Repository → Settings → Webhooks → click your Saturn webhook.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold flex-shrink-0">2</div>
+                        <div>
+                            <p className="text-sm font-medium text-foreground mb-0.5">Select individual events</p>
+                            <p className="text-xs text-foreground-muted">Choose <strong>"Let me select individual events"</strong> in the trigger section.</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary text-xs font-bold flex-shrink-0">3</div>
+                        <div>
+                            <p className="text-sm font-medium text-foreground mb-0.5">Enable Check suites</p>
+                            <p className="text-xs text-foreground-muted">
+                                Tick <code className="px-1 bg-background rounded">Check suites</code> (keep{' '}
+                                <code className="px-1 bg-background rounded">Pushes</code> ticked too), then save.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="p-3 bg-info/10 border border-info/30 rounded-lg flex gap-2.5">
+                        <Info className="h-4 w-4 text-info flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-foreground-muted">
+                            On push, Saturn queues the deploy and waits. When GitHub reports{' '}
+                            <code className="px-1 bg-background rounded">check_suite completed / success</code>, the deployment starts automatically.
+                            If CI fails, the deployment is skipped.
+                        </p>
+                    </div>
+                </div>
+                <ModalFooter>
+                    <Button variant="secondary" onClick={() => setShowCiGuide(false)}>Close</Button>
+                </ModalFooter>
+            </Modal>
 
             <div className={`rounded-lg border ${status.borderColor} ${status.bgColor} p-4`}>
                 {/* Status indicator */}
