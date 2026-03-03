@@ -401,6 +401,14 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             return;
         }
+
+        if ($this->server->isDiskFull()) {
+            $this->application_deployment_queue->addLogEntry('Server disk usage is critically high (>= 95%). Deployment blocked to prevent data loss. Free disk space and retry.');
+            $this->fail('Server disk usage is critically high. Deployment blocked.');
+
+            return;
+        }
+
         try {
             // Make sure the private key is stored in the filesystem
             $this->server->privateKey->storeInFileSystem();

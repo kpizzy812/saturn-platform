@@ -36,6 +36,7 @@ export interface SharedTeam {
     id: number;
     name: string;
     personal_team: boolean;
+    logo?: string | null;
 }
 
 // Team item in teams list (includes role)
@@ -44,6 +45,7 @@ export interface SharedTeamItem {
     name: string;
     personal_team: boolean;
     role: string;
+    logo?: string | null;
 }
 
 // Helper type to cast typed objects to Inertia router-compatible payload.

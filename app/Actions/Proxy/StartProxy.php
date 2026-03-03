@@ -39,9 +39,11 @@ class StartProxy
         $server->save();
 
         if ($server->isSwarmManager()) {
+            $escaped_proxy_path = escapeshellarg($proxy_path);
+            $escaped_dynamic_path = escapeshellarg($proxy_path.'/dynamic');
             $commands = $commands->merge([
-                "mkdir -p $proxy_path/dynamic",
-                "cd $proxy_path",
+                "mkdir -p $escaped_dynamic_path",
+                "cd $escaped_proxy_path",
                 "echo 'Creating required Docker Compose file.'",
                 "echo 'Starting saturn-proxy.'",
                 'docker stack deploy --detach=true -c docker-compose.yml saturn-proxy',
@@ -53,11 +55,14 @@ class StartProxy
                     $proxy_path = '/data/saturn/proxy/caddy';
                 }
             }
+            $escaped_proxy_path = escapeshellarg($proxy_path);
+            $escaped_dynamic_path = escapeshellarg($proxy_path.'/dynamic');
+            $escaped_caddyfile_path = escapeshellarg($proxy_path.'/dynamic/Caddyfile');
             $caddyfile = 'import /dynamic/*.caddy';
             $commands = $commands->merge([
-                "mkdir -p $proxy_path/dynamic",
-                "cd $proxy_path",
-                "echo '$caddyfile' > $proxy_path/dynamic/Caddyfile",
+                "mkdir -p $escaped_dynamic_path",
+                "cd $escaped_proxy_path",
+                "echo ".escapeshellarg($caddyfile)." > $escaped_caddyfile_path",
                 "echo 'Creating required Docker Compose file.'",
                 "echo 'Pulling docker image.'",
                 'docker compose pull',
