@@ -3,12 +3,16 @@
 use App\Jobs\SendMessageToDiscordJob;
 use App\Jobs\SendMessageToSlackJob;
 use App\Jobs\SendMessageToTelegramJob;
+use App\Jobs\SendWebhookJob;
 use App\Notifications\Dto\DiscordMessage;
 use App\Notifications\Dto\SlackMessage;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
+uses(Tests\TestCase::class);
 
 // ---------------------------------------------------------------------------
 // SendMessageToDiscordJob
@@ -578,4 +582,110 @@ it('PushoverMessage replaces localhost URLs in buttons with app URL', function (
 
     expect($payload['message'])->not->toContain('http://localhost')
         ->and($payload['message'])->toContain($appUrl);
+});
+
+// ---------------------------------------------------------------------------
+// SendMessageToDiscordJob — failure path
+// ---------------------------------------------------------------------------
+
+it('discord job throws RuntimeException when HTTP 500 is returned', function () {
+    Http::fake(['*' => Http::response('error', 500)]);
+
+    $message = new DiscordMessage('Fail', 'Body', DiscordMessage::errorColor());
+    $job = new SendMessageToDiscordJob($message, 'https://discord.test/webhook');
+
+    expect(fn () => $job->handle())->toThrow(RuntimeException::class);
+});
+
+// ---------------------------------------------------------------------------
+// SendMessageToSlackJob — failure path
+// ---------------------------------------------------------------------------
+
+it('slack job throws RuntimeException when HTTP 500 is returned', function () {
+    Http::fake(['*' => Http::response('error', 500)]);
+
+    $message = new SlackMessage('Fail', 'Something broke');
+    $job = new SendMessageToSlackJob($message, 'https://hooks.slack.test/services/T/B/X');
+
+    expect(fn () => $job->handle())->toThrow(RuntimeException::class);
+});
+
+// ---------------------------------------------------------------------------
+// SendWebhookJob
+// ---------------------------------------------------------------------------
+
+it('webhook job implements ShouldBeEncrypted and ShouldQueue', function () {
+    $job = new SendWebhookJob(['event' => 'deploy'], 'https://example.com/hook');
+
+    expect($job)->toBeInstanceOf(ShouldBeEncrypted::class)
+        ->and($job)->toBeInstanceOf(ShouldQueue::class);
+});
+
+it('webhook job is dispatched to the high queue', function () {
+    $job = new SendWebhookJob(['event' => 'deploy'], 'https://example.com/hook');
+
+    expect($job->queue)->toBe('high');
+});
+
+it('webhook job posts payload to a valid external URL', function () {
+    Http::fake(['https://example.com/*' => Http::response('ok', 200)]);
+
+    $payload = ['event' => 'deploy', 'app' => 'my-app'];
+    $job = new SendWebhookJob($payload, 'https://example.com/hook');
+    $job->handle();
+
+    Http::assertSent(fn (Request $req) => $req->url() === 'https://example.com/hook');
+});
+
+it('webhook job sends the correct payload body', function () {
+    Http::fake(['https://example.com/*' => Http::response('ok', 200)]);
+
+    $payload = ['event' => 'deploy', 'status' => 'success'];
+    $job = new SendWebhookJob($payload, 'https://example.com/hook');
+    $job->handle();
+
+    Http::assertSent(function (Request $req) use ($payload) {
+        return $req->data() === $payload;
+    });
+});
+
+it('webhook job throws RuntimeException when HTTP 500 is returned', function () {
+    Http::fake(['https://example.com/*' => Http::response('error', 500)]);
+
+    $job = new SendWebhookJob(['event' => 'test'], 'https://example.com/hook');
+
+    expect(fn () => $job->handle())->toThrow(RuntimeException::class);
+});
+
+it('webhook job blocks localhost URLs and logs warning without sending HTTP request', function () {
+    Http::fake();
+    Log::spy();
+
+    $job = new SendWebhookJob(['event' => 'test'], 'http://localhost/malicious');
+    $job->handle();
+
+    Http::assertNothingSent();
+    Log::shouldHaveReceived('warning')->once();
+});
+
+it('webhook job blocks private IP 192.168.x.x and logs warning', function () {
+    Http::fake();
+    Log::spy();
+
+    $job = new SendWebhookJob(['event' => 'test'], 'http://192.168.1.100/hook');
+    $job->handle();
+
+    Http::assertNothingSent();
+    Log::shouldHaveReceived('warning')->once();
+});
+
+it('webhook job blocks 127.0.0.1 and logs warning', function () {
+    Http::fake();
+    Log::spy();
+
+    $job = new SendWebhookJob(['event' => 'test'], 'http://127.0.0.1/hook');
+    $job->handle();
+
+    Http::assertNothingSent();
+    Log::shouldHaveReceived('warning')->once();
 });
