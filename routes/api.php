@@ -70,7 +70,7 @@ Route::group([
     Route::get('/disable', [OtherController::class, 'disable_api']);
 });
 Route::group([
-    'middleware' => ['auth:sanctum', ApiAllowed::class, 'api.sensitive', 'throttle:120,1'],
+    'middleware' => ['auth:sanctum', ApiAllowed::class, 'api.sensitive', 'api.token.throttle', 'throttle:120,1'],
     'prefix' => 'v1',
 ], function () {
 

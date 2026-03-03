@@ -12,6 +12,7 @@ use App\Jobs\CleanupMetricsJob;
 use App\Jobs\CleanupOrphanedPreviewContainersJob;
 use App\Jobs\DatabaseMetricsManagerJob;
 use App\Jobs\MonitorBackupStalenessJob;
+use App\Jobs\MonitorDiskSpaceJob;
 use App\Jobs\MonitorFailedJobsJob;
 use App\Jobs\PullChangelog;
 use App\Jobs\PullTemplatesFromCDN;
@@ -68,6 +69,9 @@ class Kernel extends ConsoleKernel
 
             // Alert Evaluation (every 5 minutes)
             $this->scheduleInstance->job(new AlertEvaluationJob)->everyFiveMinutes()->onOneServer();
+
+            // Disk space monitoring (every 15 minutes)
+            $this->scheduleInstance->job(new MonitorDiskSpaceJob)->everyFifteenMinutes()->onOneServer();
 
             // Scheduled Jobs (Backups & Tasks)
             $this->scheduleInstance->job(new ScheduledJobManager)->everyMinute()->onOneServer();
@@ -127,6 +131,9 @@ class Kernel extends ConsoleKernel
 
             // Failed jobs monitoring (runs hourly, alerts when failed_jobs count > threshold)
             $this->scheduleInstance->job(new MonitorFailedJobsJob)->hourly()->onOneServer();
+
+            // Disk space monitoring (every 15 minutes)
+            $this->scheduleInstance->job(new MonitorDiskSpaceJob)->everyFifteenMinutes()->timezone($this->instanceTimezone)->onOneServer();
         }
     }
 
