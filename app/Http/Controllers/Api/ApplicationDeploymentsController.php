@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ApplicationDeploymentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
@@ -134,6 +135,21 @@ class ApplicationDeploymentsController extends Controller
             return response()->json([
                 'message' => 'Can only rollback to successful deployments',
             ], 400);
+        }
+
+        // Prevent race condition: check if a rollback is already queued or in progress
+        $activeRollback = ApplicationDeploymentQueue::where('application_id', $application->id)
+            ->where('rollback', true)
+            ->whereIn('status', [
+                ApplicationDeploymentStatus::QUEUED->value,
+                ApplicationDeploymentStatus::IN_PROGRESS->value,
+            ])
+            ->exists();
+
+        if ($activeRollback) {
+            return response()->json([
+                'message' => 'A rollback is already in progress or queued for this application.',
+            ], 409);
         }
 
         // Create rollback event

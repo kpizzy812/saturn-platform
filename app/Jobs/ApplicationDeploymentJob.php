@@ -15,6 +15,7 @@ use App\Models\GitlabApp;
 use App\Models\Server;
 use App\Models\StandaloneDocker;
 use App\Models\SwarmDocker;
+use App\Traits\Deployment\HandlesAutoRollback;
 use App\Traits\Deployment\HandlesBuildSecrets;
 use App\Traits\Deployment\HandlesBuildtimeEnvGeneration;
 use App\Traits\Deployment\HandlesCanaryDeployment;
@@ -47,12 +48,13 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 use Throwable;
 use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
-    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesAutoRollback, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
 
     public const BUILD_TIME_ENV_PATH = '/artifacts/build-time.env';
 
@@ -483,6 +485,9 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->detectBuildKitCapabilities();
             $this->decide_what_to_do();
         } catch (Exception $e) {
+            // Attempt auto-rollback to previous successful deployment before failing
+            $this->attemptAutoRollback($e);
+
             if ($this->pull_request_id !== 0 && $this->application->is_github_based()) {
                 ApplicationPullRequestUpdateJob::dispatch(application: $this->application, preview: $this->preview, deployment_uuid: $this->deployment_uuid, status: ProcessStatus::ERROR);
             }
@@ -764,7 +769,42 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->generate_image_names();
         $this->check_image_locally_or_remotely();
         $this->should_skip_build();
+
+        // Verify the container is actually running after restart
+        $this->verify_container_running_after_restart();
+
         $this->completeDeployment();
+    }
+
+    /**
+     * Verify the container is actually running after a restart-only deployment.
+     * Warns in logs if the container is not found in running state.
+     * Does not throw — restart-only is best-effort and the user may be aware the container is stopped.
+     */
+    private function verify_container_running_after_restart(): void
+    {
+        if (! $this->container_name) {
+            return;
+        }
+
+        Sleep::for(3)->seconds();
+
+        $runningCheck = instant_remote_process(
+            ["docker ps --filter name=".escapeshellarg($this->container_name)." --filter status=running -q"],
+            $this->server,
+            throwError: false
+        );
+
+        if (empty(trim((string) $runningCheck))) {
+            $this->application_deployment_queue->addLogEntry(
+                "Warning: Container '{$this->container_name}' may not be running after restart. Check server logs for details.",
+                'stderr'
+            );
+        } else {
+            $this->application_deployment_queue->addLogEntry(
+                "Container '{$this->container_name}' confirmed running after restart."
+            );
+        }
     }
 
     private function should_skip_build()

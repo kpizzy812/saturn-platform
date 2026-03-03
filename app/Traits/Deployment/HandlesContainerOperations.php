@@ -72,7 +72,40 @@ trait HandlesContainerOperations
                 }
                 $this->application_deployment_queue->addLogEntry('New container is not healthy, rolling back to the old container.');
                 $this->failDeployment();
+
+                // Find any old containers for this application (excluding the new unhealthy one)
+                // so we can attempt to restart them if they were stopped
+                $oldContainers = getCurrentApplicationContainerStatus($this->server, $this->application->id, $this->pull_request_id);
+                $stoppedOldContainers = $oldContainers->filter(function ($container) {
+                    return data_get($container, 'Names') !== $this->container_name
+                        && in_array(data_get($container, 'State'), ['exited', 'stopped', 'created']);
+                });
+
+                // Remove the unhealthy new container
                 $this->graceful_shutdown_container($this->container_name);
+
+                // Attempt to restart any stopped old containers to restore service
+                if ($stoppedOldContainers->isNotEmpty()) {
+                    foreach ($stoppedOldContainers as $oldContainer) {
+                        $oldContainerName = data_get($oldContainer, 'Names');
+                        $this->application_deployment_queue->addLogEntry(
+                            "Attempting to restart previous container: {$oldContainerName}"
+                        );
+                        try {
+                            $this->execute_remote_command(
+                                ["docker start ".escapeshellarg($oldContainerName), 'hidden' => true, 'ignore_errors' => true]
+                            );
+                            $this->application_deployment_queue->addLogEntry(
+                                "Previous container {$oldContainerName} restarted successfully."
+                            );
+                        } catch (Exception $restartError) {
+                            $this->application_deployment_queue->addLogEntry(
+                                "Could not restart previous container {$oldContainerName}: ".$restartError->getMessage(),
+                                'stderr'
+                            );
+                        }
+                    }
+                }
             }
         } catch (Exception $e) {
             // If new version is healthy, this is just cleanup - don't fail the deployment
