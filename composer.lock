@@ -6206,20 +6206,20 @@
         },
         {
             "name": "poliander/cron",
-            "version": "3.2.1",
+            "version": "3.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/poliander/cron.git",
-                "reference": "68baf899189d0a68611b9575fc62642144877d80"
+                "reference": "13892a8d7f90c7e93947f21e115037b6a0d979bd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/poliander/cron/zipball/68baf899189d0a68611b9575fc62642144877d80",
-                "reference": "68baf899189d0a68611b9575fc62642144877d80",
+                "url": "https://api.github.com/repos/poliander/cron/zipball/13892a8d7f90c7e93947f21e115037b6a0d979bd",
+                "reference": "13892a8d7f90c7e93947f21e115037b6a0d979bd",
                 "shasum": ""
             },
             "require": {
-                "php": "8.2.* || 8.3.* || 8.4.*"
+                "php": "8.3.* || 8.4.* || 8.5.*"
             },
             "require-dev": {
                 "phpunit/phpunit": "~11.0"
@@ -6244,9 +6244,9 @@
             "homepage": "https://github.com/poliander/cron",
             "support": {
                 "issues": "https://github.com/poliander/cron/issues",
-                "source": "https://github.com/poliander/cron/tree/3.2.1"
+                "source": "https://github.com/poliander/cron/tree/3.3.0"
             },
-            "time": "2024-12-21T05:57:05+00:00"
+            "time": "2025-11-23T17:30:50+00:00"
         },
         {
             "name": "pragmarx/google2fa",
