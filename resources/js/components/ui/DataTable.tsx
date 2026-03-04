@@ -40,7 +40,7 @@ function useDataTable<T = unknown>() {
 
 interface DataTableProps<T> {
     data: T[];
-    columns: DataTableColumn<T>[];
+    columns?: DataTableColumn<T>[];
     loading?: boolean;
     sortKey?: string;
     sortDirection?: SortDirection;
@@ -60,7 +60,7 @@ export function DataTable<T>({
     className,
 }: DataTableProps<T>) {
     const value: DataTableContextValue<T> = React.useMemo(
-        () => ({ data, columns, loading, sortKey, sortDirection, onSort }),
+        () => ({ data, columns: columns ?? [], loading, sortKey, sortDirection, onSort }),
         [data, columns, loading, sortKey, sortDirection, onSort],
     );
 
@@ -304,6 +304,85 @@ export function DataTableContent({
                     ))}
                 </tbody>
             </table>
+        </div>
+    );
+}
+
+// ── List Content ──────────────────────────────────────────────
+
+interface DataTableListContentProps<T = unknown> {
+    renderItem: (item: T, index: number) => React.ReactNode;
+    keyExtractor?: (item: T, index: number) => string | number;
+    emptyIcon?: React.ReactNode;
+    emptyTitle?: string;
+    emptyDescription?: string;
+    className?: string;
+    skeletonRows?: number;
+}
+
+export function DataTableListContent<T = unknown>({
+    renderItem,
+    keyExtractor,
+    emptyIcon,
+    emptyTitle = 'No results found',
+    emptyDescription = 'Try adjusting your search or filters.',
+    className,
+    skeletonRows = 5,
+}: DataTableListContentProps<T>) {
+    const { data, loading } = useDataTable<T>();
+
+    if (loading) {
+        return (
+            <div className={cn(
+                'w-full overflow-hidden rounded-xl border border-border/50',
+                'bg-gradient-to-br from-background-secondary to-background-secondary/50',
+                className,
+            )}>
+                {Array.from({ length: skeletonRows }).map((_, i) => (
+                    <div key={i} className="border-b border-border/30 px-4 py-4 last:border-0">
+                        <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 animate-pulse rounded-full bg-background-tertiary/50" />
+                            <div className="flex-1 space-y-2">
+                                <div className="h-4 w-1/3 animate-pulse rounded bg-background-tertiary/40" />
+                                <div className="h-3 w-1/2 animate-pulse rounded bg-background-tertiary/30" />
+                                <div className="h-3 w-1/4 animate-pulse rounded bg-background-tertiary/20" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (data.length === 0) {
+        return (
+            <div className={cn(
+                'flex flex-col items-center justify-center rounded-xl border border-border/50',
+                'bg-gradient-to-br from-background-secondary/30 to-transparent py-16',
+                className,
+            )}>
+                {emptyIcon && (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background-tertiary/50">
+                        {emptyIcon}
+                    </div>
+                )}
+                <h3 className="mt-4 text-lg font-medium text-foreground">{emptyTitle}</h3>
+                <p className="mt-1 text-sm text-foreground-muted">{emptyDescription}</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className={cn(
+            'w-full overflow-hidden rounded-xl border border-border/50',
+            'bg-gradient-to-br from-background-secondary to-background-secondary/50',
+            className,
+        )}>
+            {data.map((item, index) => (
+                <React.Fragment key={keyExtractor ? keyExtractor(item, index) : index}>
+                    {renderItem(item, index)}
+                </React.Fragment>
+            ))}
         </div>
     );
 }
