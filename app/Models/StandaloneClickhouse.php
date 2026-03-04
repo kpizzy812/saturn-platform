@@ -62,6 +62,8 @@ class StandaloneClickhouse extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
+    protected $hidden = ['clickhouse_password'];
+
     protected $casts = [
         'clickhouse_password' => 'encrypted',
         'restart_count' => 'integer',

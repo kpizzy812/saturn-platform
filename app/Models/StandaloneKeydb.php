@@ -63,6 +63,8 @@ class StandaloneKeydb extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'server_status'];
 
+    protected $hidden = ['keydb_password'];
+
     protected $casts = [
         'keydb_password' => 'encrypted',
         'restart_count' => 'integer',

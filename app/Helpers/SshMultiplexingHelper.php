@@ -250,7 +250,7 @@ class SshMultiplexingHelper
 
     private static function getCommonSshOptions(Server $server, string $sshKeyLocation, int $connectionTimeout, int $serverInterval, bool $isScp = false): string
     {
-        $options = "-i {$sshKeyLocation} "
+        $options = '-i '.escapeshellarg($sshKeyLocation).' '
             .'-o StrictHostKeyChecking=accept-new '
             .'-o PasswordAuthentication=no '
             ."-o ConnectTimeout=$connectionTimeout "

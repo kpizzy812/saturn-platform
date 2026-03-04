@@ -49,6 +49,8 @@ class PrivateKey extends BaseModel
         'fingerprint',
     ];
 
+    protected $hidden = ['private_key'];
+
     protected $casts = [
         'private_key' => 'encrypted',
     ];

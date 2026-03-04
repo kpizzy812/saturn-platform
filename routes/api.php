@@ -228,11 +228,15 @@ Route::group([
             return response()->json(['message' => 'Deployment not found.'], 404);
         }
 
-        $logs = $deployment->logs;
+        // Security: hide logs for non-sensitive tokens (logs may contain env vars)
+        $canReadSensitive = request()->attributes->get('can_read_sensitive', false);
         $parsedLogs = [];
 
-        if ($logs) {
-            $parsedLogs = json_decode($logs, true) ?: [];
+        if ($canReadSensitive) {
+            $logs = $deployment->logs;
+            if ($logs) {
+                $parsedLogs = json_decode($logs, true) ?: [];
+            }
         }
 
         return response()->json([

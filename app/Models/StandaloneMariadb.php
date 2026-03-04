@@ -63,6 +63,8 @@ class StandaloneMariadb extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
+    protected $hidden = ['mariadb_password', 'mariadb_root_password'];
+
     protected $casts = [
         'mariadb_password' => 'encrypted',
         'mariadb_root_password' => 'encrypted',

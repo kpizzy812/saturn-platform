@@ -90,6 +90,8 @@ class StandalonePostgresql extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
+    protected $hidden = ['postgres_password'];
+
     protected $casts = [
         'init_scripts' => 'array',
         'postgres_password' => 'encrypted',

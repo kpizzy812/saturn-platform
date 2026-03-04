@@ -315,7 +315,12 @@ class ServersController extends ApiController
         }
         $uuid = $request->get('uuid');
         if ($uuid) {
-            $domains = Application::getDomainsByUuid($uuid);
+            // Security: scope application lookup to current team to prevent IDOR
+            $application = Application::ownedByCurrentTeamAPI($teamId)->where('uuid', $uuid)->first();
+            if (! $application) {
+                return response()->json(['message' => 'Application not found.'], 404);
+            }
+            $domains = $application->fqdns->all();
 
             return response()->json(serializeApiResponse($domains));
         }

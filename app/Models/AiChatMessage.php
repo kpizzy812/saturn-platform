@@ -38,7 +38,9 @@ class AiChatMessage extends Model
     ];
 
     protected $casts = [
-        'intent_params' => 'array',
+        'content' => 'encrypted',
+        'command_result' => 'encrypted',
+        'intent_params' => 'encrypted:array',
         'rating' => 'integer',
     ];
 

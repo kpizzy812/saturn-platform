@@ -423,35 +423,38 @@ class DatabaseController extends Controller
         $publicPort = $database->public_port ?? null;
 
         // Get credentials based on database type
+        // Security: passwords are masked by default, only revealed via makeVisible() on connection pages
         $credentials = match ($type) {
             'postgresql' => [
                 'username' => $database->postgres_user ?? 'postgres',
-                'password' => $database->postgres_password ?? null,
+                'password' => $database->makeVisible('postgres_password')->postgres_password ?? null,
                 'database' => $database->postgres_db ?? 'postgres',
             ],
             'mysql' => [
                 'username' => $database->mysql_user ?? 'root',
-                'password' => $database->mysql_password ?? $database->mysql_root_password ?? null,
+                'password' => $database->makeVisible(['mysql_password', 'mysql_root_password'])->mysql_password
+                    ?? $database->mysql_root_password ?? null,
                 'database' => $database->mysql_database ?? 'mysql',
             ],
             'mariadb' => [
                 'username' => $database->mariadb_user ?? 'root',
-                'password' => $database->mariadb_password ?? $database->mariadb_root_password ?? null,
+                'password' => $database->makeVisible(['mariadb_password', 'mariadb_root_password'])->mariadb_password
+                    ?? $database->mariadb_root_password ?? null,
                 'database' => $database->mariadb_database ?? 'mariadb',
             ],
             'mongodb' => [
                 'username' => $database->mongo_initdb_root_username ?? 'root',
-                'password' => $database->mongo_initdb_root_password ?? null,
+                'password' => $database->makeVisible('mongo_initdb_root_password')->mongo_initdb_root_password ?? null,
                 'database' => $database->mongo_initdb_database ?? 'admin',
             ],
             'redis', 'keydb', 'dragonfly' => [
                 'username' => null,
-                'password' => $database->redis_password ?? null,
+                'password' => $database->makeVisible(['redis_password', 'keydb_password', 'dragonfly_password'])->redis_password ?? null,
                 'database' => '0',
             ],
             'clickhouse' => [
                 'username' => $database->clickhouse_admin_user ?? 'default',
-                'password' => $database->clickhouse_admin_password ?? null,
+                'password' => $database->makeVisible('clickhouse_password')->clickhouse_admin_password ?? null,
                 'database' => 'default',
             ],
             default => [

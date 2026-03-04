@@ -65,6 +65,8 @@ class StandaloneMysql extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
+    protected $hidden = ['mysql_password', 'mysql_root_password'];
+
     protected $casts = [
         'mysql_password' => 'encrypted',
         'mysql_root_password' => 'encrypted',

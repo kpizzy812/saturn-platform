@@ -49,6 +49,8 @@ class S3Storage extends BaseModel
         'path',
     ];
 
+    protected $hidden = ['key', 'secret'];
+
     protected $casts = [
         'is_usable' => 'boolean',
         'key' => 'encrypted',

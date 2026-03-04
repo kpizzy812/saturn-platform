@@ -62,6 +62,8 @@ class StandaloneDragonfly extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
+    protected $hidden = ['dragonfly_password'];
+
     protected $casts = [
         'dragonfly_password' => 'encrypted',
         'restart_count' => 'integer',

@@ -64,6 +64,8 @@ class StandaloneMongodb extends BaseModel
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
 
+    protected $hidden = ['mongo_initdb_root_password'];
+
     protected $casts = [
         'mongo_initdb_root_password' => 'encrypted',
         'restart_count' => 'integer',

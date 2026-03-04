@@ -108,18 +108,22 @@ function connectProxyToNetworks(Server $server)
     ['networks' => $networks] = collectDockerNetworksByServer($server);
     if ($server->isSwarm()) {
         $commands = $networks->map(function ($network) {
+            $escaped = escapeshellarg($network);
+
             return [
-                "docker network ls --format '{{.Name}}' | grep '^$network$' >/dev/null || docker network create --driver overlay --attachable $network >/dev/null",
-                "docker network connect $network saturn-proxy >/dev/null 2>&1 || true",
-                "echo 'Successfully connected saturn-proxy to $network network.'",
+                "docker network ls --format '{{.Name}}' | grep '^{$network}$' >/dev/null || docker network create --driver overlay --attachable {$escaped} >/dev/null",
+                "docker network connect {$escaped} saturn-proxy >/dev/null 2>&1 || true",
+                "echo 'Successfully connected saturn-proxy to {$network} network.'",
             ];
         });
     } else {
         $commands = $networks->map(function ($network) {
+            $escaped = escapeshellarg($network);
+
             return [
-                "docker network ls --format '{{.Name}}' | grep '^$network$' >/dev/null || docker network create --attachable $network >/dev/null",
-                "docker network connect $network saturn-proxy >/dev/null 2>&1 || true",
-                "echo 'Successfully connected saturn-proxy to $network network.'",
+                "docker network ls --format '{{.Name}}' | grep '^{$network}$' >/dev/null || docker network create --attachable {$escaped} >/dev/null",
+                "docker network connect {$escaped} saturn-proxy >/dev/null 2>&1 || true",
+                "echo 'Successfully connected saturn-proxy to {$network} network.'",
             ];
         });
     }
@@ -140,16 +144,20 @@ function ensureProxyNetworksExist(Server $server)
 
     if ($server->isSwarm()) {
         $commands = $networks->map(function ($network) {
+            $escaped = escapeshellarg($network);
+
             return [
-                "echo 'Ensuring network $network exists...'",
-                "docker network ls --format '{{.Name}}' | grep -q '^{$network}$' || docker network create --driver overlay --attachable $network",
+                "echo 'Ensuring network {$network} exists...'",
+                "docker network ls --format '{{.Name}}' | grep -q '^{$network}$' || docker network create --driver overlay --attachable {$escaped}",
             ];
         });
     } else {
         $commands = $networks->map(function ($network) {
+            $escaped = escapeshellarg($network);
+
             return [
-                "echo 'Ensuring network $network exists...'",
-                "docker network ls --format '{{.Name}}' | grep -q '^{$network}$' || docker network create --attachable $network",
+                "echo 'Ensuring network {$network} exists...'",
+                "docker network ls --format '{{.Name}}' | grep -q '^{$network}$' || docker network create --attachable {$escaped}",
             ];
         });
     }

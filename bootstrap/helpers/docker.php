@@ -139,11 +139,10 @@ function checkMinimumDockerEngineVersion($dockerVersion)
 }
 function executeInDocker(string $containerId, string $command)
 {
-    // Escape single quotes for safe embedding inside bash -c '...'
-    // Standard bash idiom: replace ' with '\'' (end quote, escaped quote, start quote)
-    $escapedCommand = str_replace("'", "'\\''", $command);
+    // Security: escape container ID and command to prevent injection
+    $escapedContainerId = escapeshellarg($containerId);
 
-    return "docker exec {$containerId} bash -c '{$escapedCommand}'";
+    return "docker exec {$escapedContainerId} bash -c ".escapeshellarg($command);
 }
 
 function getContainerStatus(Server $server, string $container_id, bool $all_data = false, bool $throwError = false)
