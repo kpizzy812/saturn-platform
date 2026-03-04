@@ -663,7 +663,7 @@ Route::group([
             return response()->json(['message' => 'Server is not functional'], 401);
         }
 
-        if ($server->settings->sentinel_token !== $naked_token) {
+        if (! hash_equals($server->settings->sentinel_token, $naked_token)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 

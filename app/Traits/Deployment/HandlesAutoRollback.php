@@ -69,9 +69,10 @@ trait HandlesAutoRollback
         );
 
         try {
-            queue_application_deployment(
+            $rollbackUuid = new Cuid2;
+            $rollbackResult = queue_application_deployment(
                 application: $this->application,
-                deployment_uuid: new Cuid2,
+                deployment_uuid: $rollbackUuid,
                 server: $this->server,
                 destination: $this->destination,
                 commit: $lastSuccessful->commit,
@@ -79,8 +80,21 @@ trait HandlesAutoRollback
                 no_questions_asked: true,
             );
 
+            if (is_array($rollbackResult) && ($rollbackResult['status'] ?? '') === 'queue_full') {
+                Log::error('Auto-rollback failed: deployment queue is full', [
+                    'application' => $this->application->uuid,
+                    'commit' => $lastSuccessful->commit,
+                ]);
+                $this->application_deployment_queue->addLogEntry(
+                    'Auto-rollback FAILED: deployment queue is full. Manual intervention required.',
+                    'stderr'
+                );
+
+                return;
+            }
+
             $this->application_deployment_queue->addLogEntry(
-                "Auto-rollback queued successfully to commit: {$lastSuccessful->commit}",
+                "Auto-rollback queued (deployment: {$rollbackUuid}) to commit: {$lastSuccessful->commit}. Monitor rollback deployment for result.",
                 'stderr'
             );
         } catch (\Throwable $rollbackError) {

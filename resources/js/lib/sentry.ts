@@ -47,8 +47,8 @@ export function initializeSentry(): void {
                 Sentry.browserTracingIntegration(),
                 // Capture React component errors
                 Sentry.replayIntegration({
-                    maskAllText: false,
-                    blockAllMedia: false,
+                    maskAllText: true,
+                    blockAllMedia: true,
                 }),
             ],
 
