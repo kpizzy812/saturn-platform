@@ -124,8 +124,8 @@ Route::group([
 
     // Deployment Approvals
     Route::get('/deployment-approvals', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'index'])->middleware(['api.ability:read']);
-    Route::post('/deployment-approvals/{deploymentUuid}/approve', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'approve'])->middleware(['api.ability:deploy']);
-    Route::post('/deployment-approvals/{deploymentUuid}/reject', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'reject'])->middleware(['api.ability:deploy']);
+    Route::post('/deployment-approvals/{deploymentUuid}/approve', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'approve'])->middleware(['api.ability:root']);
+    Route::post('/deployment-approvals/{deploymentUuid}/reject', [\App\Http\Controllers\Api\DeploymentApprovalsController::class, 'reject'])->middleware(['api.ability:root']);
 
     // Webhooks
     Route::get('/webhooks', [TeamWebhooksController::class, 'index'])->middleware(['api.ability:read']);
@@ -666,10 +666,10 @@ Route::group([
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        // Validate team_id from token payload if present (backward-compatible:
-        // tokens generated before this check lack team_id and are still accepted).
+        // Validate team_id from token payload — required to prevent cross-team token reuse.
+        // Tokens without team_id are considered invalid (regenerate via server settings).
         $token_team_id = data_get($decrypted_token, 'team_id');
-        if ($token_team_id !== null && (int) $token_team_id !== (int) $server->team_id) {
+        if ($token_team_id === null || (int) $token_team_id !== (int) $server->team_id) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 

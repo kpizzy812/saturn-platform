@@ -459,7 +459,7 @@ export default function EnvironmentSecrets({ environment, secrets: propSecrets =
                 onClose={() => setShowAuditModal(false)}
                 title="Secret Access Audit Log"
                 description="Complete history of secret access and modifications"
-                size="full"
+                size="2xl"
             >
                 <div className="max-h-96 space-y-2 overflow-y-auto">
                     {auditLogs.map((log) => (

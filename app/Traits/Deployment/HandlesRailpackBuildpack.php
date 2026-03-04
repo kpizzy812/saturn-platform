@@ -115,8 +115,9 @@ trait HandlesRailpackBuildpack
 
         if (trim($this->saved_outputs->get('buildkitd_check', '')) === 'missing') {
             $this->application_deployment_queue->addLogEntry('Starting BuildKit daemon...');
+            // Run buildkitd without --privileged using seccomp=unconfined for rootless compatibility
             $this->execute_remote_command(
-                [executeInDocker($this->deployment_uuid, 'docker run -d --restart=unless-stopped --privileged --name buildkitd moby/buildkit'), 'hidden' => true],
+                [executeInDocker($this->deployment_uuid, 'docker run -d --restart=unless-stopped --security-opt seccomp=unconfined --security-opt apparmor=unconfined --name buildkitd moby/buildkit:latest'), 'hidden' => true],
             );
             // Brief wait for buildkitd to be ready
             $this->execute_remote_command(
@@ -155,14 +156,16 @@ trait HandlesRailpackBuildpack
 
         $parsed = json_decode($planContent, true);
 
-        if (! $parsed) {
+        if (! $parsed || ! is_array($parsed)) {
             throw new DeploymentException('Railpack plan is not valid JSON. Please check the Railpack documentation at https://railpack.com/getting-started');
         }
 
         $this->railpack_plan_json = $parsed;
 
-        // Detect application type from plan
-        $this->railpack_type = data_get($parsed, 'provider', data_get($parsed, 'language', 'unknown'));
+        // Detect application type from plan — sanitize to prevent injection via plan values
+        $rawType = data_get($parsed, 'provider', data_get($parsed, 'language', 'unknown'));
+        // Only allow safe alphanumeric values for the type label (used only in log messages, not in commands)
+        $this->railpack_type = preg_replace('/[^a-zA-Z0-9._-]/', '', (string) $rawType) ?: 'unknown';
 
         $this->application_deployment_queue->addLogEntry("Railpack detected application type: {$this->railpack_type}.");
         $this->application_deployment_queue->addLogEntry('For customization, add a railpack.json to your project root. See https://railpack.com/config/file');
@@ -232,7 +235,11 @@ trait HandlesRailpackBuildpack
     {
         $no_cache = $this->force_rebuild ? '--no-cache ' : '';
 
-        $cmd = "BUILDKIT_HOST=docker-container://buildkitd railpack build {$no_cache}--name {$this->production_image_name} {$this->workdir}";
+        // Escape image name and workdir to prevent command injection
+        $safe_image_name = escapeshellarg($this->production_image_name);
+        $safe_workdir = escapeshellarg($this->workdir);
+
+        $cmd = "BUILDKIT_HOST=docker-container://buildkitd railpack build {$no_cache}--name {$safe_image_name} {$safe_workdir}";
 
         return $cmd;
     }

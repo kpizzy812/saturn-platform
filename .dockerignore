@@ -34,5 +34,10 @@ docker/coolify-realtime/node_modules
 /storage/logs
 /storage/pail
 
+/mcp
+.mcp.json
+/.ai
+/panel
+
 
 

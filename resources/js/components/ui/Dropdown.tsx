@@ -73,18 +73,32 @@ export function DropdownContent({
     mobileFullWidth,
     className,
 }: DropdownContentProps) {
+    const [isMobile, setIsMobile] = React.useState(false);
+
+    React.useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
     const anchorPosition = align === 'left' ? 'bottom start' as const : align === 'center' ? 'bottom' as const : 'bottom end' as const;
+
+    // On mobile with mobileFullWidth, skip anchor positioning to avoid floating-ui inline styles
+    const anchorProps = mobileFullWidth && isMobile
+        ? {}
+        : { anchor: { to: anchorPosition, gap: sideOffset, padding: 12 } as const };
 
     return (
         <MenuItems
             portal
-            anchor={{ to: anchorPosition, gap: sideOffset, padding: 12 }}
+            {...anchorProps}
             transition
             className={cn(
                 // Base styles with high z-index for portal
                 'z-[9999] origin-top rounded-xl p-1.5',
                 // Width
-                widthClasses[width],
+                mobileFullWidth && isMobile ? 'fixed left-3 right-3 top-[60px] w-auto' : widthClasses[width],
                 // Glassmorphism background
                 'bg-background-tertiary/95 backdrop-blur-xl',
                 // Border with subtle glow
@@ -96,8 +110,6 @@ export function DropdownContent({
                 'focus:outline-none',
                 // Transitions
                 'transition duration-200 ease-out data-[closed]:scale-95 data-[closed]:opacity-0',
-                // Mobile full-width (uses CSS class from app.css to override floating-ui inline styles)
-                mobileFullWidth && 'dropdown-mobile-full',
                 className
             )}
         >

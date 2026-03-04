@@ -132,6 +132,7 @@ class ApplicationDeploymentQueue extends Model
         'user_id',
         'build_server_id',
         'canary_state',
+        'triggered_by',
     ];
 
     protected $casts = [

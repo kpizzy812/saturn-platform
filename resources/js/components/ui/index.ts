@@ -30,3 +30,12 @@ export { ActivityTimeline } from './ActivityTimeline';
 export { SaturnLogo, SaturnBrand, SaturnIcon } from './SaturnLogo';
 export { Progress } from './Progress';
 export { BrandIcon } from './BrandIcon';
+export {
+    DataTable,
+    DataTableFilters,
+    DataTableSearch,
+    DataTableFilter,
+    DataTableContent,
+    DataTablePagination,
+} from './DataTable';
+export type { DataTableColumn, SortDirection } from './DataTable';

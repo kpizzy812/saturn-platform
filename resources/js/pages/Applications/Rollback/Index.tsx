@@ -10,6 +10,7 @@ import {
 import type { Application } from '@/types';
 import { RollbackTimeline, type TimelineDeployment } from '@/components/features/RollbackTimeline';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
+import { formatStatus } from '@/lib/formatters';
 import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 
 type DeploymentStatus = 'finished' | 'failed' | 'in_progress' | 'queued' | 'cancelled' | 'rolled_back';
@@ -439,7 +440,7 @@ export default function ApplicationRollbackIndex({
                                                                     <Badge variant="success">Active</Badge>
                                                                 )}
                                                                 <Badge variant={getStatusVariant(deployment.status)} className="capitalize">
-                                                                    {deployment.status.replace('_', ' ')}
+                                                                    {formatStatus(deployment.status)}
                                                                 </Badge>
                                                                 {deployment.rollback && (
                                                                     <Badge variant="warning">Rollback</Badge>

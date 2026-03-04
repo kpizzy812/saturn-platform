@@ -810,16 +810,4 @@ section {
     }
 }
 
-/* Mobile dropdown full-width override (overrides floating-ui inline styles) */
-@media (max-width: 767px) {
-    .dropdown-mobile-full {
-        position: fixed !important;
-        top: 60px !important;
-        left: 12px !important;
-        right: 12px !important;
-        width: auto !important;
-        min-width: 0 !important;
-        max-width: none !important;
-        transform: none !important;
-    }
-}
+/* Mobile dropdown positioning is now handled in Dropdown.tsx via JS */

@@ -8,7 +8,8 @@ interface ModalProps {
     title?: string;
     description?: string;
     children: React.ReactNode;
-    size?: 'sm' | 'default' | 'lg' | 'xl' | 'full';
+    size?: 'sm' | 'default' | 'lg' | 'xl' | '2xl' | 'full';
+    initialFocus?: React.RefObject<HTMLElement | null>;
 }
 
 const sizeClasses = {
@@ -16,13 +17,14 @@ const sizeClasses = {
     default: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
-    full: 'max-w-4xl',
+    '2xl': 'max-w-4xl',
+    full: 'max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)]',
 };
 
-export function Modal({ isOpen, onClose, title, description, children, size = 'default' }: ModalProps) {
+export function Modal({ isOpen, onClose, title, description, children, size = 'default', initialFocus }: ModalProps) {
     return (
         <Transition show={isOpen}>
-            <Dialog onClose={onClose} className="relative z-50">
+            <Dialog onClose={onClose} className="relative z-50" initialFocus={initialFocus}>
                 {/* Backdrop */}
                 <TransitionChild
                     enter="ease-out duration-300"
@@ -48,6 +50,7 @@ export function Modal({ isOpen, onClose, title, description, children, size = 'd
                         <DialogPanel
                             className={cn(
                                 'w-full max-h-[85vh] overflow-y-auto rounded-xl border border-primary/[0.10] bg-primary/[0.05] backdrop-blur-2xl backdrop-saturate-150 p-6 shadow-2xl',
+                                'max-sm:max-w-[calc(100vw-2rem)]',
                                 sizeClasses[size]
                             )}
                         >

@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/Toast';
 import { GitCommit, Clock, RotateCw, Play, Loader2, AlertCircle } from 'lucide-react';
 import type { Service } from '@/types';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
+import { formatStatus } from '@/lib/formatters';
 
 type DeploymentStatus = 'queued' | 'in_progress' | 'finished' | 'failed' | 'cancelled';
 
@@ -224,7 +225,7 @@ export function DeploymentsTab({ service, deployments: propDeployments = [] }: P
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <Badge variant={getStatusVariant(deployment.status)}>
-                                                {deployment.status.replace('_', ' ')}
+                                                {formatStatus(deployment.status)}
                                             </Badge>
                                             {deployment.status === 'finished' && (
                                                 <Button

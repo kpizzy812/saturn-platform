@@ -517,11 +517,15 @@ class AiChatService
         $contextInfo = '';
         if ($session->context_type) {
             $resource = $session->loadContext();
+            // Sanitize user-controlled fields to prevent prompt injection attacks
+            $safeContextType = preg_replace('/[^a-zA-Z0-9_\-]/', '', (string) $session->context_type);
+            $rawName = $session->context_name ?? ($resource?->getAttribute('name') ?? 'Unknown');
+            $safeName = mb_substr(strip_tags((string) $rawName), 0, 100);
             $contextInfo = sprintf(
                 "\n\nCurrent context:\n- Resource type: %s\n- Resource name: %s\n- Resource ID: %d",
-                $session->context_type,
-                $session->context_name ?? ($resource->getAttribute('name') ?? 'Unknown'),
-                $session->context_id
+                $safeContextType,
+                $safeName,
+                (int) $session->context_id
             );
         }
 

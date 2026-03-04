@@ -405,7 +405,14 @@ export default function DatabaseImport({ database }: Props) {
                                 if (exportPollingRef.current) clearInterval(exportPollingRef.current);
                                 setIsProcessing(false);
                                 addToast('success', 'Export complete! Downloading...');
-                                window.location.href = statusData.download_url;
+                                // Validate download URL is relative or same-origin to prevent open redirect
+                                const downloadUrl = String(statusData.download_url);
+                                const isSafeUrl = downloadUrl.startsWith('/') && !downloadUrl.startsWith('//');
+                                if (isSafeUrl) {
+                                    window.location.href = downloadUrl;
+                                } else {
+                                    addToast('error', 'Invalid download URL received from server.');
+                                }
                             } else if (statusData.status === 'failed') {
                                 if (exportPollingRef.current) clearInterval(exportPollingRef.current);
                                 setIsProcessing(false);
