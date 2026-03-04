@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, router } from '@inertiajs/react';
+import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Badge, Switch, useConfirm } from '@/components/ui';
+import { Card, CardContent, Button, Badge, Switch, Checkbox, Input, useConfirm } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, Save, Loader2, Play, CheckCircle, XCircle, AlertCircle, DatabaseZap } from 'lucide-react';
+import { ArrowLeft, Plus, Download, RotateCcw, Trash2, Clock, HardDrive, Save, Loader2, Play, CheckCircle, XCircle, AlertCircle, DatabaseZap, Lock, KeyRound } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
 import { getStatusIcon, getStatusVariant, getStatusLabel } from '@/lib/statusUtils';
 import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
@@ -19,6 +20,7 @@ interface Backup {
     filename: string;
     size: string;
     status: 'completed' | 'failed' | 'in_progress';
+    is_encrypted?: boolean;
     restore_status: 'pending' | 'in_progress' | 'success' | 'failed' | null;
     restore_started_at: string | null;
     restore_finished_at: string | null;
@@ -31,6 +33,8 @@ interface ScheduledBackup {
     enabled: boolean;
     frequency: string;
     databases_to_backup?: string;
+    encrypt_backup?: boolean;
+    has_encryption_key?: boolean;
     created_at: string;
     updated_at: string;
 }
@@ -53,6 +57,9 @@ function cronToFrequency(cron?: string): string {
 export default function DatabaseBackups({ database, backups, scheduledBackup: initialScheduledBackup }: Props) {
     const [autoBackupEnabled, setAutoBackupEnabled] = useState(initialScheduledBackup?.enabled ?? false);
     const [backupFrequency, setBackupFrequency] = useState(cronToFrequency(initialScheduledBackup?.frequency));
+    const [encryptBackup, setEncryptBackup] = useState(initialScheduledBackup?.encrypt_backup ?? false);
+    // Empty by default — only sent when user enters a new key (never expose stored key)
+    const [encryptionKey, setEncryptionKey] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [hasChanges, setHasChanges] = useState(false);
@@ -74,21 +81,27 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
         if (initialScheduledBackup) {
             const enabledChanged = autoBackupEnabled !== initialScheduledBackup.enabled;
             const frequencyChanged = cronToFrequency(initialScheduledBackup.frequency) !== backupFrequency;
-            setHasChanges(enabledChanged || frequencyChanged);
+            const encryptChanged = encryptBackup !== (initialScheduledBackup.encrypt_backup ?? false);
+            const keyChanged = encryptionKey.length > 0;
+            setHasChanges(enabledChanged || frequencyChanged || encryptChanged || keyChanged);
         } else {
-            setHasChanges(autoBackupEnabled);
+            setHasChanges(autoBackupEnabled || encryptionKey.length > 0);
         }
-    }, [autoBackupEnabled, backupFrequency, initialScheduledBackup]);
+    }, [autoBackupEnabled, backupFrequency, encryptBackup, encryptionKey, initialScheduledBackup]);
 
     const handleSaveSchedule = () => {
         setIsSaving(true);
-        router.patch(`/databases/${database.uuid}/backups/schedule`, {
+        const payload: RouterPayload = {
             enabled: autoBackupEnabled,
             frequency: frequencyToCron[backupFrequency] || backupFrequency,
-        }, {
+            encrypt_backup: encryptBackup,
+            ...(encryptionKey.length > 0 ? { encryption_key: encryptionKey } : {}),
+        };
+        router.patch(`/databases/${database.uuid}/backups/schedule`, payload, {
             preserveScroll: true,
             onSuccess: () => {
                 setHasChanges(false);
+                setEncryptionKey('');
                 addToast('success', 'Backup schedule saved successfully');
             },
             onError: () => {
@@ -255,7 +268,7 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                     </div>
 
                     {autoBackupEnabled && (
-                        <div className="mt-4 space-y-3 border-t border-border pt-4">
+                        <div className="mt-4 space-y-4 border-t border-border pt-4">
                             <div>
                                 <label className="mb-2 block text-sm font-medium text-foreground">
                                     Backup Frequency
@@ -275,6 +288,29 @@ export default function DatabaseBackups({ database, backups, scheduledBackup: in
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+
+                            {/* Encryption settings */}
+                            <div className="space-y-3 rounded-lg border border-border bg-background-secondary p-4">
+                                <div className="flex items-center gap-2">
+                                    <Lock className="h-4 w-4 text-foreground-muted" />
+                                    <span className="text-sm font-medium text-foreground">Backup Encryption</span>
+                                </div>
+                                <Checkbox
+                                    label="Encrypt backup files with a passphrase"
+                                    checked={encryptBackup}
+                                    onChange={(e) => setEncryptBackup(e.target.checked)}
+                                />
+                                {encryptBackup && (
+                                    <Input
+                                        label="Encryption Passphrase"
+                                        type="password"
+                                        value={encryptionKey}
+                                        onChange={(e) => setEncryptionKey(e.target.value)}
+                                        placeholder={initialScheduledBackup?.has_encryption_key ? '••••••••  (leave blank to keep current)' : 'Enter passphrase'}
+                                        hint="Used to encrypt backups with GPG. Store this passphrase securely — without it backups cannot be restored."
+                                    />
+                                )}
                             </div>
                         </div>
                     )}
@@ -484,6 +520,12 @@ function BackupCard({
                             <div className="flex items-center gap-2">
                                 <h3 className="font-medium text-foreground">{backup.filename}</h3>
                                 <Badge variant={getStatusVariant(backup.status)}>{getStatusLabel(backup.status)}</Badge>
+                                {backup.is_encrypted && (
+                                    <Badge variant="info">
+                                        <KeyRound className="mr-1 h-3 w-3" />
+                                        Encrypted
+                                    </Badge>
+                                )}
                                 {isRestoring && (
                                     <Badge variant="warning">
                                         <Loader2 className="mr-1 h-3 w-3 animate-spin" />

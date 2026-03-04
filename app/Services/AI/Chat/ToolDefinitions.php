@@ -17,7 +17,7 @@ final class ToolDefinitions
      * Available action types.
      */
     public const ACTION_TYPES = [
-        'deploy', 'restart', 'stop', 'start', 'logs', 'status', 'delete',
+        'deploy', 'rollback', 'restart', 'stop', 'start', 'logs', 'status', 'delete',
         'analyze_errors', 'analyze_deployment', 'code_review', 'health_check', 'metrics',
         'help', 'none',
     ];
@@ -67,7 +67,7 @@ final class ToolDefinitions
                                 'action' => [
                                     'type' => 'string',
                                     'enum' => self::ACTION_TYPES,
-                                    'description' => 'The action to perform: deploy, restart, stop, start, logs, status, delete, help, or none',
+                                    'description' => 'The action to perform: deploy, rollback, restart, stop, start, logs, status, delete, help, or none',
                                 ],
                                 'resource_type' => [
                                     'type' => 'string',

@@ -4,7 +4,7 @@ import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Checkbox, Select } from '@/components/ui';
 import { useToast } from '@/components/ui/Toast';
-import { ArrowLeft, Save, Clock, HardDrive, Cloud, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Save, Clock, HardDrive, Cloud, AlertCircle, Lock } from 'lucide-react';
 import type { StandaloneDatabase } from '@/types';
 
 interface Props {
@@ -23,6 +23,9 @@ interface BackupSettings {
     s3_region?: string;
     s3_access_key?: string;
     disable_local_backup: boolean;
+    encrypt_backup?: boolean;
+    // The actual key is never sent back from the server; has_encryption_key signals whether one is stored
+    has_encryption_key?: boolean;
 }
 
 export default function DatabaseBackupSettings({ database, backupSettings }: Props) {
@@ -40,10 +43,13 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
     const [s3AccessKey, setS3AccessKey] = useState(backupSettings?.s3_access_key ?? '');
     const [s3SecretKey, setS3SecretKey] = useState('');
     const [disableLocalBackup, setDisableLocalBackup] = useState(backupSettings?.disable_local_backup ?? false);
+    const [encryptBackup, setEncryptBackup] = useState(backupSettings?.encrypt_backup ?? false);
+    // Empty by default — only sent when user enters a new key
+    const [encryptionKey, setEncryptionKey] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
 
     const handleSave = () => {
-        const settings: BackupSettings = {
+        const payload: Record<string, unknown> = {
             enabled,
             frequency,
             retention,
@@ -54,12 +60,17 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
             s3_region: s3Region,
             s3_access_key: s3AccessKey,
             disable_local_backup: disableLocalBackup,
+            encrypt_backup: encryptBackup,
         };
+        if (encryptionKey.length > 0) {
+            payload.encryption_key = encryptionKey;
+        }
 
-        router.patch(`/databases/${database.uuid}/settings/backups`, settings as unknown as RouterPayload, {
+        router.patch(`/databases/${database.uuid}/settings/backups`, payload as unknown as RouterPayload, {
             onSuccess: () => {
                 addToast('success', 'Backup settings saved successfully');
                 setHasChanges(false);
+                setEncryptionKey('');
             },
             onError: () => {
                 addToast('error', 'Failed to save backup settings');
@@ -206,6 +217,35 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
                                         markChanged();
                                     }}
                                 />
+
+                                {/* Encryption section */}
+                                <div className="space-y-3 rounded-lg border border-border bg-background-secondary p-4">
+                                    <div className="flex items-center gap-2">
+                                        <Lock className="h-4 w-4 text-foreground-muted" />
+                                        <span className="text-sm font-medium text-foreground">Backup Encryption</span>
+                                    </div>
+                                    <Checkbox
+                                        label="Encrypt backup files with a passphrase"
+                                        checked={encryptBackup}
+                                        onChange={(e) => {
+                                            setEncryptBackup(e.target.checked);
+                                            markChanged();
+                                        }}
+                                    />
+                                    {encryptBackup && (
+                                        <Input
+                                            label="Encryption Passphrase"
+                                            type="password"
+                                            value={encryptionKey}
+                                            onChange={(e) => {
+                                                setEncryptionKey(e.target.value);
+                                                markChanged();
+                                            }}
+                                            placeholder={backupSettings?.has_encryption_key ? '••••••••  (leave blank to keep current)' : 'Enter passphrase'}
+                                            hint="Used to encrypt backups with GPG. Store this passphrase securely — without it backups cannot be restored."
+                                        />
+                                    )}
+                                </div>
                             </>
                         )}
                     </div>
@@ -339,6 +379,10 @@ export default function DatabaseBackupSettings({ database, backupSettings }: Pro
                             <ScheduleItem
                                 label="Compression"
                                 value={compression ? 'Enabled' : 'Disabled'}
+                            />
+                            <ScheduleItem
+                                label="Encryption"
+                                value={encryptBackup ? (backupSettings?.has_encryption_key || encryptionKey ? 'Enabled' : 'Enabled (no key set)') : 'Disabled'}
                             />
                         </div>
                     </CardContent>

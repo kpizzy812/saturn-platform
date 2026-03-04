@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, usePage, router } from '@inertiajs/react';
-import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command, BarChart3 } from 'lucide-react';
+import { ChevronDown, Settings, Users, LogOut, Moon, Sun, Plus, Search, Command, BarChart3, ClipboardCheck } from 'lucide-react';
 import { Dropdown, DropdownTrigger, DropdownContent, DropdownItem, DropdownDivider, useDropdown } from '@/components/ui/Dropdown';
 import { NotificationDropdown } from '@/components/ui/NotificationDropdown';
 import { SaturnLogo } from '@/components/ui/SaturnLogo';
@@ -39,6 +39,7 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
     const { props } = usePage();
     const user = props.auth;
     const notificationsData = props.notifications;
+    const pendingApprovalsCount = (props.pendingApprovalsCount as number) ?? 0;
     const { isDark, toggleTheme } = useTheme();
 
     // Detect OS for keyboard shortcut display
@@ -99,6 +100,20 @@ export function Header({ showNewProject = true, onCommandPalette }: HeaderProps)
                 >
                     <BarChart3 className="h-5 w-5 group-hover:animate-wiggle" />
                 </Link>
+
+                {/* Pending Approvals — only shown when there are items to review */}
+                {pendingApprovalsCount > 0 && (
+                    <Link
+                        href="/approvals"
+                        className="group relative rounded-lg p-2.5 text-warning transition-all duration-200 hover:bg-background-secondary"
+                        title={`${pendingApprovalsCount} pending approval${pendingApprovalsCount !== 1 ? 's' : ''}`}
+                    >
+                        <ClipboardCheck className="h-5 w-5 group-hover:animate-wiggle" />
+                        <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-warning text-[10px] font-bold text-white">
+                            {pendingApprovalsCount > 9 ? '9+' : pendingApprovalsCount}
+                        </span>
+                    </Link>
+                )}
 
                 {/* Theme Toggle */}
                 <button

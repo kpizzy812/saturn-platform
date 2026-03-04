@@ -6,6 +6,7 @@ use App\Events\DeploymentApprovalResolved;
 use App\Jobs\ApplicationDeploymentJob;
 use App\Models\DeploymentApproval;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -68,6 +69,9 @@ class ApproveDeploymentAction
             }
         });
 
+        // Invalidate cached pending approvals count for the approver
+        Cache::forget("pending_approvals_count_{$approver->id}");
+
         // Notify the requester via WebSocket
         event(DeploymentApprovalResolved::fromApproval($approval));
 
@@ -102,6 +106,9 @@ class ApproveDeploymentAction
                 'logs' => $deployment->logs."\n[Deployment rejected by {$approver->email}".($reason ? ": {$reason}" : '').']',
             ]);
         }
+
+        // Invalidate cached pending approvals count for the approver
+        Cache::forget("pending_approvals_count_{$approver->id}");
 
         // Notify the requester via WebSocket
         event(DeploymentApprovalResolved::fromApproval($approval));

@@ -2,10 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\DeploymentApproval;
 use App\Models\InstanceSettings;
 use App\Models\UserNotification;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -47,6 +49,9 @@ class HandleInertiaRequests extends Middleware
         // Get system notifications count for admins (Team 0)
         $systemNotificationsData = $this->getSystemNotificationsData($user);
 
+        // Get pending approvals count for admins/owners
+        $pendingApprovalsCount = $this->getPendingApprovalsCount($user);
+
         return [
             ...parent::share($request),
             'auth' => $user ? [
@@ -82,6 +87,7 @@ class HandleInertiaRequests extends Middleware
             ])->values()->toArray() : [],
             'notifications' => $notificationsData,
             'systemNotifications' => $systemNotificationsData,
+            'pendingApprovalsCount' => $pendingApprovalsCount,
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
@@ -160,6 +166,33 @@ class HandleInertiaRequests extends Middleware
             return app(PermissionService::class)->getUserEffectivePermissions($user);
         } catch (\Exception $e) {
             return [];
+        }
+    }
+
+    /**
+     * Get count of pending deployment approvals for users who can approve them.
+     * Only queries for team owners/admins to avoid unnecessary DB load for regular users.
+     * Cached for 60 seconds to avoid running 4 queries on every page load.
+     */
+    private function getPendingApprovalsCount($user): int
+    {
+        if (! $user) {
+            return 0;
+        }
+
+        // Only admins and owners can approve deployments
+        if (! $user->isAdmin() && ! $user->isOwner()) {
+            return 0;
+        }
+
+        try {
+            return Cache::remember(
+                "pending_approvals_count_{$user->id}",
+                60,
+                fn () => DeploymentApproval::pendingForApprover($user)->count()
+            );
+        } catch (\Exception $e) {
+            return 0;
         }
     }
 

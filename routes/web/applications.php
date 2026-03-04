@@ -883,6 +883,32 @@ Route::get('/applications/{uuid}/settings', function (string $uuid) {
     ]);
 })->name('applications.settings');
 
+// Canary Deployment Settings page
+Route::get('/applications/{uuid}/settings/canary', function (string $uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $project = $application->environment->project;
+    $environment = $application->environment;
+    $settings = $application->settings;
+
+    return Inertia::render('Applications/Settings/CanarySettings', [
+        'application' => $application,
+        'applicationSettings' => [
+            'canary_enabled' => $settings->canary_enabled ?? false,
+            'canary_steps' => $settings->canary_steps ?? [10, 25, 50, 100],
+            'canary_step_minutes' => $settings->canary_step_minutes ?? 5,
+            'canary_auto_promote' => $settings->canary_auto_promote ?? true,
+            'canary_error_rate_threshold' => $settings->canary_error_rate_threshold ?? 5,
+        ],
+        'projectUuid' => $project->uuid,
+        'projectName' => $project->name,
+        'environmentUuid' => $environment->uuid,
+        'environmentName' => $environment->name,
+    ]);
+})->name('applications.settings.canary');
+
 // Update application settings (web route for session auth)
 Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminate\Http\Request $request) {
     $application = \App\Models\Application::ownedByCurrentTeam()
@@ -920,6 +946,13 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'docker_images_to_keep' => 'sometimes|integer|min:1|max:20',
         // CI integration
         'wait_for_ci' => 'sometimes|boolean',
+        // Canary deployment settings
+        'canary_enabled' => 'sometimes|boolean',
+        'canary_steps' => 'sometimes|nullable|array',
+        'canary_steps.*' => 'integer|min:1|max:100',
+        'canary_step_minutes' => 'sometimes|integer|min:1|max:60',
+        'canary_auto_promote' => 'sometimes|boolean',
+        'canary_error_rate_threshold' => 'sometimes|integer|min:0|max:100',
     ]);
 
     // Map frontend field names to application model field names
@@ -945,6 +978,12 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'rollback_on_crash_loop' => 'rollback_on_crash_loop',
         'docker_images_to_keep' => 'docker_images_to_keep',
         'wait_for_ci' => 'wait_for_ci',
+        // Canary settings
+        'canary_enabled' => 'canary_enabled',
+        'canary_steps' => 'canary_steps',
+        'canary_step_minutes' => 'canary_step_minutes',
+        'canary_auto_promote' => 'canary_auto_promote',
+        'canary_error_rate_threshold' => 'canary_error_rate_threshold',
     ];
 
     $settingsUpdate = [];

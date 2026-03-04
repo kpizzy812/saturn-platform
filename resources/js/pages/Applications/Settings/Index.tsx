@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, Button, Input, Select, Modal, ModalFooter } from '@/components/ui';
-import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2, History, HelpCircle, Copy, Check } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Info, AlertCircle, CheckCircle2, History, HelpCircle, Copy, Check, GitBranch } from 'lucide-react';
 import type { Application } from '@/types';
 
 interface ApplicationSettings {
@@ -579,7 +579,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                 </div>
 
                                 {/* Manual Rollback Link */}
-                                <div className="border-t border-border pt-4">
+                                <div className="border-t border-border pt-4 space-y-2">
                                     <Link
                                         href={`/applications/${application.uuid}/rollback`}
                                         className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
@@ -587,6 +587,15 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                         <History className="h-4 w-4" />
                                         View deployment history &amp; manual rollback
                                     </Link>
+                                    <div>
+                                        <Link
+                                            href={`/applications/${application.uuid}/settings/canary`}
+                                            className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                                        >
+                                            <GitBranch className="h-4 w-4" />
+                                            Canary deployment settings
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
