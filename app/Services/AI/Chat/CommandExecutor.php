@@ -9,8 +9,10 @@ use App\Actions\Database\StopDatabase;
 use App\Actions\Service\RestartService;
 use App\Actions\Service\StartService;
 use App\Actions\Service\StopService;
+use App\Enums\ApplicationDeploymentStatus;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
+use App\Models\ApplicationRollbackEvent;
 use App\Models\CodeReview;
 use App\Models\DeploymentLogAnalysis;
 use App\Models\Environment;
@@ -53,6 +55,7 @@ class CommandExecutor
      */
     private const RATE_LIMITS = [
         'deploy' => [10, 60],      // 10 deploys per minute
+        'rollback' => [5, 60],     // 5 rollbacks per minute
         'delete' => [5, 60],       // 5 deletes per minute
         'restart' => [10, 60],     // 10 restarts per minute
         'stop' => [10, 60],        // 10 stops per minute
@@ -173,6 +176,7 @@ class CommandExecutor
     {
         return match ($command->action) {
             'deploy' => $this->executeDeployCommand($command),
+            'rollback' => $this->executeRollbackCommand($command),
             'restart' => $this->executeRestartCommand($command),
             'stop' => $this->executeStopCommand($command),
             'start' => $this->executeStartCommand($command),
@@ -247,6 +251,104 @@ class CommandExecutor
             Log::error('AI Chat deploy failed', ['error' => $e->getMessage(), 'application_id' => $resource->id]);
 
             return CommandResult::failed("Ошибка деплоя: {$e->getMessage()}");
+        }
+    }
+
+    /**
+     * Rollback an application to its last successful (or specified) deployment.
+     */
+    private function executeRollbackCommand(ParsedCommand $command): CommandResult
+    {
+        // SECURITY: Rate limit rollback operations
+        if ($rateLimitResult = $this->checkRateLimit('rollback')) {
+            return $rateLimitResult;
+        }
+
+        $resource = $this->resolveResourceFromCommand($command, 'application');
+        if (! $resource) {
+            if (! $command->hasResource()) {
+                return $this->listAvailableResources('rollback', 'application');
+            }
+
+            return $this->notFoundWithSuggestions($command);
+        }
+
+        if (! ($resource instanceof Application)) {
+            return CommandResult::failed('Rollback доступен только для приложений');
+        }
+
+        if (! $this->authorize('deploy', $resource)) {
+            return CommandResult::unauthorized();
+        }
+
+        try {
+            // Find the target deployment: by UUID if specified, otherwise the last successful one
+            $targetDeployment = null;
+
+            if ($command->deploymentUuid) {
+                $targetDeployment = ApplicationDeploymentQueue::where('deployment_uuid', $command->deploymentUuid)
+                    ->where('application_id', $resource->id)
+                    ->where('status', ApplicationDeploymentStatus::FINISHED->value)
+                    ->first();
+
+                if (! $targetDeployment) {
+                    return CommandResult::failed(
+                        "Деплой `{$command->deploymentUuid}` не найден или не является успешным"
+                    );
+                }
+            } else {
+                // Last successful deployment (skip any current in-progress ones)
+                $targetDeployment = ApplicationDeploymentQueue::where('application_id', $resource->id)
+                    ->where('status', ApplicationDeploymentStatus::FINISHED->value)
+                    ->where('pull_request_id', 0)
+                    ->orderBy('id', 'desc')
+                    ->first();
+            }
+
+            if (! $targetDeployment || ! $targetDeployment->commit) {
+                return CommandResult::failed(
+                    "Нет успешных деплоев для отката приложения **{$resource->name}**"
+                );
+            }
+
+            // Queue the rollback deployment
+            $deploymentUuid = (string) new Cuid2;
+            queue_application_deployment(
+                application: $resource,
+                deployment_uuid: $deploymentUuid,
+                commit: $targetDeployment->commit,
+                rollback: true,
+                no_questions_asked: true,
+                user_id: $this->user->id,
+            );
+
+            // Record the manual rollback event
+            ApplicationRollbackEvent::createEvent(
+                application: $resource,
+                reason: ApplicationRollbackEvent::REASON_MANUAL,
+                type: 'manual',
+                user: $this->user,
+            );
+
+            Log::info('AI Chat rollback triggered', [
+                'user_id' => $this->user->id,
+                'application_id' => $resource->id,
+                'target_commit' => $targetDeployment->commit,
+                'deployment_uuid' => $deploymentUuid,
+            ]);
+
+            return CommandResult::success(
+                "⏪ Откат **{$resource->name}** до коммита `{$targetDeployment->commit}`. UUID: `{$deploymentUuid}`",
+                [
+                    'deployment_uuid' => $deploymentUuid,
+                    'application_uuid' => $resource->uuid,
+                    'target_commit' => $targetDeployment->commit,
+                ]
+            );
+        } catch (\Throwable $e) {
+            Log::error('AI Chat rollback failed', ['error' => $e->getMessage(), 'application_id' => $resource->id]);
+
+            return CommandResult::failed("Ошибка отката: {$e->getMessage()}");
         }
     }
 
@@ -2073,6 +2175,7 @@ class CommandExecutor
 
 ### Управление ресурсами
 - **deploy** - Задеплоить приложение
+- **rollback** - Откатить приложение до последнего успешного деплоя
 - **restart** - Перезапустить приложение, сервис или БД
 - **stop** - Остановить ресурс
 - **start** - Запустить остановленный ресурс
@@ -2089,6 +2192,7 @@ class CommandExecutor
 
 **Примеры:**
 - "Задеплой my-app"
+- "Откати my-app"
 - "Проанализируй ошибки api-service"
 - "Почему упал последний деплой?"
 - "Покажи code review"

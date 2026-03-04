@@ -311,6 +311,14 @@ Route::post('/web-api/applications/{uuid}/scan-env-example', function (string $u
     }
 })->name('web-api.applications.scan-env-example');
 
+// Bulk import .env file content into application environment variables
+Route::post('/web-api/applications/{uuid}/envs/bulk-import', [\App\Http\Controllers\Api\EnvironmentVariableController::class, 'bulkImport'])
+    ->name('web-api.applications.envs.bulk-import');
+
+// Diff environment variables between two applications
+Route::get('/web-api/applications/{uuid}/envs/diff', [\App\Http\Controllers\Api\EnvironmentVariableController::class, 'diff'])
+    ->name('web-api.applications.envs.diff');
+
 // Application deployments JSON (for Show page DeploymentsTab)
 Route::get('/applications/{uuid}/deployments/json', function (string $uuid) {
     $application = \App\Models\Application::ownedByCurrentTeam()

@@ -25,6 +25,7 @@ readonly class ParsedCommand
     {
         return in_array($this->action, [
             'deploy',
+            'rollback',
             'restart',
             'stop',
             'start',
@@ -41,7 +42,7 @@ readonly class ParsedCommand
 
     public function isDangerous(): bool
     {
-        return in_array($this->action, ['deploy', 'stop', 'delete'], true);
+        return in_array($this->action, ['deploy', 'rollback', 'stop', 'delete'], true);
     }
 
     public function hasResource(): bool
