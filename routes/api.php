@@ -228,11 +228,15 @@ Route::group([
             return response()->json(['message' => 'Deployment not found.'], 404);
         }
 
-        $logs = $deployment->logs;
+        // Security: hide logs for non-sensitive tokens (logs may contain env vars)
+        $canReadSensitive = request()->attributes->get('can_read_sensitive', false);
         $parsedLogs = [];
 
-        if ($logs) {
-            $parsedLogs = json_decode($logs, true) ?: [];
+        if ($canReadSensitive) {
+            $logs = $deployment->logs;
+            if ($logs) {
+                $parsedLogs = json_decode($logs, true) ?: [];
+            }
         }
 
         return response()->json([
@@ -242,6 +246,7 @@ Route::group([
         ]);
     })->middleware(['api.ability:read', 'throttle:60,1']);
     Route::post('/deployments/{uuid}/cancel', [DeployController::class, 'cancel_deployment'])->middleware(['api.ability:deploy']);
+    Route::post('/deployments/{uuid}/promote', [DeployController::class, 'promote'])->middleware(['api.ability:deploy']);
     Route::get('/deployments/applications/{uuid}', [DeployController::class, 'get_application_deployments'])->middleware(['api.ability:read']);
 
     // Deployment AI Analysis
@@ -662,7 +667,7 @@ Route::group([
             return response()->json(['message' => 'Server is not functional'], 401);
         }
 
-        if ($server->settings->sentinel_token !== $naked_token) {
+        if (! hash_equals($server->settings->sentinel_token, $naked_token)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 

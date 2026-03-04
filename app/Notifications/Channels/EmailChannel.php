@@ -51,22 +51,30 @@ class EmailChannel
             $isTestNotification = data_get($notification, 'isTestNotification', false);
 
             if (! $isTestNotification) {
+                $validRecipients = [];
                 foreach ($recipients as $recipient) {
-                    // Check if the recipient is part of the team
+                    // Check if the recipient is part of the team — skip invalid, don't throw
                     if (! $members->contains('email', $recipient)) {
                         $emailSettings = $notifiable->getEmailNotificationSettings();
                         data_set($emailSettings, 'smtp_password', '********');
                         data_set($emailSettings, 'resend_api_key', '********');
                         send_internal_notification(sprintf(
-                            "Recipient is not part of the team: %s\nTeam: %s\nNotification: %s\nNotifiable: %s\nEmail Settings:\n%s",
+                            "Recipient is not part of the team (skipped): %s\nTeam: %s\nNotification: %s\nNotifiable: %s\nEmail Settings:\n%s",
                             $recipient,
                             $team,
                             get_class($notification),
                             get_class($notifiable),
                             json_encode($emailSettings, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
                         ));
-                        throw new Exception('Recipient is not part of the team');
+
+                        continue;
                     }
+                    $validRecipients[] = $recipient;
+                }
+                $recipients = $validRecipients;
+
+                if (count($recipients) === 0) {
+                    throw new Exception('No valid email recipients found after team membership validation');
                 }
             }
 

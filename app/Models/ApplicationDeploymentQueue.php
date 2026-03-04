@@ -238,9 +238,10 @@ class ApplicationDeploymentQueue extends Model
 
         $lockedVars = collect([]);
 
+        // Security: redact ALL environment variable values in deployment logs,
+        // not just is_shown_once — any env var could contain secrets
         $lockedVars = $lockedVars->merge(
             $app->environment_variables
-                ->where('is_shown_once', true)
                 ->pluck('real_value', 'key')
                 ->filter()
         );
@@ -248,7 +249,6 @@ class ApplicationDeploymentQueue extends Model
         if ($this->pull_request_id !== 0) {
             $lockedVars = $lockedVars->merge(
                 $app->environment_variables_preview
-                    ->where('is_shown_once', true)
                     ->pluck('real_value', 'key')
                     ->filter()
             );

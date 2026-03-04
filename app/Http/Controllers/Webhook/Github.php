@@ -226,24 +226,23 @@ class Github extends Controller
                                     }
 
                                     $deployment_uuid = new Cuid2;
-                                    $found = ApplicationPreview::where('application_id', $appToDeploy->id)->where('pull_request_id', $pull_request_id)->first();
-                                    if (! $found) {
+                                    // Use firstOrCreate to avoid race conditions with concurrent webhooks
+                                    $previewData = [
+                                        'git_type' => 'github',
+                                        'application_id' => $appToDeploy->id,
+                                        'pull_request_id' => $pull_request_id,
+                                    ];
+                                    if ($appToDeploy->build_pack === 'dockercompose') {
+                                        $previewData['docker_compose_domains'] = $appToDeploy->docker_compose_domains;
+                                    }
+                                    $pr_app = ApplicationPreview::firstOrCreate(
+                                        ['application_id' => $appToDeploy->id, 'pull_request_id' => $pull_request_id],
+                                        array_merge($previewData, ['pull_request_html_url' => $pull_request_html_url])
+                                    );
+                                    if ($pr_app->wasRecentlyCreated) {
                                         if ($appToDeploy->build_pack === 'dockercompose') {
-                                            $pr_app = ApplicationPreview::create([
-                                                'git_type' => 'github',
-                                                'application_id' => $appToDeploy->id,
-                                                'pull_request_id' => $pull_request_id,
-                                                'pull_request_html_url' => $pull_request_html_url,
-                                                'docker_compose_domains' => $appToDeploy->docker_compose_domains,
-                                            ]);
                                             $pr_app->generate_preview_fqdn_compose();
                                         } else {
-                                            $pr_app = ApplicationPreview::create([
-                                                'git_type' => 'github',
-                                                'application_id' => $appToDeploy->id,
-                                                'pull_request_id' => $pull_request_id,
-                                                'pull_request_html_url' => $pull_request_html_url,
-                                            ]);
                                             $pr_app->generate_preview_fqdn();
                                         }
                                     }
@@ -516,15 +515,16 @@ class Github extends Controller
                                     }
 
                                     $deployment_uuid = new Cuid2;
-                                    $found = ApplicationPreview::where('application_id', $appToDeploy->id)->where('pull_request_id', $pull_request_id)->first();
-                                    if (! $found) {
-                                        ApplicationPreview::create([
+                                    // Use firstOrCreate to avoid race conditions with concurrent webhooks
+                                    ApplicationPreview::firstOrCreate(
+                                        ['application_id' => $appToDeploy->id, 'pull_request_id' => $pull_request_id],
+                                        [
                                             'git_type' => 'github',
                                             'application_id' => $appToDeploy->id,
                                             'pull_request_id' => $pull_request_id,
                                             'pull_request_html_url' => $pull_request_html_url,
-                                        ]);
-                                    }
+                                        ]
+                                    );
                                     $result = queue_application_deployment(
                                         application: $appToDeploy,
                                         pull_request_id: $pull_request_id,

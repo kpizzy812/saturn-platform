@@ -616,6 +616,199 @@ Route::prefix('/servers/{uuid}/sentinel')->group(function () {
         ->name('servers.sentinel.metrics.json');
 });
 
+// Swarm management routes
+Route::prefix('/servers/{uuid}/swarm')->group(function () {
+    // JSON endpoint for node list (session-auth, used by useSwarmNodes hook)
+    Route::get('/nodes/json', function (string $uuid) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        if (! $server->isSwarmManager()) {
+            return response()->json(['error' => 'Server is not a Swarm manager'], 422);
+        }
+
+        if (! $server->isFunctional()) {
+            return response()->json(['error' => 'Server is not reachable'], 503);
+        }
+
+        try {
+            $output = instant_remote_process(
+                ["docker node ls --format '{{json .}}' 2>/dev/null"],
+                $server,
+                false
+            ) ?? '';
+
+            $nodes = [];
+            foreach (array_filter(explode("\n", trim($output))) as $line) {
+                $node = json_decode(trim($line), true);
+                if ($node) {
+                    $nodes[] = [
+                        'id' => $node['ID'] ?? '',
+                        'hostname' => $node['Hostname'] ?? '',
+                        'status' => strtolower($node['Status'] ?? ''),
+                        'availability' => strtolower($node['Availability'] ?? ''),
+                        'manager_status' => strtolower($node['ManagerStatus'] ?? ''),
+                        'engine_version' => $node['EngineVersion'] ?? '',
+                        'self' => (bool) ($node['Self'] ?? false),
+                    ];
+                }
+            }
+
+            return response()->json(['nodes' => $nodes]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to fetch nodes: '.$e->getMessage()], 500);
+        }
+    })->name('servers.swarm.nodes.json');
+
+    // Initialize a new swarm (makes this server the manager)
+    Route::post('/init', function (string $uuid) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('update', $server);
+
+        if (! $server->isFunctional()) {
+            return redirect()->back()->with('error', 'Server is not reachable');
+        }
+
+        try {
+            $advertiseAddr = escapeshellarg($server->ip);
+            instant_remote_process(
+                ["docker swarm init --advertise-addr {$advertiseAddr} 2>&1"],
+                $server,
+                false
+            );
+
+            $server->settings()->update(['is_swarm_manager' => true]);
+
+            return redirect()->back()->with('success', 'Swarm initialized successfully');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to initialize swarm: '.$e->getMessage());
+        }
+    })->name('servers.swarm.init');
+
+    // Join an existing swarm
+    Route::post('/join', function (string $uuid, Request $request) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('update', $server);
+
+        $validated = $request->validate([
+            'token' => 'required|string|max:512',
+            'manager_addr' => ['required', 'string', 'max:255', function ($attribute, $value, $fail) {
+                if (! preg_match('/^[\w.\-]+(:\d+)?$/', $value)) {
+                    $fail('The manager address must be a valid host or host:port.');
+                }
+            }],
+            'role' => 'nullable|in:worker,manager',
+        ]);
+
+        if (! $server->isFunctional()) {
+            return redirect()->back()->with('error', 'Server is not reachable');
+        }
+
+        try {
+            $token = escapeshellarg($validated['token']);
+            $addr = escapeshellarg($validated['manager_addr']);
+            instant_remote_process(
+                ["docker swarm join --token {$token} {$addr} 2>&1"],
+                $server,
+                false
+            );
+
+            $role = $validated['role'] ?? 'worker';
+            $server->settings()->update([
+                'is_swarm_manager' => $role === 'manager',
+                'is_swarm_worker' => $role === 'worker',
+            ]);
+
+            return redirect()->back()->with('success', 'Joined swarm as '.$role.' successfully');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to join swarm: '.$e->getMessage());
+        }
+    })->name('servers.swarm.join');
+
+    // Leave the swarm
+    Route::post('/leave', function (string $uuid) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('update', $server);
+
+        if (! $server->isFunctional()) {
+            return redirect()->back()->with('error', 'Server is not reachable');
+        }
+
+        try {
+            instant_remote_process(
+                ['docker swarm leave --force 2>&1'],
+                $server,
+                false
+            );
+
+            $server->settings()->update([
+                'is_swarm_manager' => false,
+                'is_swarm_worker' => false,
+            ]);
+
+            return redirect()->back()->with('success', 'Left swarm successfully');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to leave swarm: '.$e->getMessage());
+        }
+    })->name('servers.swarm.leave');
+
+    // Promote a node to manager
+    Route::post('/nodes/{nodeId}/promote', function (string $uuid, string $nodeId) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('update', $server);
+
+        if (! $server->isSwarmManager()) {
+            return redirect()->back()->with('error', 'Server is not a Swarm manager');
+        }
+
+        if (! preg_match('/^[a-zA-Z0-9]+$/', $nodeId)) {
+            return redirect()->back()->with('error', 'Invalid node ID');
+        }
+
+        try {
+            instant_remote_process(
+                ["docker node promote {$nodeId} 2>&1"],
+                $server,
+                false
+            );
+
+            return redirect()->back()->with('success', 'Node promoted to manager successfully');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to promote node: '.$e->getMessage());
+        }
+    })->name('servers.swarm.nodes.promote');
+
+    // Demote a node to worker
+    Route::post('/nodes/{nodeId}/demote', function (string $uuid, string $nodeId) {
+        $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();
+
+        Gate::authorize('update', $server);
+
+        if (! $server->isSwarmManager()) {
+            return redirect()->back()->with('error', 'Server is not a Swarm manager');
+        }
+
+        if (! preg_match('/^[a-zA-Z0-9]+$/', $nodeId)) {
+            return redirect()->back()->with('error', 'Invalid node ID');
+        }
+
+        try {
+            instant_remote_process(
+                ["docker node demote {$nodeId} 2>&1"],
+                $server,
+                false
+            );
+
+            return redirect()->back()->with('success', 'Node demoted to worker successfully');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to demote node: '.$e->getMessage());
+        }
+    })->name('servers.swarm.nodes.demote');
+});
+
 // Server action routes
 Route::post('/servers/{uuid}/validate', function (string $uuid) {
     $server = \App\Models\Server::ownedByCurrentTeam()->where('uuid', $uuid)->firstOrFail();

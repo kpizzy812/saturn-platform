@@ -31,6 +31,8 @@ class CloudProviderToken extends BaseModel
             ->dontSubmitEmptyLogs();
     }
 
+    protected $hidden = ['token'];
+
     protected $casts = [
         'token' => 'encrypted',
     ];

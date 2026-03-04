@@ -48,30 +48,48 @@ Broadcast::channel('server.{serverId}', function (User $user, string|int $server
 
 Broadcast::channel('database.{databaseId}', function (User $user, string|int $databaseId) {
     $databaseId = (int) $databaseId;
-    $database = \App\Models\StandalonePostgresql::find($databaseId)
-        ?? \App\Models\StandaloneMysql::find($databaseId)
-        ?? \App\Models\StandaloneMongodb::find($databaseId)
-        ?? \App\Models\StandaloneRedis::find($databaseId)
-        ?? \App\Models\StandaloneKeydb::find($databaseId)
-        ?? \App\Models\StandaloneDragonfly::find($databaseId)
-        ?? \App\Models\StandaloneClickhouse::find($databaseId)
-        ?? \App\Models\StandaloneMariadb::find($databaseId);
+    $databaseModels = [
+        \App\Models\StandalonePostgresql::class,
+        \App\Models\StandaloneMysql::class,
+        \App\Models\StandaloneMongodb::class,
+        \App\Models\StandaloneRedis::class,
+        \App\Models\StandaloneKeydb::class,
+        \App\Models\StandaloneDragonfly::class,
+        \App\Models\StandaloneClickhouse::class,
+        \App\Models\StandaloneMariadb::class,
+    ];
 
-    return $database && $user->teams->pluck('id')->contains($database->team()?->id);
+    foreach ($databaseModels as $model) {
+        $database = $model::find($databaseId);
+        if ($database) {
+            return $user->teams->pluck('id')->contains($database->team()?->id);
+        }
+    }
+
+    return false;
 });
 
 Broadcast::channel('database.{databaseId}.logs', function (User $user, string $databaseId) {
-    // databaseId can be UUID or numeric ID
-    $database = \App\Models\StandalonePostgresql::where('uuid', $databaseId)->first()
-        ?? \App\Models\StandaloneMysql::where('uuid', $databaseId)->first()
-        ?? \App\Models\StandaloneMongodb::where('uuid', $databaseId)->first()
-        ?? \App\Models\StandaloneRedis::where('uuid', $databaseId)->first()
-        ?? \App\Models\StandaloneKeydb::where('uuid', $databaseId)->first()
-        ?? \App\Models\StandaloneDragonfly::where('uuid', $databaseId)->first()
-        ?? \App\Models\StandaloneClickhouse::where('uuid', $databaseId)->first()
-        ?? \App\Models\StandaloneMariadb::where('uuid', $databaseId)->first();
+    $databaseModels = [
+        \App\Models\StandalonePostgresql::class,
+        \App\Models\StandaloneMysql::class,
+        \App\Models\StandaloneMongodb::class,
+        \App\Models\StandaloneRedis::class,
+        \App\Models\StandaloneKeydb::class,
+        \App\Models\StandaloneDragonfly::class,
+        \App\Models\StandaloneClickhouse::class,
+        \App\Models\StandaloneMariadb::class,
+    ];
 
-    return $database && $user->teams->pluck('id')->contains($database->team()?->id);
+    foreach ($databaseModels as $model) {
+        $database = $model::where('uuid', $databaseId)->first()
+            ?? $model::find($databaseId);
+        if ($database) {
+            return $user->teams->pluck('id')->contains($database->team()?->id);
+        }
+    }
+
+    return false;
 });
 
 Broadcast::channel('deployment.{deploymentId}.logs', function (User $user, string $deploymentId) {

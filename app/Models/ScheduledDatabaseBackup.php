@@ -63,6 +63,8 @@ class ScheduledDatabaseBackup extends BaseModel
         'team_id',
     ];
 
+    protected $hidden = ['encryption_key'];
+
     protected function casts(): array
     {
         return [

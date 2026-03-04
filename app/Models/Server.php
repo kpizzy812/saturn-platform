@@ -16,7 +16,6 @@ use App\Notifications\Server\Reachable;
 use App\Notifications\Server\Unreachable;
 use App\Services\ConfigurationRepository;
 use App\Traits\Auditable;
-use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -93,7 +92,7 @@ use Visus\Cuid2\Cuid2;
  * @property-read PrivateKey|null $privateKey
  *
  * @see \App\Jobs\CheckTraefikVersionForServerJob Where traefik_outdated_info is populated
- * @see \App\Livewire\Server\Proxy Where traefik_outdated_info is read and displayed
+ * @see resources/js/pages/Servers/Proxy.tsx Where traefik_outdated_info is read and displayed
 
  *
  * @property string|null $hetzner_server_id
@@ -105,7 +104,7 @@ use Visus\Cuid2\Cuid2;
  */
 class Server extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasFactory, LogsActivity, SchemalessAttributesTrait, SoftDeletes;
+    use Auditable, HasFactory, LogsActivity, SchemalessAttributesTrait, SoftDeletes;
 
     public static $batch_counter = 0;
 

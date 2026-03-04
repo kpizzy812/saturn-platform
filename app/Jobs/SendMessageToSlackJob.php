@@ -76,4 +76,11 @@ class SendMessageToSlackJob implements ShouldBeEncrypted, ShouldQueue
             throw $e;
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SendMessageToSlackJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

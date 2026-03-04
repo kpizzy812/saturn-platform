@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class CheckTraefikVersionJob implements ShouldQueue
 {
@@ -43,5 +44,12 @@ class CheckTraefikVersionJob implements ShouldQueue
         foreach ($servers as $server) {
             CheckTraefikVersionForServerJob::dispatch($server, $traefikVersions);
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CheckTraefikVersionJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

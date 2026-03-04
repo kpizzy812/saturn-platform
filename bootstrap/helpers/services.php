@@ -33,9 +33,10 @@ function getFilesystemVolumesFromServer(ServiceApplication|ServiceDatabase|Appli
             $server = $oneService->service->server;
         }
         $fileVolumes = $oneService->fileStorages()->get();
+        $escapedWorkdir = escapeshellarg($workdir);
         $commands = collect([
-            "mkdir -p $workdir > /dev/null 2>&1 || true",
-            "cd $workdir",
+            "mkdir -p {$escapedWorkdir} > /dev/null 2>&1 || true",
+            "cd {$escapedWorkdir}",
         ]);
         instant_remote_process($commands, $server);
         foreach ($fileVolumes as $fileVolume) {
@@ -47,14 +48,17 @@ function getFilesystemVolumesFromServer(ServiceApplication|ServiceDatabase|Appli
             } else {
                 $fileLocation = $path;
             }
+            // Security: validate and escape file paths to prevent command injection
+            validateShellSafePath($fileLocation, 'file storage path');
+            $escapedFileLocation = escapeshellarg($fileLocation);
             // Exists and is a file
-            $isFile = instant_remote_process(["test -f $fileLocation && echo OK || echo NOK"], $server);
+            $isFile = instant_remote_process(["test -f {$escapedFileLocation} && echo OK || echo NOK"], $server);
             // Exists and is a directory
-            $isDir = instant_remote_process(["test -d $fileLocation && echo OK || echo NOK"], $server);
+            $isDir = instant_remote_process(["test -d {$escapedFileLocation} && echo OK || echo NOK"], $server);
 
             if ($isFile === 'OK') {
                 // If its a file & exists
-                $filesystemContent = instant_remote_process(["cat $fileLocation"], $server);
+                $filesystemContent = instant_remote_process(["cat {$escapedFileLocation}"], $server);
                 if ($fileVolume->is_based_on_git) {
                     $fileVolume->content = $filesystemContent;
                 }
@@ -70,24 +74,24 @@ function getFilesystemVolumesFromServer(ServiceApplication|ServiceDatabase|Appli
                 $fileVolume->content = $content;
                 $fileVolume->is_directory = false;
                 $fileVolume->save();
-                $content = base64_encode($content);
-                $dir = str($fileLocation)->dirname();
+                $encodedContent = base64_encode($content);
+                $escapedDir = escapeshellarg(str($fileLocation)->dirname());
                 instant_remote_process([
-                    "mkdir -p $dir",
-                    "echo '$content' | base64 -d | tee $fileLocation",
+                    "mkdir -p {$escapedDir}",
+                    'echo '.escapeshellarg($encodedContent)." | base64 -d | tee {$escapedFileLocation}",
                 ], $server);
             } elseif ($isFile === 'NOK' && $isDir === 'NOK' && $fileVolume->is_directory && $isInit) {
                 // Does not exists (no dir or file), flagged as directory, is init
                 $fileVolume->content = null;
                 $fileVolume->is_directory = true;
                 $fileVolume->save();
-                instant_remote_process(["mkdir -p $fileLocation"], $server);
+                instant_remote_process(["mkdir -p {$escapedFileLocation}"], $server);
             } elseif ($isFile === 'NOK' && $isDir === 'NOK' && ! $fileVolume->is_directory && $isInit && is_null($content)) {
                 // Does not exists (no dir or file), not flagged as directory, is init, has no content => create directory
                 $fileVolume->content = null;
                 $fileVolume->is_directory = true;
                 $fileVolume->save();
-                instant_remote_process(["mkdir -p $fileLocation"], $server);
+                instant_remote_process(["mkdir -p {$escapedFileLocation}"], $server);
             }
         }
     } catch (\Throwable $e) {

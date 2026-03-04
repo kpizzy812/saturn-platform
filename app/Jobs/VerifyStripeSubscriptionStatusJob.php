@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class VerifyStripeSubscriptionStatusJob implements ShouldQueue
 {
@@ -102,5 +103,12 @@ class VerifyStripeSubscriptionStatusJob implements ShouldQueue
                 'VerifyStripeSubscriptionStatusJob failed for subscription ID '.$this->subscription->id.': '.$e->getMessage()
             );
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('VerifyStripeSubscriptionStatusJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SendTeamWebhookJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -112,5 +113,12 @@ class SendTeamWebhookJob implements ShouldBeEncrypted, ShouldQueue
         $payloadJson = json_encode($payload);
 
         return hash_hmac('sha256', $payloadJson, $this->webhook->secret);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SendTeamWebhookJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

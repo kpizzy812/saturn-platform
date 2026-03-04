@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ServerLimitCheckJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -51,5 +52,12 @@ class ServerLimitCheckJob implements ShouldBeEncrypted, ShouldQueue
 
             return handleError($e);
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerLimitCheckJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

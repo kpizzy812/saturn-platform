@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Actions\Database\StartDatabase;
+use App\Actions\Deployment\PromoteImageAction;
 use App\Actions\Service\StartService;
 use App\Http\Requests\Api\Deploy\ListDeploymentsRequest;
 use App\Models\Application;
 use App\Models\ApplicationDeploymentQueue;
+use App\Models\Environment;
 use App\Models\Server;
 use App\Models\Service;
 use App\Models\Tag;
@@ -529,6 +531,125 @@ class DeployController extends ApiController
         }
 
         return ['message' => $message, 'deployment_uuid' => $deployment_uuid];
+    }
+
+    #[OA\Post(
+        summary: 'Promote',
+        description: 'Promote a successful deployment\'s Docker image to a target environment without a full rebuild.',
+        path: '/deployments/{uuid}/promote',
+        operationId: 'promote-deployment',
+        security: [
+            ['bearerAuth' => []],
+        ],
+        tags: ['Deployments'],
+        parameters: [
+            new OA\Parameter(name: 'uuid', in: 'path', required: true, description: 'Source deployment UUID', schema: new OA\Schema(type: 'string')),
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\MediaType(
+                mediaType: 'application/json',
+                schema: new OA\Schema(
+                    type: 'object',
+                    required: ['target_environment_uuid'],
+                    properties: [
+                        new OA\Property(property: 'target_environment_uuid', type: 'string', description: 'UUID of the target environment'),
+                    ]
+                )
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Image promotion deployment queued.',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                new OA\Property(property: 'message', type: 'string', example: 'Image promotion queued.'),
+                                new OA\Property(property: 'deployment_uuid', type: 'string'),
+                                new OA\Property(property: 'promoted_image', type: 'string'),
+                            ]
+                        )
+                    ),
+                ]),
+            new OA\Response(
+                response: 400,
+                ref: '#/components/responses/400',
+            ),
+            new OA\Response(
+                response: 401,
+                ref: '#/components/responses/401',
+            ),
+            new OA\Response(
+                response: 404,
+                ref: '#/components/responses/404',
+            ),
+            new OA\Response(
+                response: 422,
+                description: 'Validation error (source deployment not finished, wrong project, etc.)',
+                content: [
+                    new OA\MediaType(
+                        mediaType: 'application/json',
+                        schema: new OA\Schema(
+                            type: 'object',
+                            properties: [
+                                new OA\Property(property: 'message', type: 'string'),
+                            ]
+                        )
+                    ),
+                ]),
+        ]
+    )]
+    public function promote(Request $request)
+    {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $uuid = $request->route('uuid');
+        if (! $uuid) {
+            return response()->json(['message' => 'Deployment UUID is required.'], 400);
+        }
+
+        $targetEnvUuid = $request->input('target_environment_uuid');
+        if (! $targetEnvUuid) {
+            return response()->json(['message' => 'target_environment_uuid is required.'], 400);
+        }
+
+        // Find source deployment scoped to team
+        $servers = Server::whereTeamId($teamId)->pluck('id');
+        $sourceDeployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)
+            ->whereIn('server_id', $servers)
+            ->first();
+
+        if (! $sourceDeployment) {
+            return response()->json(['message' => 'Source deployment not found.'], 404);
+        }
+
+        // Find target environment scoped to team
+        $targetEnvironment = Environment::whereHas('project', function ($q) use ($teamId) {
+            $q->where('team_id', $teamId);
+        })->where('uuid', $targetEnvUuid)->first();
+
+        if (! $targetEnvironment) {
+            return response()->json(['message' => 'Target environment not found.'], 404);
+        }
+
+        try {
+            $result = (new PromoteImageAction)->execute($sourceDeployment, $targetEnvironment);
+
+            return response()->json([
+                'message' => 'Image promotion queued.',
+                'deployment_uuid' => $result['deployment_uuid'],
+                'promoted_image' => $result['promoted_image'],
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     #[OA\Get(

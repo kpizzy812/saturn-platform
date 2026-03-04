@@ -15,42 +15,44 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Encrypt CodeReview summary and error_message
-        DB::table('code_reviews')
-            ->whereNotNull('summary')
-            ->orWhereNotNull('error_message')
-            ->orderBy('id')
-            ->chunk(100, function ($reviews) {
-                foreach ($reviews as $review) {
-                    $updates = [];
+        DB::transaction(function () {
+            // Encrypt CodeReview summary and error_message
+            DB::table('code_reviews')
+                ->whereNotNull('summary')
+                ->orWhereNotNull('error_message')
+                ->orderBy('id')
+                ->chunk(100, function ($reviews) {
+                    foreach ($reviews as $review) {
+                        $updates = [];
 
-                    if ($review->summary !== null && ! $this->isEncrypted($review->summary)) {
-                        $updates['summary'] = Crypt::encryptString($review->summary);
-                    }
+                        if ($review->summary !== null && ! $this->isEncrypted($review->summary)) {
+                            $updates['summary'] = Crypt::encryptString($review->summary);
+                        }
 
-                    if ($review->error_message !== null && ! $this->isEncrypted($review->error_message)) {
-                        $updates['error_message'] = Crypt::encryptString($review->error_message);
-                    }
+                        if ($review->error_message !== null && ! $this->isEncrypted($review->error_message)) {
+                            $updates['error_message'] = Crypt::encryptString($review->error_message);
+                        }
 
-                    if (! empty($updates)) {
-                        DB::table('code_reviews')->where('id', $review->id)->update($updates);
+                        if (! empty($updates)) {
+                            DB::table('code_reviews')->where('id', $review->id)->update($updates);
+                        }
                     }
-                }
-            });
+                });
 
-        // Encrypt AiUsageLog error_message
-        DB::table('ai_usage_logs')
-            ->whereNotNull('error_message')
-            ->orderBy('id')
-            ->chunk(100, function ($logs) {
-                foreach ($logs as $log) {
-                    if ($log->error_message !== null && ! $this->isEncrypted($log->error_message)) {
-                        DB::table('ai_usage_logs')
-                            ->where('id', $log->id)
-                            ->update(['error_message' => Crypt::encryptString($log->error_message)]);
+            // Encrypt AiUsageLog error_message
+            DB::table('ai_usage_logs')
+                ->whereNotNull('error_message')
+                ->orderBy('id')
+                ->chunk(100, function ($logs) {
+                    foreach ($logs as $log) {
+                        if ($log->error_message !== null && ! $this->isEncrypted($log->error_message)) {
+                            DB::table('ai_usage_logs')
+                                ->where('id', $log->id)
+                                ->update(['error_message' => Crypt::encryptString($log->error_message)]);
+                        }
                     }
-                }
-            });
+                });
+        });
 
         Log::info('Encrypted sensitive AI fields in CodeReview and AiUsageLog tables.');
     }

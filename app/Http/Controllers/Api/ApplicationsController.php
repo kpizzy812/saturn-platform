@@ -254,6 +254,7 @@ class ApplicationsController extends ApiController
         if (! $application) {
             return response()->json(['message' => 'Application not found.'], 404);
         }
+        $this->authorize('view', $application);
 
         try {
             $containers = getCurrentApplicationContainerStatus($application->destination->server, $application->id);

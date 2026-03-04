@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\Auditable;
-use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use App\Traits\ValidatesPublicPort;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -48,7 +47,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  */
 class StandaloneMysql extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;
+    use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;
 
     /**
      * The attributes that are mass assignable.
@@ -65,6 +64,8 @@ class StandaloneMysql extends BaseModel
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'database_type', 'server_status'];
+
+    protected $hidden = ['mysql_password', 'mysql_root_password'];
 
     protected $casts = [
         'mysql_password' => 'encrypted',

@@ -14,8 +14,42 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Token\Builder;
 
+/**
+ * Validate that a GitHub App api_url is safe to use (not pointing to internal services).
+ *
+ * @throws \RuntimeException If the URL is unsafe
+ */
+function validateGithubApiUrl(string $apiUrl): void
+{
+    $parsed = parse_url($apiUrl);
+    if (! $parsed || ! isset($parsed['scheme'], $parsed['host'])) {
+        throw new \RuntimeException('Invalid GitHub API URL format.');
+    }
+    if ($parsed['scheme'] !== 'https') {
+        throw new \RuntimeException('GitHub API URL must use HTTPS.');
+    }
+    $host = $parsed['host'];
+
+    // Allow known GitHub domains
+    if ($host === 'api.github.com' || str_ends_with($host, '.github.com') || str_ends_with($host, '.ghe.com')) {
+        return;
+    }
+
+    // For self-hosted GitHub Enterprise: resolve and block private/reserved IPs
+    $ip = gethostbyname($host);
+    if ($ip === $host) {
+        throw new \RuntimeException("Cannot resolve GitHub API host: {$host}");
+    }
+    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+        throw new \RuntimeException("GitHub API URL resolves to a private/reserved IP ({$ip}), which is blocked.");
+    }
+}
+
 function generateGithubToken(GithubApp $source, string $type)
 {
+    // Validate api_url on every call to prevent SSRF via post-creation URL modification
+    validateGithubApiUrl($source->api_url);
+
     $response = Http::get("{$source->api_url}/zen");
     $serverTime = CarbonImmutable::now()->setTimezone('UTC');
     $githubTime = Carbon::parse($response->header('date'));
@@ -90,6 +124,9 @@ function githubApi(GithubApp|GitlabApp|null $source, string $endpoint, string $m
     if (CircuitBreaker::isOpen('github')) {
         throw new \Exception('GitHub API circuit breaker is open — too many recent failures. Please retry later.');
     }
+
+    // Validate api_url on every call to prevent SSRF
+    validateGithubApiUrl($source->api_url);
 
     if ($source->is_public) {
         $response = Http::GitHub($source->api_url)->$method($endpoint);

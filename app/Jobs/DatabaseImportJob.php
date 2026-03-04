@@ -191,6 +191,13 @@ class DatabaseImportJob implements ShouldBeEncrypted, ShouldQueue
             'import_id' => $this->importId,
             'error' => $exception->getMessage(),
         ]);
+
+        // Notify user via broadcast that import failed
+        $import = DatabaseImport::find($this->importId);
+        if ($import) {
+            $import->markAsFailed($exception->getMessage());
+            $this->broadcastProgress($import, 'failed', $import->progress ?? 0, 'Import permanently failed', $exception->getMessage());
+        }
     }
 
     private function broadcastProgress(

@@ -550,9 +550,13 @@ class User extends Authenticatable implements SendsEmail
         $this->notify(new TransactionalEmailsResetPassword($token));
     }
 
+    /**
+     * Check if the user has elevated team permissions (admin, owner, or developer).
+     * For strict admin-only checks, use isAdminOfTeam() or isAdminFromSession().
+     */
     public function isAdmin()
     {
-        return $this->role() === 'admin' || $this->role() === 'owner' || $this->role() === 'developer';
+        return in_array($this->role(), ['admin', 'owner', 'developer']);
     }
 
     public function isOwner()

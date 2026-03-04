@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 
@@ -91,5 +92,12 @@ class CleanupStaleMultiplexedConnections implements ShouldQueue
         $closeCommand = "ssh -O exit -o ControlPath={$muxSocket} localhost 2>/dev/null";
         Process::run($closeCommand);
         Storage::disk('ssh-mux')->delete($muxFile);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CleanupStaleMultiplexedConnections failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

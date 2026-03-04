@@ -31,19 +31,21 @@ class StartService
             $commands[] = "echo 'Pulling images.'";
             $commands[] = "docker compose --project-directory {$workdir} pull";
         }
+        $escapedServiceUuid = escapeshellarg($service->uuid);
         if ($service->networks()->count() > 0) {
             $commands[] = "echo 'Creating Docker network.'";
-            $commands[] = "docker network inspect $service->uuid >/dev/null 2>&1 || docker network create --attachable $service->uuid";
+            $commands[] = "docker network inspect {$escapedServiceUuid} >/dev/null 2>&1 || docker network create --attachable {$escapedServiceUuid}";
         }
         $commands[] = 'echo Starting service.';
-        $commands[] = "docker compose --project-directory {$workdir} -f {$workdir}/docker-compose.yml --project-name {$service->uuid} up -d --remove-orphans --force-recreate --build";
-        $commands[] = "docker network connect $service->uuid saturn-proxy >/dev/null 2>&1 || true";
+        $commands[] = "docker compose --project-directory {$workdir} -f {$workdir}/docker-compose.yml --project-name {$escapedServiceUuid} up -d --remove-orphans --force-recreate --build";
+        $commands[] = "docker network connect {$escapedServiceUuid} saturn-proxy >/dev/null 2>&1 || true";
         if (data_get($service, 'connect_to_docker_network')) {
             $compose = data_get($service, 'docker_compose', []);
-            $network = $service->destination->network;
+            $escapedNetwork = escapeshellarg($service->destination->network);
             $serviceNames = data_get(Yaml::parse($compose), 'services', []);
             foreach ($serviceNames as $serviceName => $serviceConfig) {
-                $commands[] = "docker network connect --alias {$serviceName}-{$service->uuid} $network {$serviceName}-{$service->uuid} >/dev/null 2>&1 || true";
+                $escapedAlias = escapeshellarg("{$serviceName}-{$service->uuid}");
+                $commands[] = "docker network connect --alias {$escapedAlias} {$escapedNetwork} {$escapedAlias} >/dev/null 2>&1 || true";
             }
         }
 

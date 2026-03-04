@@ -90,4 +90,11 @@ class ExecuteAiCommandJob implements ShouldQueue
             throw $e;
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ExecuteAiCommandJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

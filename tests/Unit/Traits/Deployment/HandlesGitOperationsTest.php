@@ -47,15 +47,10 @@ class HandlesGitOperationsTest extends TestCase
         $this->assertStringContainsString('chmod 600 /root/.ssh/id_rsa', $this->source);
     }
 
-    public function test_ssh_strict_host_checking_disabled_for_first_connect(): void
+    public function test_ssh_strict_host_checking_uses_tofu_mode(): void
     {
-        // CI/CD containers won't have known_hosts; must not prompt
-        $this->assertStringContainsString('StrictHostKeyChecking=no', $this->source);
-    }
-
-    public function test_ssh_user_known_hosts_sent_to_devnull(): void
-    {
-        $this->assertStringContainsString('UserKnownHostsFile=/dev/null', $this->source);
+        // accept-new: TOFU — accepts unknown hosts on first connect, rejects changed keys (MITM protection)
+        $this->assertStringContainsString('StrictHostKeyChecking=accept-new', $this->source);
     }
 
     public function test_ssh_connect_timeout_is_set(): void

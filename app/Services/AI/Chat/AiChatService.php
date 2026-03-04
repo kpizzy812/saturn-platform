@@ -48,6 +48,25 @@ class AiChatService
     }
 
     /**
+     * Check if the daily token limit has been exceeded for a team.
+     */
+    public function isDailyTokenLimitExceeded(int $teamId): bool
+    {
+        $dailyLimit = config('ai.chat.rate_limit.tokens_per_day', 100000);
+
+        if ($dailyLimit <= 0) {
+            return false;
+        }
+
+        $todayTokens = AiUsageLog::where('team_id', $teamId)
+            ->where('created_at', '>=', now()->startOfDay())
+            ->selectRaw('COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens')
+            ->value('total_tokens');
+
+        return $todayTokens >= $dailyLimit;
+    }
+
+    /**
      * Check if any provider is available.
      */
     public function isAvailable(): bool
@@ -159,6 +178,17 @@ class AiChatService
         bool $executeCommands = true,
     ): AiChatMessage {
         $startTime = microtime(true);
+
+        // Check daily token limit
+        if ($this->isDailyTokenLimitExceeded($session->team_id)) {
+            $errorMessage = $session->messages()->create([
+                'role' => 'assistant',
+                'content' => 'Daily AI token limit exceeded. Please try again tomorrow.',
+            ]);
+            broadcast(new AiChatMessageReceived($session, $errorMessage));
+
+            return $errorMessage;
+        }
 
         // Save user message (no broadcast needed - frontend adds optimistically)
         $userMessage = $session->messages()->create([
@@ -383,6 +413,14 @@ class AiChatService
      */
     public function streamMessage(AiChatSession $session, string $content): Generator
     {
+        // Check daily token limit
+        if ($this->isDailyTokenLimitExceeded($session->team_id)) {
+            yield 'Daily AI token limit exceeded. Please try again tomorrow.';
+
+            return;
+        }
+
+        $startTime = microtime(true);
         $provider = $this->getProvider();
         if (! $provider) {
             yield 'AI service is not available. Please check your API keys.';
@@ -407,12 +445,52 @@ class AiChatService
         }
 
         // Save assistant message after streaming completes
-        $session->messages()->create([
+        $assistantMessage = $session->messages()->create([
             'role' => 'assistant',
             'content' => $fullContent,
         ]);
 
+        // Log usage for streaming (estimate tokens from content length)
+        $this->logStreamUsage($session, $assistantMessage, $provider, $content, $fullContent, $startTime);
+
         $session->generateTitle();
+    }
+
+    /**
+     * Log AI usage for streaming responses (token counts estimated from content).
+     */
+    private function logStreamUsage(
+        AiChatSession $session,
+        AiChatMessage $message,
+        ChatProviderInterface $provider,
+        string $inputContent,
+        string $outputContent,
+        float $startTime,
+    ): void {
+        $responseTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+        // Estimate tokens: ~4 characters per token (rough approximation)
+        $estimatedInputTokens = (int) ceil(mb_strlen($inputContent) / 4);
+        $estimatedOutputTokens = (int) ceil(mb_strlen($outputContent) / 4);
+
+        try {
+            AiUsageLog::create([
+                'user_id' => $session->user_id,
+                'team_id' => $session->team_id,
+                'message_id' => $message->id,
+                'provider' => $provider->getName(),
+                'model' => $provider->getModel(),
+                'operation' => 'chat_stream',
+                'input_tokens' => $estimatedInputTokens,
+                'output_tokens' => $estimatedOutputTokens,
+                'cost_usd' => $this->calculateCostFromTokens($provider->getName(), $provider->getModel(), $estimatedInputTokens, $estimatedOutputTokens),
+                'response_time_ms' => $responseTimeMs,
+                'success' => true,
+                'error_message' => null,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to log AI stream usage', ['error' => $e->getMessage()]);
+        }
     }
 
     /**

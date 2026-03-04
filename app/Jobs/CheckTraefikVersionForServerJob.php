@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class CheckTraefikVersionForServerJob implements ShouldQueue
 {
@@ -184,5 +185,14 @@ class CheckTraefikVersionForServerJob implements ShouldQueue
         if ($team) {
             $team->notify(new TraefikVersionOutdated(collect([$this->server])));
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CheckTraefikVersionForServerJob failed', [
+            'server_id' => $this->server->id ?? null,
+            'server_name' => $this->server->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

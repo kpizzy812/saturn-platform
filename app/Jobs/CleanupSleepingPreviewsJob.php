@@ -109,4 +109,11 @@ class CleanupSleepingPreviewsJob implements ShouldQueue
 
         Log::info("Deleted old preview: {$preview->id} (PR #{$preview->pull_request_id})");
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CleanupSleepingPreviewsJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

@@ -131,4 +131,11 @@ class MonitorDiskSpaceJob implements ShouldBeEncrypted, ShouldQueue, Silenced
             ]);
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('MonitorDiskSpaceJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }
