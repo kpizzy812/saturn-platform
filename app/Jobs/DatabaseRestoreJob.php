@@ -272,6 +272,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
             $commands = [];
             $escapedContainerName = escapeshellarg($this->container_name);
 
+            $escapedUser = escapeshellarg($this->database->postgres_user);
             // Check if it's a dump_all backup (gzipped)
             if (str($backupLocation)->endsWith('.gz')) {
                 // Full dump restore
@@ -280,7 +281,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                     $escapedPassword = escapeshellarg($this->postgres_password);
                     $restoreCommand .= " -e PGPASSWORD={$escapedPassword}";
                 }
-                $restoreCommand .= " {$escapedContainerName} psql --username {$this->database->postgres_user} -d postgres";
+                $restoreCommand .= " {$escapedContainerName} psql --username {$escapedUser} -d postgres";
                 $commands[] = "gunzip -c {$backupLocation} | {$restoreCommand}";
             } else {
                 // Custom format restore
@@ -293,7 +294,7 @@ class DatabaseRestoreJob implements ShouldBeEncrypted, ShouldQueue
                 validateShellSafePath($databaseName, 'database name');
                 $escapedDatabase = escapeshellarg($databaseName);
 
-                $restoreCommand .= " {$escapedContainerName} pg_restore --username {$this->database->postgres_user} --dbname {$escapedDatabase} --clean --if-exists --no-owner --no-acl {$backupLocation}";
+                $restoreCommand .= " {$escapedContainerName} pg_restore --username {$escapedUser} --dbname {$escapedDatabase} --clean --if-exists --no-owner --no-acl {$backupLocation}";
                 $commands[] = $restoreCommand;
             }
 

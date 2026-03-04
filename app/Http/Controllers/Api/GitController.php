@@ -85,7 +85,11 @@ class GitController extends Controller
         // Authenticate via GitHub App for private repositories
         if ($githubAppId) {
             try {
-                $githubApp = \App\Models\GithubApp::findOrFail($githubAppId);
+                // Security: scope to current team to prevent cross-tenant token theft
+                $teamId = getTeamIdFromToken();
+                $githubApp = \App\Models\GithubApp::where(function ($q) use ($teamId) {
+                    $q->where('team_id', $teamId)->orWhere('is_system_wide', true);
+                })->findOrFail($githubAppId);
                 $token = generateGithubInstallationToken($githubApp);
                 $headers['Authorization'] = "token {$token}";
             } catch (\Exception $e) {

@@ -17,19 +17,19 @@ class ProcessAiChatMessageJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * The number of times the job may be attempted.
+     * Only attempt once — retries create duplicate error messages in UI.
      */
-    public int $tries = 3;
+    public int $tries = 1;
+
+    /**
+     * The maximum number of unhandled exceptions to allow before failing.
+     */
+    public int $maxExceptions = 1;
 
     /**
      * The number of seconds the job can run before timing out.
      */
-    public int $timeout = 60;
-
-    /**
-     * The number of seconds to wait before retrying the job.
-     */
-    public int $backoff = 5;
+    public int $timeout = 120;
 
     public function __construct(
         public AiChatSession $session,
@@ -65,5 +65,12 @@ class ProcessAiChatMessageJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ProcessAiChatMessageJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

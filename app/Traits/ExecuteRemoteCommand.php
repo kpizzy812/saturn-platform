@@ -25,10 +25,10 @@ trait ExecuteRemoteCommand
 
         $lockedVars = collect([]);
 
+        // Security: redact ALL environment variable values, not just is_shown_once
         if (isset($this->application->environment_variables)) {
             $lockedVars = $lockedVars->merge(
                 $this->application->environment_variables
-                    ->where('is_shown_once', true)
                     ->pluck('real_value', 'key')
                     ->filter()
             );
@@ -37,7 +37,6 @@ trait ExecuteRemoteCommand
         if (isset($this->pull_request_id) && $this->pull_request_id !== 0 && isset($this->application->environment_variables_preview)) {
             $lockedVars = $lockedVars->merge(
                 $this->application->environment_variables_preview
-                    ->where('is_shown_once', true)
                     ->pluck('real_value', 'key')
                     ->filter()
             );

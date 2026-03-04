@@ -544,4 +544,11 @@ class BackupRestoreTestJob implements ShouldBeEncrypted, ShouldQueue
             Log::warning('Failed to send restore test failure notification', ['error' => $e->getMessage()]);
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('BackupRestoreTestJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

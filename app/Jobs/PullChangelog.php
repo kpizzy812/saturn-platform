@@ -130,4 +130,11 @@ class PullChangelog implements ShouldBeEncrypted, ShouldQueue
         }
 
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('PullChangelog failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

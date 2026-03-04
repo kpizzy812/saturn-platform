@@ -372,4 +372,13 @@ class AutoProvisionServerJob implements ShouldBeEncrypted, ShouldQueue
             'is_usable' => true,
         ]);
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('AutoProvisionServerJob failed', [
+            'server_id' => $this->triggerServer->id ?? null,
+            'server_name' => $this->triggerServer->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

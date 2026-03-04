@@ -70,6 +70,8 @@ export interface ServerSettings {
     server_id: number;
     is_build_server: boolean;
     concurrent_builds: number;
+    is_swarm_manager?: boolean;
+    is_swarm_worker?: boolean;
     docker_version?: string;
     docker_compose_version?: string;
 }

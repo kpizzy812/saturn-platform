@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -96,5 +97,12 @@ class ApplicationPullRequestUpdateJob implements ShouldBeEncrypted, ShouldQueue
     private function delete_comment()
     {
         githubApi(source: $this->getGithubSource(), endpoint: "/repos/{$this->application->git_repository}/issues/comments/{$this->preview->pull_request_issue_comment_id}", method: 'delete');
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ApplicationPullRequestUpdateJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

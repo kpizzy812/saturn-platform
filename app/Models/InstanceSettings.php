@@ -183,6 +183,17 @@ class InstanceSettings extends Model
         'cloudflare_last_synced_at',
     ];
 
+    protected $hidden = [
+        'smtp_password', 'smtp_username', 'smtp_host',
+        'resend_api_key',
+        'sentinel_token',
+        'auto_provision_api_key',
+        'ai_anthropic_api_key', 'ai_openai_api_key',
+        's3_key', 's3_secret',
+        'docker_registry_username', 'docker_registry_password',
+        'cloudflare_api_token', 'cloudflare_tunnel_token',
+    ];
+
     protected $casts = [
         'smtp_enabled' => 'boolean',
         'smtp_from_address' => 'encrypted',

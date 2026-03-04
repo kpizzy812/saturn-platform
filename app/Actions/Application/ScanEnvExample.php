@@ -67,7 +67,13 @@ class ScanEnvExample
                     $sourceTemplate = str_replace(['.env.', '.'], ['', '_'], $file);
                     break;
                 }
-            } catch (\Exception) {
+            } catch (\Exception $e) {
+                Log::debug('Failed to scan env file on remote server', [
+                    'application_id' => $application->id,
+                    'file' => $file,
+                    'error' => $e->getMessage(),
+                ]);
+
                 continue;
             }
         }

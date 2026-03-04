@@ -154,24 +154,23 @@ class Bitbucket extends Controller
                             continue;
                         }
                         $deployment_uuid = new Cuid2;
-                        $found = ApplicationPreview::where('application_id', $application->id)->where('pull_request_id', $pull_request_id)->first();
-                        if (! $found) {
+                        // Use firstOrCreate to avoid race conditions with concurrent webhooks
+                        $previewData = [
+                            'git_type' => 'bitbucket',
+                            'application_id' => $application->id,
+                            'pull_request_id' => $pull_request_id,
+                        ];
+                        if ($application->build_pack === 'dockercompose') {
+                            $previewData['docker_compose_domains'] = $application->docker_compose_domains;
+                        }
+                        $pr_app = ApplicationPreview::firstOrCreate(
+                            ['application_id' => $application->id, 'pull_request_id' => $pull_request_id],
+                            array_merge($previewData, ['pull_request_html_url' => $pull_request_html_url])
+                        );
+                        if ($pr_app->wasRecentlyCreated) {
                             if ($application->build_pack === 'dockercompose') {
-                                $pr_app = ApplicationPreview::create([
-                                    'git_type' => 'bitbucket',
-                                    'application_id' => $application->id,
-                                    'pull_request_id' => $pull_request_id,
-                                    'pull_request_html_url' => $pull_request_html_url,
-                                    'docker_compose_domains' => $application->docker_compose_domains,
-                                ]);
                                 $pr_app->generate_preview_fqdn_compose();
                             } else {
-                                $pr_app = ApplicationPreview::create([
-                                    'git_type' => 'bitbucket',
-                                    'application_id' => $application->id,
-                                    'pull_request_id' => $pull_request_id,
-                                    'pull_request_html_url' => $pull_request_html_url,
-                                ]);
                                 $pr_app->generate_preview_fqdn();
                             }
                         }

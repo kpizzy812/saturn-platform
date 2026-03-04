@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SyncStripeSubscriptionsJob implements ShouldQueue
 {
@@ -88,5 +89,12 @@ class SyncStripeSubscriptionsJob implements ShouldQueue
             'errors' => $errors,
             'fixed' => $this->fix,
         ];
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SyncStripeSubscriptionsJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

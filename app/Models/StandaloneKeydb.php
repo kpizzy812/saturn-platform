@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\Auditable;
-use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use App\Traits\ValidatesPublicPort;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -46,7 +45,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  */
 class StandaloneKeydb extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;
+    use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;
 
     /**
      * The attributes that are mass assignable.
@@ -63,6 +62,8 @@ class StandaloneKeydb extends BaseModel
     ];
 
     protected $appends = ['internal_db_url', 'external_db_url', 'server_status'];
+
+    protected $hidden = ['keydb_password'];
 
     protected $casts = [
         'keydb_password' => 'encrypted',

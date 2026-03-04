@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class GithubAppPermissionJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -55,5 +56,12 @@ class GithubAppPermissionJob implements ShouldBeEncrypted, ShouldQueue
             send_internal_notification('GithubAppPermissionJob failed with: '.$e->getMessage());
             throw $e;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('GithubAppPermissionJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

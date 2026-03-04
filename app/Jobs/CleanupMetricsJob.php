@@ -53,4 +53,11 @@ class CleanupMetricsJob implements ShouldBeEncrypted, ShouldBeUnique, ShouldQueu
             Log::error('CleanupMetricsJob failed: '.$e->getMessage());
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CleanupMetricsJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

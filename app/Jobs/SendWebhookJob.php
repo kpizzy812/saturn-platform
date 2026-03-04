@@ -58,4 +58,11 @@ class SendWebhookJob implements ShouldBeEncrypted, ShouldQueue
             throw new \RuntimeException('Webhook notification failed with status '.$response->status());
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SendWebhookJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

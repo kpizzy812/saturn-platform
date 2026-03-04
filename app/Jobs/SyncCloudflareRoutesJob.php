@@ -37,4 +37,11 @@ class SyncCloudflareRoutesJob implements ShouldBeEncrypted, ShouldQueue
 
         $service->syncAllRoutes();
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SyncCloudflareRoutesJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

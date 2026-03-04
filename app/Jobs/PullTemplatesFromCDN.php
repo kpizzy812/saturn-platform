@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class PullTemplatesFromCDN implements ShouldBeEncrypted, ShouldQueue
 {
@@ -25,5 +26,12 @@ class PullTemplatesFromCDN implements ShouldBeEncrypted, ShouldQueue
         // Saturn uses its own curated service templates from git.
         // Do NOT pull from upstream Coolify CDN — it overwrites our
         // fixes (e.g. corrected healthcheck URLs) with upstream bugs.
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('PullTemplatesFromCDN failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

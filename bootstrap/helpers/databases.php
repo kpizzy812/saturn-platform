@@ -201,7 +201,7 @@ function deleteBackupsLocally(string|array|null $filenames, Server $server): voi
     if (is_string($filenames)) {
         $filenames = [$filenames];
     }
-    $quotedFiles = array_map(fn ($file) => "\"$file\"", $filenames);
+    $quotedFiles = array_map(fn ($file) => escapeshellarg($file), $filenames);
     instant_remote_process(['rm -f '.implode(' ', $quotedFiles)], $server, throwError: false);
 
     $foldersToCheck = collect($filenames)->map(fn ($file) => dirname($file))->unique();

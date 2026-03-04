@@ -10,6 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class SendMessageToPushoverJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -46,5 +47,12 @@ class SendMessageToPushoverJob implements ShouldBeEncrypted, ShouldQueue
         if ($response->failed()) {
             throw new \RuntimeException('Pushover notification failed with '.$response->status().' status code.'.$response->body());
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SendMessageToPushoverJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }
