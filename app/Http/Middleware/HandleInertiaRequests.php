@@ -7,6 +7,7 @@ use App\Models\InstanceSettings;
 use App\Models\UserNotification;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -171,6 +172,7 @@ class HandleInertiaRequests extends Middleware
     /**
      * Get count of pending deployment approvals for users who can approve them.
      * Only queries for team owners/admins to avoid unnecessary DB load for regular users.
+     * Cached for 60 seconds to avoid running 4 queries on every page load.
      */
     private function getPendingApprovalsCount($user): int
     {
@@ -184,7 +186,11 @@ class HandleInertiaRequests extends Middleware
         }
 
         try {
-            return DeploymentApproval::pendingForApprover($user)->count();
+            return Cache::remember(
+                "pending_approvals_count_{$user->id}",
+                60,
+                fn () => DeploymentApproval::pendingForApprover($user)->count()
+            );
         } catch (\Exception $e) {
             return 0;
         }

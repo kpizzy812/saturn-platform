@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Visus\Cuid2\Cuid2;
 
 /**
  * Model for deployment approval workflow.
@@ -44,15 +43,6 @@ class DeploymentApproval extends BaseModel
     protected $casts = [
         'decided_at' => 'datetime',
     ];
-
-    protected static function booted()
-    {
-        static::creating(function ($approval) {
-            if (empty($approval->uuid)) {
-                $approval->uuid = (string) new Cuid2;
-            }
-        });
-    }
 
     /**
      * Get the deployment queue entry this approval is for.
@@ -104,28 +94,30 @@ class DeploymentApproval extends BaseModel
 
     /**
      * Approve the deployment request.
+     * Uses direct assignment instead of update() because status/approved_by/decided_at
+     * are intentionally excluded from $fillable to prevent mass assignment from external input.
      */
     public function approve(User $approver, ?string $comment = null): void
     {
-        $this->update([
-            'status' => 'approved',
-            'approved_by' => $approver->id,
-            'comment' => $comment,
-            'decided_at' => Carbon::now(),
-        ]);
+        $this->status = 'approved';
+        $this->approved_by = $approver->id;
+        $this->comment = $comment;
+        $this->decided_at = Carbon::now();
+        $this->save();
     }
 
     /**
      * Reject the deployment request.
+     * Uses direct assignment instead of update() because status/approved_by/decided_at
+     * are intentionally excluded from $fillable to prevent mass assignment from external input.
      */
     public function reject(User $approver, ?string $reason = null): void
     {
-        $this->update([
-            'status' => 'rejected',
-            'approved_by' => $approver->id,
-            'comment' => $reason,
-            'decided_at' => Carbon::now(),
-        ]);
+        $this->status = 'rejected';
+        $this->approved_by = $approver->id;
+        $this->comment = $reason;
+        $this->decided_at = Carbon::now();
+        $this->save();
     }
 
     /**

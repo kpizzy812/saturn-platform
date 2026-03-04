@@ -328,6 +328,9 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
         'enabled' => $firstScheduled->enabled,
         'frequency' => $firstScheduled->frequency,
         'databases_to_backup' => $firstScheduled->databases_to_backup,
+        'encrypt_backup' => $firstScheduled->encrypt_backup,
+        // Never expose the actual key to the frontend — only signal whether one is set
+        'has_encryption_key' => ! empty($firstScheduled->encryption_key),
         'created_at' => $firstScheduled->created_at,
         'updated_at' => $firstScheduled->updated_at,
     ] : null;
@@ -344,6 +347,7 @@ Route::get('/databases/{uuid}/backups', function (string $uuid) {
                     'running' => 'in_progress',
                     default => $execution->status,
                 },
+                'is_encrypted' => $execution->is_encrypted,
                 'restore_status' => $execution->restore_status,
                 'restore_started_at' => $execution->restore_started_at?->toISOString(),
                 'restore_finished_at' => $execution->restore_finished_at?->toISOString(),
@@ -391,18 +395,28 @@ Route::patch('/databases/{uuid}/backups/schedule', function (string $uuid, \Illu
     $validated = $request->validate([
         'enabled' => 'required|boolean',
         'frequency' => 'required|string',
+        'encrypt_backup' => 'nullable|boolean',
+        'encryption_key' => 'nullable|string|max:255',
     ]);
+
+    // Build update payload — only include encryption_key when a non-empty value is submitted
+    $updateData = [
+        'enabled' => $validated['enabled'],
+        'frequency' => $validated['frequency'],
+        'encrypt_backup' => $validated['encrypt_backup'] ?? false,
+    ];
+    if (! empty($validated['encryption_key'])) {
+        $updateData['encryption_key'] = $validated['encryption_key'];
+    }
 
     $scheduledBackup = $database->scheduledBackups()->first();
     if ($scheduledBackup) {
-        $scheduledBackup->update($validated);
+        $scheduledBackup->update($updateData);
     } else {
-        $scheduledBackup = $database->scheduledBackups()->make([
+        $scheduledBackup = $database->scheduledBackups()->make(array_merge($updateData, [
             'uuid' => (string) new \Visus\Cuid2\Cuid2,
-            'enabled' => $validated['enabled'],
-            'frequency' => $validated['frequency'],
             'save_s3' => false,
-        ]);
+        ]));
         $scheduledBackup->team_id = currentTeam()->id;
         $scheduledBackup->save();
     }
@@ -687,9 +701,18 @@ Route::patch('/databases/{uuid}/settings/backups', function (string $uuid, Reque
         'save_s3' => 'boolean',
         's3_storage_id' => 'nullable|exists:s3_storages,id',
         'databases_to_backup' => 'nullable|string',
+        'encrypt_backup' => 'nullable|boolean',
+        'encryption_key' => 'nullable|string|max:255',
     ]);
 
     try {
+        // Build fields to update — exclude encryption_key when empty to avoid wiping existing key
+        $fields = ['enabled', 'frequency', 'save_s3', 's3_storage_id', 'databases_to_backup', 'encrypt_backup'];
+        $updateData = $request->only($fields);
+        if (! empty($request->input('encryption_key'))) {
+            $updateData['encryption_key'] = $request->input('encryption_key');
+        }
+
         if ($request->has('backup_id') && $request->backup_id) {
             // Update existing backup configuration
             $backup = ScheduledDatabaseBackup::where('id', $request->backup_id)
@@ -697,24 +720,19 @@ Route::patch('/databases/{uuid}/settings/backups', function (string $uuid, Reque
                 ->where('database_type', $database->getMorphClass())
                 ->firstOrFail();
 
-            $backup->update($request->only([
-                'enabled',
-                'frequency',
-                'save_s3',
-                's3_storage_id',
-                'databases_to_backup',
-            ]));
+            $backup->update($updateData);
         } else {
             // Create new backup configuration
             // Use relationship make() + direct assignment for morph/team fields (not in $fillable)
-            $newBackup = $database->scheduledBackups()->make([
+            $newBackup = $database->scheduledBackups()->make(array_merge([
                 'uuid' => (string) new \Visus\Cuid2\Cuid2,
                 'enabled' => $request->input('enabled', true),
                 'frequency' => $request->input('frequency', 'daily'),
                 'save_s3' => $request->input('save_s3', false),
                 's3_storage_id' => $request->input('s3_storage_id'),
                 'databases_to_backup' => $request->input('databases_to_backup'),
-            ]);
+                'encrypt_backup' => $request->input('encrypt_backup', false),
+            ], ! empty($request->input('encryption_key')) ? ['encryption_key' => $request->input('encryption_key')] : []));
             $newBackup->team_id = currentTeam()->id;
             $newBackup->save();
         }
