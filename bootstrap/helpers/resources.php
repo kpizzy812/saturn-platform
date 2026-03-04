@@ -58,36 +58,39 @@ function getResourceByUuid(string $uuid, ?int $teamId = null)
  */
 function queryDatabaseByUuidWithinTeam(string $uuid, string $teamId)
 {
+    // Use strict comparison with explicit int cast on both sides to prevent type juggling IDOR attacks
+    $teamIdInt = (int) $teamId;
+
     $postgresql = StandalonePostgresql::whereUuid($uuid)->first();
-    if ($postgresql && $postgresql->team()->id == $teamId) {
+    if ($postgresql && (int) $postgresql->team()->id === $teamIdInt) {
         return $postgresql->unsetRelation('environment');
     }
     $redis = StandaloneRedis::whereUuid($uuid)->first();
-    if ($redis && $redis->team()->id == $teamId) {
+    if ($redis && (int) $redis->team()->id === $teamIdInt) {
         return $redis->unsetRelation('environment');
     }
     $mongodb = StandaloneMongodb::whereUuid($uuid)->first();
-    if ($mongodb && $mongodb->team()->id == $teamId) {
+    if ($mongodb && (int) $mongodb->team()->id === $teamIdInt) {
         return $mongodb->unsetRelation('environment');
     }
     $mysql = StandaloneMysql::whereUuid($uuid)->first();
-    if ($mysql && $mysql->team()->id == $teamId) {
+    if ($mysql && (int) $mysql->team()->id === $teamIdInt) {
         return $mysql->unsetRelation('environment');
     }
     $mariadb = StandaloneMariadb::whereUuid($uuid)->first();
-    if ($mariadb && $mariadb->team()->id == $teamId) {
+    if ($mariadb && (int) $mariadb->team()->id === $teamIdInt) {
         return $mariadb->unsetRelation('environment');
     }
     $keydb = StandaloneKeydb::whereUuid($uuid)->first();
-    if ($keydb && $keydb->team()->id == $teamId) {
+    if ($keydb && (int) $keydb->team()->id === $teamIdInt) {
         return $keydb->unsetRelation('environment');
     }
     $dragonfly = StandaloneDragonfly::whereUuid($uuid)->first();
-    if ($dragonfly && $dragonfly->team()->id == $teamId) {
+    if ($dragonfly && (int) $dragonfly->team()->id === $teamIdInt) {
         return $dragonfly->unsetRelation('environment');
     }
     $clickhouse = StandaloneClickhouse::whereUuid($uuid)->first();
-    if ($clickhouse && $clickhouse->team()->id == $teamId) {
+    if ($clickhouse && (int) $clickhouse->team()->id === $teamIdInt) {
         return $clickhouse->unsetRelation('environment');
     }
 

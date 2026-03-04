@@ -218,7 +218,7 @@ class Server extends BaseModel
         'description',
         'private_key_id',
         'cloud_provider_token_id',
-        'team_id',
+        // team_id excluded from fillable — must be set explicitly in Actions to prevent mass-assignment attacks
         'hetzner_server_id',
         'hetzner_server_status',
         'is_validating',

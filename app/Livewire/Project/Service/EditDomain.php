@@ -12,12 +12,14 @@ class EditDomain extends Component
 
     public function mount($application)
     {
+        $this->authorize('update', $application);
         $this->application = $application;
         $this->fqdn = $application->fqdn ?? '';
     }
 
     public function submit(): void
     {
+        $this->authorize('update', $this->application);
         $this->application->fqdn = $this->fqdn;
         $this->application->save();
 

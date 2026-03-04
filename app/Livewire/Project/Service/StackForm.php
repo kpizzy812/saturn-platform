@@ -12,12 +12,14 @@ class StackForm extends Component
 
     public function mount($service)
     {
+        $this->authorize('update', $service);
         $this->service = $service;
         $this->dockerCompose = $service->docker_compose ?? '';
     }
 
     public function submit(): void
     {
+        $this->authorize('update', $this->service);
         $this->service->docker_compose = $this->dockerCompose;
         $this->service->save();
 

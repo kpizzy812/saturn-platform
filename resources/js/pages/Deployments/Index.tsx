@@ -5,6 +5,7 @@ import { Card, CardContent, Badge, Button, Input } from '@/components/ui';
 import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
+import { formatStatus } from '@/lib/formatters';
 import type { Deployment, DeploymentStatus } from '@/types';
 import {
     GitCommit,
@@ -277,7 +278,7 @@ function DeploymentCard({ deployment, getTriggerBadgeColor }: DeploymentCardProp
                                             {deployment.commit?.substring(0, 8)}
                                         </code>
                                         <Badge variant={getStatusVariant(deployment.status)}>
-                                            {deployment.status.replace('_', ' ')}
+                                            {formatStatus(deployment.status)}
                                         </Badge>
                                         {deployment.trigger && (
                                             <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${getTriggerBadgeColor(deployment.trigger)}`}>

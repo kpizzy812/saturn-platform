@@ -14,6 +14,7 @@ class ServiceFactory extends Factory
             'server_id' => 1,
             'destination_id' => 1,
             'destination_type' => 'App\Models\StandaloneDocker',
+            'docker_compose_raw' => "version: '3.8'\nservices:\n  app:\n    image: nginx:latest\n",
         ];
     }
 }

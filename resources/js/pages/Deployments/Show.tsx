@@ -8,6 +8,7 @@ import { CodeReviewCard } from '@/components/features/CodeReviewCard';
 import { DeploymentGraph, parseDeploymentLogs } from '@/components/features/DeploymentGraph';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
+import { formatStatus } from '@/lib/formatters';
 import { useLogStream } from '@/hooks/useLogStream';
 import type { Deployment } from '@/types';
 import {
@@ -244,7 +245,7 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                                         {deployment.commit_message}
                                     </h2>
                                     <Badge variant={getStatusVariant(deployment.status)} className="text-sm">
-                                        {deployment.status.replace('_', ' ')}
+                                        {formatStatus(deployment.status)}
                                     </Badge>
                                 </div>
                                 <div className="mt-2 flex items-center gap-2">
