@@ -58,6 +58,17 @@ class GlobalSearch extends Component
      */
     public function completeResourceCreation(string $projectUuid, string $environmentName, string $type): void
     {
+        // Verify project belongs to current team to prevent IDOR
+        $project = \App\Models\Project::where('uuid', $projectUuid)
+            ->where('team_id', currentTeam()?->id)
+            ->first();
+
+        if (! $project) {
+            $this->searchQuery = '';
+
+            return;
+        }
+
         $this->searchQuery = '';
         $this->redirect(route('project.resource.create', [
             'project_uuid' => $projectUuid,

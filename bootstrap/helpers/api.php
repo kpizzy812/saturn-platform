@@ -21,6 +21,11 @@ function getTeamIdFromToken()
     }
 
     // Session auth fallback (SPA): use current team
+    // Security: Block session fallback for API routes to prevent team mismatch
+    if (request()->is('api/*')) {
+        return null;
+    }
+
     $currentTeam = $user->currentTeam();
     if ($currentTeam) {
         return $currentTeam->id;

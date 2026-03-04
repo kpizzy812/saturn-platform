@@ -215,7 +215,8 @@ class ConnectionStringParser
             $ssl = ' --ssl';
         }
 
-        return "mysqldump -h {$host} -P {$port} -u {$username} -p{$password}{$ssl} --single-transaction --routines --triggers {$database} > {$escapedOutput}";
+        // Use MYSQL_PWD env var to avoid password exposure in ps aux
+        return "MYSQL_PWD={$password} mysqldump -h {$host} -P {$port} -u {$username}{$ssl} --single-transaction --routines --triggers {$database} > {$escapedOutput}";
     }
 
     private function buildMongodumpCommand(array $parsed, string $escapedOutput): string

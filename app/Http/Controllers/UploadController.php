@@ -225,8 +225,10 @@ class UploadController extends BaseController
             array_map('unlink', glob("{$finalPath}/*"));
         }
 
-        // Save with original filename so the restore endpoint can find it
-        $file->move($finalPath, $file->getClientOriginalName());
+        // Security: Use sanitized filename to prevent path traversal
+        // The restore endpoint uses scandir() so specific filename is not needed
+        $safeFilename = $this->createFilename($file);
+        $file->move($finalPath, $safeFilename);
 
         return response()->json([
             'mime_type' => $mime,

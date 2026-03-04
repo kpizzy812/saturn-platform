@@ -117,7 +117,7 @@ trait HandlesRailpackBuildpack
             $this->application_deployment_queue->addLogEntry('Starting BuildKit daemon...');
             // Run buildkitd without --privileged using seccomp=unconfined for rootless compatibility
             $this->execute_remote_command(
-                [executeInDocker($this->deployment_uuid, 'docker run -d --restart=unless-stopped --security-opt seccomp=unconfined --security-opt apparmor=unconfined --name buildkitd moby/buildkit:latest'), 'hidden' => true],
+                [executeInDocker($this->deployment_uuid, 'docker run -d --restart=unless-stopped --security-opt seccomp=unconfined --security-opt apparmor=unconfined --name buildkitd moby/buildkit:v0.18.2'), 'hidden' => true],
             );
             // Brief wait for buildkitd to be ready
             $this->execute_remote_command(

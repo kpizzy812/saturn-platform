@@ -23,7 +23,9 @@ class ApiSensitiveData
 
         if ($user) {
             // Check token permissions for API auth
-            // Note: Sanctum creates TransientToken for cookie-based SPA auth
+            // Note: Sanctum creates TransientToken for cookie-based SPA auth.
+            // Design decision: Session-authenticated (SPA) users bypass token ability checks
+            // because they don't have API tokens. Access is controlled by team role (admin+) below.
             $isSessionAuth = ! $token || $token instanceof \Laravel\Sanctum\TransientToken;
             $hasTokenPermission = $isSessionAuth || $token->can('root') || $token->can('read:sensitive');
 

@@ -7,6 +7,8 @@ use Livewire\Component;
 
 class General extends Component
 {
+    public $application = null;
+
     public ?string $baseDirectory = '/';
 
     public ?string $dockerComposeLocation = '/docker-compose.yaml';
@@ -14,6 +16,14 @@ class General extends Component
     public ?string $dockerComposeCustomBuildCommand = null;
 
     public ?string $dockerComposeCustomStartCommand = null;
+
+    public function mount($application = null)
+    {
+        if ($application) {
+            $this->authorize('view', $application);
+            $this->application = $application;
+        }
+    }
 
     /**
      * Get the preview of the docker compose build command with injected flags.
