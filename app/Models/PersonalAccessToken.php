@@ -16,6 +16,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     ];
 
     protected $casts = [
+        'abilities' => 'json',
+        'expires_at' => 'datetime',
+        'last_used_at' => 'datetime',
         'rate_limit_per_minute' => 'integer',
     ];
 
@@ -46,6 +49,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
         }
 
         $abilities = $this->abilities ?? [];
+        if (is_string($abilities)) {
+            $abilities = json_decode($abilities, true) ?? [];
+        }
 
         if (in_array('*', $abilities, true)) {
             return self::ABILITY_DEFAULTS['root'];
