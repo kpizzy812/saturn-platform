@@ -228,13 +228,13 @@ function AdminSidebar({ isMobileOpen, onMobileClose }: { isMobileOpen: boolean; 
     const user = props.auth;
     const systemNotifications = props.systemNotifications;
 
-    // Initialize expanded groups: all expanded by default, or use stored state
+    // Initialize expanded groups: only Overview expanded by default, or use stored state
     const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>(() => {
         const stored = getStoredExpandedGroups();
         if (Object.keys(stored).length > 0) return stored;
-        // Default: all groups expanded
+        // Default: only Overview expanded, rest collapsed
         const defaults: Record<string, boolean> = {};
-        adminNavGroups.forEach(g => { defaults[g.label] = true; });
+        adminNavGroups.forEach(g => { defaults[g.label] = g.label === 'Overview'; });
         return defaults;
     });
 

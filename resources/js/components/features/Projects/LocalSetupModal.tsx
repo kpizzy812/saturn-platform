@@ -325,7 +325,7 @@ export function LocalSetupModal({ isOpen, onClose, environment }: LocalSetupModa
     const databases = environment?.databases || [];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} size="full">
+        <Modal isOpen={isOpen} onClose={onClose} size="2xl">
             <div className="space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-3">

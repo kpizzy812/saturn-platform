@@ -60,8 +60,8 @@ const buttonVariants = {
         sm: 'h-8 px-3 text-sm',
         lg: 'h-12 px-6 text-lg',
         xl: 'h-14 px-8 text-lg font-semibold',
-        icon: 'h-10 w-10',
-        'icon-sm': 'h-8 w-8',
+        icon: 'h-11 w-11',
+        'icon-sm': 'h-9 w-9',
         'icon-lg': 'h-12 w-12',
     },
 };

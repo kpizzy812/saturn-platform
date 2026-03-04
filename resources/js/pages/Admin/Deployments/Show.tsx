@@ -6,6 +6,7 @@ import { LogsContainer, type LogLine } from '@/components/features/LogsContainer
 import { DeploymentGraph, parseDeploymentLogs } from '@/components/features/DeploymentGraph';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
+import { formatStatus } from '@/lib/formatters';
 import { useLogStream } from '@/hooks/useLogStream';
 import {
     GitCommit,
@@ -159,7 +160,7 @@ export default function AdminDeploymentShow({ deployment }: Props) {
                                             {deployment.service_name || 'Deployment'}
                                         </h2>
                                         <Badge variant={getStatusVariant(deployment.status)} className="text-sm">
-                                            {deployment.status.replace('_', ' ')}
+                                            {formatStatus(deployment.status)}
                                         </Badge>
                                     </div>
                                     {deployment.commit_message && (

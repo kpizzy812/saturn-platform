@@ -13,6 +13,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ({ className, label, error, hint, icon, iconPosition = 'left', id, type, ...props }, ref) => {
         const generatedId = React.useId();
         const inputId = id || generatedId;
+        const errorId = `${inputId}-error`;
+        const hintId = `${inputId}-hint`;
 
         return (
             <div className="space-y-2">
@@ -33,6 +35,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                     <input
                         id={inputId}
                         type={type}
+                        aria-invalid={error ? true : undefined}
+                        aria-describedby={error ? errorId : hint ? hintId : undefined}
                         className={cn(
                             // Base styles
                             'flex h-10 w-full rounded-lg px-3 py-2 text-sm',
@@ -66,7 +70,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                     )}
                 </div>
                 {error && (
-                    <p className="text-sm text-danger flex items-center gap-1.5">
+                    <p id={errorId} className="text-sm text-danger flex items-center gap-1.5">
                         <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
@@ -74,7 +78,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                     </p>
                 )}
                 {hint && !error && (
-                    <p className="text-sm text-foreground-subtle">{hint}</p>
+                    <p id={hintId} className="text-sm text-foreground-subtle">{hint}</p>
                 )}
             </div>
         );
@@ -93,6 +97,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     ({ className, label, error, hint, id, ...props }, ref) => {
         const generatedId = React.useId();
         const textareaId = id || generatedId;
+        const errorId = `${textareaId}-error`;
+        const hintId = `${textareaId}-hint`;
 
         return (
             <div className="space-y-2">
@@ -106,6 +112,8 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                 )}
                 <textarea
                     id={textareaId}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={error ? errorId : hint ? hintId : undefined}
                     className={cn(
                         // Base styles
                         'flex min-h-[100px] w-full rounded-lg px-3 py-2 text-sm',
@@ -132,7 +140,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                     {...props}
                 />
                 {error && (
-                    <p className="text-sm text-danger flex items-center gap-1.5">
+                    <p id={errorId} className="text-sm text-danger flex items-center gap-1.5">
                         <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                         </svg>
@@ -140,7 +148,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                     </p>
                 )}
                 {hint && !error && (
-                    <p className="text-sm text-foreground-subtle">{hint}</p>
+                    <p id={hintId} className="text-sm text-foreground-subtle">{hint}</p>
                 )}
             </div>
         );
