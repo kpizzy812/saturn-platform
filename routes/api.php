@@ -242,6 +242,7 @@ Route::group([
         ]);
     })->middleware(['api.ability:read', 'throttle:60,1']);
     Route::post('/deployments/{uuid}/cancel', [DeployController::class, 'cancel_deployment'])->middleware(['api.ability:deploy']);
+    Route::post('/deployments/{uuid}/promote', [DeployController::class, 'promote'])->middleware(['api.ability:deploy']);
     Route::get('/deployments/applications/{uuid}', [DeployController::class, 'get_application_deployments'])->middleware(['api.ability:read']);
 
     // Deployment AI Analysis
