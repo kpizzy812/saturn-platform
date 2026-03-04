@@ -67,14 +67,14 @@ class CleanupDocker
             $commands[] = 'docker network prune -f';
         }
 
-        foreach ($commands as $command) {
-            $commandOutput = instant_remote_process([$command], $server, false);
-            if ($commandOutput !== null) {
-                $cleanupLog[] = [
-                    'command' => $command,
-                    'output' => $commandOutput,
-                ];
-            }
+        // Execute all cleanup commands in a single SSH call
+        $batchedCommand = implode(' && ', $commands);
+        $commandOutput = instant_remote_process([$batchedCommand], $server, false);
+        if ($commandOutput !== null) {
+            $cleanupLog[] = [
+                'command' => 'batch docker cleanup ('.count($commands).' commands)',
+                'output' => $commandOutput,
+            ];
         }
 
         return $cleanupLog;
@@ -142,27 +142,74 @@ class CleanupDocker
             $applications = $server->applications();
         }
 
+        if (empty($applications) || collect($applications)->isEmpty()) {
+            return $cleanupLog;
+        }
+
         $disableRetention = $server->settings->disable_application_image_retention ?? false;
 
-        foreach ($applications as $application) {
-            $imagesToKeep = $disableRetention ? 0 : ($application->settings->docker_images_to_keep ?? 2);
-            $imageRepository = $application->docker_registry_image_name ?? $application->uuid;
+        // Batch: collect all app UUIDs and image repos, then run a single SSH command
+        // to get current tags and image lists for all applications at once
+        $appData = collect($applications)->map(fn ($app) => [
+            'uuid' => $app->uuid,
+            'repo' => $app->docker_registry_image_name ?? $app->uuid,
+            'keep' => $disableRetention ? 0 : ($app->settings->docker_images_to_keep ?? 2),
+        ]);
 
-            // Get the currently running image tag
-            $currentTagCommand = "docker inspect --format='{{.Config.Image}}' {$application->uuid} 2>/dev/null | grep -oP '(?<=:)[^:]+$' || true";
-            $currentTag = instant_remote_process([$currentTagCommand], $server, false);
-            $currentTag = trim($currentTag ?? '');
+        // Build a single batched command to get current tags for all apps
+        $inspectParts = $appData->map(fn ($a) => "echo \"APP_TAG:{$a['uuid']}:\$(docker inspect --format='{{.Config.Image}}' {$a['uuid']} 2>/dev/null | grep -oP '(?<=:)[^:]+$' || true)\"")->implode(' && ');
 
-            // List all images for this application with their creation timestamps
-            // Use wildcard to match both uuid:tag and uuid_servicename:tag (Docker Compose with build)
-            $listCommand = "docker images --format '{{.Repository}}:{{.Tag}}#{{.CreatedAt}}' --filter reference='{$imageRepository}*' 2>/dev/null || true";
-            $output = instant_remote_process([$listCommand], $server, false);
+        // Build a single batched command to list images for all apps
+        $listParts = $appData->map(fn ($a) => "echo \"APP_IMAGES:{$a['uuid']}:\" && docker images --format '{{.Repository}}:{{.Tag}}#{{.CreatedAt}}' --filter reference='{$a['repo']}*' 2>/dev/null || true")->implode(' && ');
 
-            if (empty($output)) {
+        // Execute both in a single SSH call
+        $batchCommand = $inspectParts.' && echo "---SEPARATOR---" && '.$listParts;
+        $batchOutput = instant_remote_process([$batchCommand], $server, false);
+
+        if (empty($batchOutput)) {
+            return $cleanupLog;
+        }
+
+        // Parse batched output
+        $sections = explode('---SEPARATOR---', $batchOutput);
+        $tagSection = trim($sections[0] ?? '');
+        $imageSection = trim($sections[1] ?? '');
+
+        // Parse current tags per app
+        $currentTags = [];
+        foreach (explode("\n", $tagSection) as $line) {
+            if (preg_match('/^APP_TAG:([^:]+):(.*)$/', trim($line), $m)) {
+                $currentTags[$m[1]] = trim($m[2]);
+            }
+        }
+
+        // Parse images per app
+        $appImages = [];
+        $currentAppUuid = null;
+        foreach (explode("\n", $imageSection) as $line) {
+            $line = trim($line);
+            if (preg_match('/^APP_IMAGES:([^:]+):$/', $line, $m)) {
+                $currentAppUuid = $m[1];
+                $appImages[$currentAppUuid] = [];
+            } elseif ($currentAppUuid && $line !== '') {
+                $appImages[$currentAppUuid][] = $line;
+            }
+        }
+
+        // Collect all images to delete in a single batch
+        $imagesToRemove = [];
+
+        foreach ($appData as $app) {
+            $uuid = $app['uuid'];
+            $imagesToKeep = $app['keep'];
+            $currentTag = $currentTags[$uuid] ?? '';
+            $rawImages = $appImages[$uuid] ?? [];
+
+            if (empty($rawImages)) {
                 continue;
             }
 
-            $images = collect(explode("\n", trim($output)))
+            $images = collect($rawImages)
                 ->filter()
                 ->map(function ($line) {
                     $parts = explode('#', $line);
@@ -178,39 +225,39 @@ class CleanupDocker
                 })
                 ->filter(fn ($image) => ! empty($image['tag']));
 
-            // Separate images into categories
-            // PR images (pr-*) and build images (*-build) are excluded from retention
-            // Build images will be cleaned up by docker image prune -af
-            $prImages = $images->filter(fn ($image) => str_starts_with($image['tag'], 'pr-'));
+            // PR images — always delete
+            $imagesToRemove = array_merge(
+                $imagesToRemove,
+                $images->filter(fn ($image) => str_starts_with($image['tag'], 'pr-'))
+                    ->pluck('image_ref')
+                    ->all()
+            );
+
+            // Regular images — keep N most recent, delete the rest
             $regularImages = $images->filter(fn ($image) => ! str_starts_with($image['tag'], 'pr-') && ! str_ends_with($image['tag'], '-build'));
 
-            // Always delete all PR images
-            foreach ($prImages as $image) {
-                $deleteCommand = "docker rmi {$image['image_ref']} 2>/dev/null || true";
-                $deleteOutput = instant_remote_process([$deleteCommand], $server, false);
-                $cleanupLog[] = [
-                    'command' => $deleteCommand,
-                    'output' => $deleteOutput ?? 'PR image removed or was in use',
-                ];
-            }
-
-            // Filter out current running image from regular images and sort by creation date
             $sortedRegularImages = $regularImages
                 ->filter(fn ($image) => $image['tag'] !== $currentTag)
                 ->sortByDesc('created_at')
                 ->values();
 
-            // Keep only N images (imagesToKeep), delete the rest
-            $imagesToDelete = $sortedRegularImages->skip($imagesToKeep);
+            $imagesToRemove = array_merge(
+                $imagesToRemove,
+                $sortedRegularImages->skip($imagesToKeep)->pluck('image_ref')->all()
+            );
+        }
 
-            foreach ($imagesToDelete as $image) {
-                $deleteCommand = "docker rmi {$image['image_ref']} 2>/dev/null || true";
-                $deleteOutput = instant_remote_process([$deleteCommand], $server, false);
-                $cleanupLog[] = [
-                    'command' => $deleteCommand,
-                    'output' => $deleteOutput ?? 'Image removed or was in use',
-                ];
-            }
+        // Execute all deletions in a single SSH call
+        if (! empty($imagesToRemove)) {
+            $deleteCommand = collect($imagesToRemove)
+                ->map(fn ($ref) => "docker rmi {$ref} 2>/dev/null || true")
+                ->implode(' && ');
+
+            $deleteOutput = instant_remote_process([$deleteCommand], $server, false);
+            $cleanupLog[] = [
+                'command' => 'batch docker rmi ('.count($imagesToRemove).' images)',
+                'output' => $deleteOutput ?? 'Images removed or were in use',
+            ];
         }
 
         return $cleanupLog;

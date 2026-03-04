@@ -231,7 +231,11 @@ function queue_next_deployment(Application $application)
     $queued_deployments = ApplicationDeploymentQueue::where('server_id', $server_id)
         ->where('status', ApplicationDeploymentStatus::QUEUED)
         ->get()
-        ->sortBy('created_at');
+        // Prioritize rollbacks over regular deployments
+        ->sortBy([
+            ['rollback', 'desc'],
+            ['created_at', 'asc'],
+        ]);
 
     foreach ($queued_deployments as $next_deployment) {
         // Check if this queued deployment can actually run
@@ -279,7 +283,11 @@ function next_after_cancel(?Server $server = null)
         $next_found = ApplicationDeploymentQueue::where('server_id', data_get($server, 'id'))
             ->where('status', ApplicationDeploymentStatus::QUEUED)
             ->get()
-            ->sortBy('created_at');
+            // Prioritize rollbacks over regular deployments
+            ->sortBy([
+                ['rollback', 'desc'],
+                ['created_at', 'asc'],
+            ]);
 
         if ($next_found->count() > 0) {
             foreach ($next_found as $next) {

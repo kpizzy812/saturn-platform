@@ -32,7 +32,7 @@ trait HandlesAutoRollback
     private function attemptAutoRollback(\Exception $e): void
     {
         // Skip if auto-rollback on build failure is disabled
-        if (! data_get($this->application, 'settings.auto_rollback_on_failure', true)) {
+        if (! data_get($this->application, 'settings.auto_rollback_enabled', true)) {
             return;
         }
 
