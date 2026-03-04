@@ -53,6 +53,13 @@ class DeploymentApprovalsController extends Controller
             return response()->json(['message' => 'Deployment does not require approval or has already been processed.'], 400);
         }
 
+        // Verify the user has permission to approve deployments (admin/owner role required)
+        $user = auth()->user();
+        $application = $deployment->application;
+        if (! $user || ! $application || ! \Gate::forUser($user)->allows('approveDeployment', $application)) {
+            return response()->json(['message' => 'You do not have permission to approve deployments. Admin or owner role is required.'], 403);
+        }
+
         $deployment->update([
             'approval_status' => 'approved',
             'approved_by' => auth()->id(),
@@ -106,6 +113,13 @@ class DeploymentApprovalsController extends Controller
 
         if (! $deployment->requires_approval || $deployment->approval_status !== 'pending') {
             return response()->json(['message' => 'Deployment does not require approval or has already been processed.'], 400);
+        }
+
+        // Verify the user has permission to reject deployments (admin/owner role required)
+        $user = auth()->user();
+        $application = $deployment->application;
+        if (! $user || ! $application || ! \Gate::forUser($user)->allows('approveDeployment', $application)) {
+            return response()->json(['message' => 'You do not have permission to reject deployments. Admin or owner role is required.'], 403);
         }
 
         $deployment->update([

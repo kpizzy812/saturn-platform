@@ -418,13 +418,13 @@ export default function AdminTemplatesIndex({ templates, categories, filters }: 
                                                         ? 'bg-primary text-primary-foreground'
                                                         : 'bg-background text-foreground hover:bg-accent'
                                                 }`}
-                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(link.label) }}
-                                            />
+                                            >
+                                                {link.label}
+                                            </Link>
                                         ) : (
-                                            <span
-                                                className="rounded-md px-3 py-2 text-sm text-foreground-muted"
-                                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(link.label) }}
-                                            />
+                                            <span className="rounded-md px-3 py-2 text-sm text-foreground-muted">
+                                                {link.label}
+                                            </span>
                                         )}
                                     </React.Fragment>
                                 ))}

@@ -38,11 +38,13 @@ export default function Setup({ qrCode, manualEntryCode, backupCodes: propBackup
     });
 
     // Sanitize QR code SVG to prevent XSS attacks
+    // Note: svgFilters disabled intentionally — feImage/filter elements can be used for XSS
     const sanitizedQrCode = useMemo(() => {
         return DOMPurify.sanitize(qrCode, {
-            USE_PROFILES: { svg: true, svgFilters: true },
-            ADD_TAGS: ['svg', 'path', 'rect', 'g', 'defs', 'clipPath', 'use'],
-            ADD_ATTR: ['viewBox', 'fill', 'd', 'transform', 'clip-path', 'xmlns'],
+            USE_PROFILES: { svg: true },
+            ADD_TAGS: ['svg', 'path', 'rect', 'g', 'use'],
+            ADD_ATTR: ['viewBox', 'fill', 'd', 'transform', 'xmlns'],
+            FORBID_TAGS: ['filter', 'feImage', 'feBlend', 'script', 'animate'],
         });
     }, [qrCode]);
 

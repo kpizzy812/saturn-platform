@@ -20,16 +20,20 @@ class ApiTokenRateLimiter
         /** @var \Laravel\Sanctum\Contracts\HasAbilities|null $token */
         $token = $user?->currentAccessToken();
 
-        // Skip for unauthenticated or session-authenticated (SPA) users — only token auth is rate-limited here
-        if (! $user || ! $token || $token instanceof TransientToken) {
+        if (! $user) {
             return $next($request);
         }
 
-        $limit = (int) config('api.token_rate_limit', 60);
-
-        // Use a hash of the token's database ID as the Redis key discriminator.
-        // We hash the ID so Redis keys don't expose even indirect token metadata.
-        $key = self::REDIS_KEY_PREFIX.hash('sha256', (string) $token->id);
+        // Session-authenticated (SPA) users are rate-limited per user ID to prevent brute-force/enumeration
+        if (! $token || $token instanceof TransientToken) {
+            $limit = (int) config('api.session_rate_limit', 120);
+            $key = self::REDIS_KEY_PREFIX.'session:'.hash('sha256', (string) $user->id);
+        } else {
+            $limit = (int) config('api.token_rate_limit', 60);
+            // Use a hash of the token's database ID as the Redis key discriminator.
+            // We hash the ID so Redis keys don't expose even indirect token metadata.
+            $key = self::REDIS_KEY_PREFIX.hash('sha256', (string) $token->id);
+        }
 
         $current = (int) Redis::incr($key);
 

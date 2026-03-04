@@ -171,4 +171,18 @@ class ApplicationPolicy
     {
         return $user->isPlatformAdmin() || $user->isSuperAdmin();
     }
+
+    /**
+     * Determine whether the user can approve or reject a deployment.
+     * Requires admin or owner role — same as managing deployments.
+     */
+    public function approveDeployment(User $user, Application $application): bool
+    {
+        $environment = $application->environment;
+        if (! $environment) {
+            return $user->isPlatformAdmin() || $user->isSuperAdmin();
+        }
+
+        return $this->authService->canManageProject($user, $environment->project);
+    }
 }

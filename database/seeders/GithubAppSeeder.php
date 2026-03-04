@@ -21,20 +21,29 @@ class GithubAppSeeder extends Seeder
             'is_public' => true,
             'team_id' => 0,
         ]);
-        GithubApp::create([
-            'name' => 'saturn-laravel-dev-public',
-            'uuid' => 'github-app',
-            'organization' => 'saturnplatform',
-            'api_url' => 'https://api.github.com',
-            'html_url' => 'https://github.com',
-            'is_public' => false,
-            'app_id' => 292941,
-            'installation_id' => 37267016,
-            'client_id' => 'Iv1.220e564d2b0abd8c',
-            'client_secret' => '116d1d80289f378410dd70ab4e4b81dd8d2c52b6',
-            'webhook_secret' => '326a47b49054f03288f800d81247ec9414d0abf3',
-            'private_key_id' => 2,
-            'team_id' => 0,
-        ]);
+        // Dev GitHub App — credentials must be set via environment variables (never hardcoded)
+        $appId = env('GITHUB_APP_ID');
+        $installationId = env('GITHUB_APP_INSTALLATION_ID');
+        $clientId = env('GITHUB_APP_CLIENT_ID');
+        $clientSecret = env('GITHUB_APP_CLIENT_SECRET');
+        $webhookSecret = env('GITHUB_APP_WEBHOOK_SECRET');
+
+        if ($appId && $clientId && $clientSecret) {
+            GithubApp::create([
+                'name' => 'saturn-laravel-dev-public',
+                'uuid' => 'github-app',
+                'organization' => env('GITHUB_APP_ORGANIZATION', 'saturnplatform'),
+                'api_url' => 'https://api.github.com',
+                'html_url' => 'https://github.com',
+                'is_public' => false,
+                'app_id' => (int) $appId,
+                'installation_id' => $installationId ? (int) $installationId : null,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'webhook_secret' => $webhookSecret,
+                'private_key_id' => 2,
+                'team_id' => 0,
+            ]);
+        }
     }
 }
