@@ -55,4 +55,11 @@ class SendMessageToDiscordJob implements ShouldBeEncrypted, ShouldQueue
             throw $e;
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('SendMessageToDiscordJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

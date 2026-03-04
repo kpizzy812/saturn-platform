@@ -251,7 +251,7 @@ class SshMultiplexingHelper
     private static function getCommonSshOptions(Server $server, string $sshKeyLocation, int $connectionTimeout, int $serverInterval, bool $isScp = false): string
     {
         $options = "-i {$sshKeyLocation} "
-            .'-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null '
+            .'-o StrictHostKeyChecking=accept-new '
             .'-o PasswordAuthentication=no '
             ."-o ConnectTimeout=$connectionTimeout "
             ."-o ServerAliveInterval=$serverInterval "

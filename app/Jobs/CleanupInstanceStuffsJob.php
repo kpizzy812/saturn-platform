@@ -54,4 +54,11 @@ class CleanupInstanceStuffsJob implements ShouldBeEncrypted, ShouldBeUnique, Sho
                 'email_change_code_expires_at' => null,
             ]);
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CleanupInstanceStuffsJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

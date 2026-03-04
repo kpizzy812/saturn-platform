@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Horizon\Contracts\Silenced;
 
@@ -62,5 +63,14 @@ class ServerStorageCheckJob implements ShouldBeEncrypted, ShouldQueue, Silenced
         } catch (\Throwable $e) {
             return handleError($e);
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerStorageCheckJob failed', [
+            'server_id' => $this->server->id ?? null,
+            'server_name' => $this->server->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

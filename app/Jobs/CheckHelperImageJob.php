@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class CheckHelperImageJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -39,5 +40,12 @@ class CheckHelperImageJob implements ShouldBeEncrypted, ShouldQueue
             send_internal_notification('CheckHelperImageJob failed with: '.$e->getMessage());
             throw $e;
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CheckHelperImageJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

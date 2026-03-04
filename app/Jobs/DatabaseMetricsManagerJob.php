@@ -76,4 +76,11 @@ class DatabaseMetricsManagerJob implements ShouldQueue
             ]);
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('DatabaseMetricsManagerJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

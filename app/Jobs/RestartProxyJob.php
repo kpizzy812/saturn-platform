@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -158,5 +159,14 @@ class RestartProxyJob implements ShouldBeEncrypted, ShouldQueue
         }
 
         return $commands->toArray();
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('RestartProxyJob failed', [
+            'server_id' => $this->server->id ?? null,
+            'server_name' => $this->server->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

@@ -192,7 +192,7 @@ class TransferDatabaseDataAction
         try {
             // Ensure target directory exists
             instant_remote_process(
-                ['mkdir -p '.dirname($targetPath)],
+                ['mkdir -p '.escapeshellarg(dirname($targetPath))],
                 $targetServer,
                 false
             );
@@ -209,7 +209,9 @@ class TransferDatabaseDataAction
 
             // Using rsync for better reliability and progress
             // Security: accept-new accepts unknown hosts on first connect (TOFU) but rejects changed keys, preventing MITM on subsequent transfers
-            $rsyncCommand = "rsync -avz --progress -e 'ssh -p {$targetPort} -o StrictHostKeyChecking=accept-new' {$sourcePath} {$targetUser}@{$targetIp}:{$targetPath}";
+            $escapedSourcePath = escapeshellarg($sourcePath);
+            $escapedTargetPath = escapeshellarg($targetPath);
+            $rsyncCommand = "rsync -avz --progress -e 'ssh -p {$targetPort} -o StrictHostKeyChecking=accept-new' {$escapedSourcePath} {$targetUser}@{$targetIp}:{$escapedTargetPath}";
 
             instant_remote_process([$rsyncCommand], $sourceServer, true, false, 3600, disableMultiplexing: true);
 

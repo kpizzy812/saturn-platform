@@ -89,4 +89,11 @@ class CheckForUpdatesJob implements ShouldBeEncrypted, ShouldQueue
             Log::warning('CheckForUpdatesJob failed', ['error' => $e->getMessage()]);
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CheckForUpdatesJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

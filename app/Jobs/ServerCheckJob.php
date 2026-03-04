@@ -105,4 +105,13 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
             StartLogDrain::dispatch($this->server);
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerCheckJob failed', [
+            'server_id' => $this->server->id ?? null,
+            'server_name' => $this->server->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

@@ -303,4 +303,13 @@ class CheckServerResourcesJob implements ShouldBeEncrypted, ShouldQueue
             'metrics' => $triggerMetrics,
         ]);
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CheckServerResourcesJob failed', [
+            'server_id' => $this->server->id ?? null,
+            'server_name' => $this->server->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

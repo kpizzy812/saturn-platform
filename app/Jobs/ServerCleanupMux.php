@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ServerCleanupMux implements ShouldBeEncrypted, ShouldQueue
 {
@@ -36,5 +37,14 @@ class ServerCleanupMux implements ShouldBeEncrypted, ShouldQueue
         } catch (\Throwable $e) {
             return handleError($e);
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ServerCleanupMux failed', [
+            'server_id' => $this->server->id ?? null,
+            'server_name' => $this->server->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

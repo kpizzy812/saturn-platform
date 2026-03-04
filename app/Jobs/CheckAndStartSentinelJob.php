@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class CheckAndStartSentinelJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -50,5 +51,14 @@ class CheckAndStartSentinelJob implements ShouldBeEncrypted, ShouldQueue
                 return;
             }
         }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CheckAndStartSentinelJob failed', [
+            'server_id' => $this->server->id ?? null,
+            'server_name' => $this->server->name ?? null,
+            'error' => $exception->getMessage(),
+        ]);
     }
 }

@@ -211,4 +211,11 @@ class CleanupOrphanedPreviewContainersJob implements ShouldBeEncrypted, ShouldBe
             Log::warning("Failed to remove orphaned container {$containerName}: {$e->getMessage()}");
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('CleanupOrphanedPreviewContainersJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }

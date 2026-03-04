@@ -66,4 +66,11 @@ class ProcessAiChatMessageJob implements ShouldQueue
             throw $e;
         }
     }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('ProcessAiChatMessageJob failed', [
+            'error' => $exception->getMessage(),
+        ]);
+    }
 }
