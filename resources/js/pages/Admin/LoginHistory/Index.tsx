@@ -1,10 +1,16 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { router } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import {
+    DataTable,
+    DataTableFilters,
+    DataTableSearch,
+    DataTableFilter,
+    DataTableListContent,
+    DataTablePagination,
+} from '@/components/ui/DataTable';
 import {
     LogIn,
     ShieldAlert,
@@ -93,7 +99,7 @@ function truncateUserAgent(userAgent: string, maxLength: number = 50): string {
 
 function LoginRow({ entry }: { entry: LoginHistoryEntry }) {
     return (
-        <div className="border-b border-border/50 py-4 last:border-0">
+        <div className="border-b border-border/50 py-4 px-4 last:border-0">
             <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <div className="flex items-center gap-3">
@@ -145,19 +151,6 @@ function LoginRow({ entry }: { entry: LoginHistoryEntry }) {
 }
 
 export default function AdminLoginHistoryIndex({ entries, stats, filters }: Props) {
-    const [ipQuery, setIpQuery] = React.useState(filters.ip ?? '');
-    const [selectedStatus, setSelectedStatus] = React.useState(filters.status ?? '');
-    const [selectedDays, setSelectedDays] = React.useState(filters.days ?? '');
-
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            if (ipQuery !== (filters.ip ?? '')) {
-                applyFilters({ ip: ipQuery });
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [ipQuery]);
-
     const applyFilters = (newFilters: Record<string, string | undefined>) => {
         const params = new URLSearchParams();
         const merged = {
@@ -177,18 +170,6 @@ export default function AdminLoginHistoryIndex({ entries, stats, filters }: Prop
             preserveState: true,
             preserveScroll: true,
         });
-    };
-
-    const handleFilterChange = (key: string, value: string) => {
-        switch (key) {
-            case 'status':
-                setSelectedStatus(value);
-                break;
-            case 'days':
-                setSelectedDays(value);
-                break;
-        }
-        applyFilters({ [key]: value || undefined });
     };
 
     const handlePageChange = (page: number) => {
@@ -238,106 +219,51 @@ export default function AdminLoginHistoryIndex({ entries, stats, filters }: Prop
                     />
                 </div>
 
-                <Card variant="glass" className="mb-6">
-                    <CardContent className="p-4">
-                        <div className="grid gap-4 sm:grid-cols-3">
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                    IP Address
-                                </label>
-                                <Input
-                                    placeholder="Search by IP..."
-                                    value={ipQuery}
-                                    onChange={(e) => setIpQuery(e.target.value)}
-                                />
-                            </div>
+                <DataTable data={entries.data}>
+                    <DataTableFilters>
+                        <DataTableSearch
+                            value={filters.ip ?? ''}
+                            onChange={(value) => applyFilters({ ip: value || undefined })}
+                            placeholder="Search by IP..."
+                        />
+                        <DataTableFilter
+                            label="Status"
+                            value={filters.status ?? ''}
+                            onChange={(value) => applyFilters({ status: value || undefined })}
+                            options={[
+                                { value: '', label: 'All Statuses' },
+                                { value: 'success', label: 'Success' },
+                                { value: 'failed', label: 'Failed' },
+                            ]}
+                        />
+                        <DataTableFilter
+                            label="Time Range"
+                            value={filters.days ?? ''}
+                            onChange={(value) => applyFilters({ days: value || undefined })}
+                            options={[
+                                { value: '', label: 'All Time' },
+                                { value: '1', label: 'Last 24 Hours' },
+                                { value: '7', label: 'Last 7 Days' },
+                                { value: '30', label: 'Last 30 Days' },
+                            ]}
+                        />
+                    </DataTableFilters>
 
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                    Status
-                                </label>
-                                <select
-                                    value={selectedStatus}
-                                    onChange={(e) => handleFilterChange('status', e.target.value)}
-                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">All Statuses</option>
-                                    <option value="success">Success</option>
-                                    <option value="failed">Failed</option>
-                                </select>
-                            </div>
+                    <DataTableListContent<LoginHistoryEntry>
+                        renderItem={(entry) => <LoginRow entry={entry} />}
+                        keyExtractor={(entry) => entry.id}
+                        emptyIcon={<LogIn className="h-6 w-6 text-foreground-muted" />}
+                        emptyTitle="No login attempts found"
+                        emptyDescription="Try adjusting your filters"
+                    />
 
-                            <div>
-                                <label className="mb-1 block text-xs font-medium text-foreground-subtle">
-                                    Time Range
-                                </label>
-                                <select
-                                    value={selectedDays}
-                                    onChange={(e) => handleFilterChange('days', e.target.value)}
-                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">All Time</option>
-                                    <option value="1">Last 24 Hours</option>
-                                    <option value="7">Last 7 Days</option>
-                                    <option value="30">Last 30 Days</option>
-                                </select>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card variant="glass">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Login Attempts</CardTitle>
-                                <CardDescription>
-                                    Showing {entries.data.length} of {entries.total} entries
-                                </CardDescription>
-                            </div>
-                            {entries.last_page > 1 && (
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        disabled={entries.current_page === 1}
-                                        onClick={() => handlePageChange(entries.current_page - 1)}
-                                    >
-                                        Previous
-                                    </Button>
-                                    <span className="text-sm text-foreground-muted">
-                                        Page {entries.current_page} of {entries.last_page}
-                                    </span>
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        disabled={entries.current_page === entries.last_page}
-                                        onClick={() => handlePageChange(entries.current_page + 1)}
-                                    >
-                                        Next
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {entries.data.length === 0 ? (
-                            <div className="py-12 text-center">
-                                <LogIn className="mx-auto h-12 w-12 text-foreground-muted" />
-                                <p className="mt-4 text-sm text-foreground-muted">No login attempts found</p>
-                                <p className="text-xs text-foreground-subtle">
-                                    Try adjusting your filters
-                                </p>
-                            </div>
-                        ) : (
-                            <div>
-                                {entries.data.map((entry) => (
-                                    <LoginRow key={entry.id} entry={entry} />
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                    <DataTablePagination
+                        currentPage={entries.current_page}
+                        totalPages={entries.last_page}
+                        onPageChange={handlePageChange}
+                        totalItems={entries.total}
+                    />
+                </DataTable>
             </div>
         </AdminLayout>
     );

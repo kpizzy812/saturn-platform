@@ -2,7 +2,8 @@ import * as React from 'react';
 import { SettingsLayout } from './Index';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button, Modal, ModalFooter, Badge, useToast } from '@/components/ui';
 import { router } from '@inertiajs/react';
-import { Key, Copy, Trash2, Plus } from 'lucide-react';
+import { Key, Copy, Trash2, Plus, Gauge } from 'lucide-react';
+import { Slider } from '@/components/ui/Slider';
 import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -10,6 +11,8 @@ interface ApiToken {
     id: number;
     name: string;
     abilities?: string[];
+    rate_limit_per_minute?: number | null;
+    effective_rate_limit?: number;
     last_used_at?: string;
     created_at: string;
     expires_at?: string;
@@ -17,9 +20,10 @@ interface ApiToken {
 
 interface Props {
     tokens: ApiToken[];
+    maxRateLimit?: number;
 }
 
-export default function TokensSettings({ tokens: initialTokens }: Props) {
+export default function TokensSettings({ tokens: initialTokens, maxRateLimit = 500 }: Props) {
     const { can } = usePermissions();
     const canManageTokens = can('settings.tokens');
     const [tokens, setTokens] = React.useState<ApiToken[]>(initialTokens);
@@ -30,6 +34,8 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
     const [newTokenName, setNewTokenName] = React.useState('');
     const [newTokenAbilities, setNewTokenAbilities] = React.useState<string[]>(['read']);
     const [newlyCreatedToken, setNewlyCreatedToken] = React.useState('');
+    const [useCustomRateLimit, setUseCustomRateLimit] = React.useState(false);
+    const [newTokenRateLimit, setNewTokenRateLimit] = React.useState(60);
     const [isCreating, setIsCreating] = React.useState(false);
     const [isRevoking, setIsRevoking] = React.useState(false);
     const { toast } = useToast();
@@ -60,7 +66,11 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                     'X-CSRF-TOKEN': csrfToken,
                     'X-XSRF-TOKEN': csrfToken,
                 },
-                body: JSON.stringify({ name: newTokenName, abilities: newTokenAbilities }),
+                body: JSON.stringify({
+                    name: newTokenName,
+                    abilities: newTokenAbilities,
+                    rate_limit_per_minute: useCustomRateLimit ? newTokenRateLimit : null,
+                }),
             });
 
             if (!response.ok) {
@@ -74,6 +84,8 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                 id: data.id,
                 name: data.name,
                 abilities: data.abilities,
+                rate_limit_per_minute: data.rate_limit_per_minute,
+                effective_rate_limit: data.effective_rate_limit,
                 created_at: data.created_at,
                 expires_at: data.expires_at,
             };
@@ -82,6 +94,8 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
             setNewlyCreatedToken(data.token);
             setNewTokenName('');
             setNewTokenAbilities(['read']);
+            setUseCustomRateLimit(false);
+            setNewTokenRateLimit(60);
             setShowCreateModal(false);
             setShowNewTokenModal(true);
             toast({
@@ -216,6 +230,12 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                                                                     {ability}
                                                                 </Badge>
                                                             ))}
+                                                            {token.effective_rate_limit && (
+                                                                <Badge variant="secondary" className="text-xs">
+                                                                    <Gauge className="mr-1 h-3 w-3" />
+                                                                    {token.effective_rate_limit} req/min
+                                                                </Badge>
+                                                            )}
                                                         </div>
                                                     )}
                                                     <div className="mt-1 flex items-center gap-2 text-xs text-foreground-subtle">
@@ -324,6 +344,40 @@ export default function TokensSettings({ tokens: initialTokens }: Props) {
                                 </div>
                             </label>
                         ))}
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                        <p className="text-sm font-medium text-foreground">Rate Limit</p>
+                        <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3 hover:bg-background-secondary">
+                            <input
+                                type="checkbox"
+                                className="mt-0.5 h-4 w-4 accent-primary"
+                                checked={useCustomRateLimit}
+                                onChange={(e) => {
+                                    setUseCustomRateLimit(e.target.checked);
+                                    if (!e.target.checked) {
+                                        setNewTokenRateLimit(60);
+                                    }
+                                }}
+                            />
+                            <div>
+                                <p className="text-sm font-medium text-foreground">Custom Rate Limit</p>
+                                <p className="text-xs text-foreground-muted">Override the default ability-based rate limit</p>
+                            </div>
+                        </label>
+                        {useCustomRateLimit && (
+                            <div className="pl-7">
+                                <Slider
+                                    label="Requests per minute"
+                                    min={1}
+                                    max={maxRateLimit}
+                                    step={1}
+                                    value={newTokenRateLimit}
+                                    onChange={(value) => setNewTokenRateLimit(value)}
+                                    formatValue={(v) => `${v} req/min`}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <ModalFooter>

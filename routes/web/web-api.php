@@ -913,6 +913,11 @@ Route::prefix('web-api/ai-chat')->group(function () {
             return response()->json(['error' => 'Message content is required'], 422);
         }
 
+        // Validate content size to prevent DoS via oversized messages
+        if (is_string($content) && mb_strlen($content) > 10000) {
+            return response()->json(['error' => 'Message content exceeds maximum length of 10,000 characters'], 422);
+        }
+
         // Check rate limiting
         $recentMessages = \App\Models\AiChatMessage::where('session_id', $session->id)
             ->where('role', 'user')

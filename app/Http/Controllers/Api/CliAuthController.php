@@ -10,6 +10,7 @@ use App\Models\CliAuthSession;
 use App\Models\Team;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
@@ -122,38 +123,40 @@ class CliAuthController extends Controller
      */
     public function approve(ApproveCliAuthRequest $request): \Illuminate\Http\RedirectResponse
     {
+        return DB::transaction(function () use ($request) {
+            $session = CliAuthSession::where('code', $request->input('code'))
+                ->pending()
+                ->notExpired()
+                ->lockForUpdate()
+                ->first();
 
-        $session = CliAuthSession::where('code', $request->input('code'))
-            ->pending()
-            ->notExpired()
-            ->first();
+            if (! $session) {
+                return redirect()->back()->withErrors(['code' => 'Authorization request expired or invalid.']);
+            }
 
-        if (! $session) {
-            return redirect()->back()->withErrors(['code' => 'Authorization request expired or invalid.']);
-        }
+            /** @var \App\Models\User $user */
+            $user = $request->user();
 
-        /** @var \App\Models\User $user */
-        $user = $request->user();
+            // Verify user belongs to the selected team
+            $teamId = (int) $request->input('team_id');
+            if (! $user->teams()->where('teams.id', $teamId)->exists()) {
+                return redirect()->back()->withErrors(['team_id' => 'You are not a member of this team.']);
+            }
 
-        // Verify user belongs to the selected team
-        $teamId = (int) $request->input('team_id');
-        if (! $user->teams()->where('teams.id', $teamId)->exists()) {
-            return redirect()->back()->withErrors(['team_id' => 'You are not a member of this team.']);
-        }
+            // Create Sanctum token for CLI
+            $tokenName = 'Saturn CLI ('.now()->format('Y-m-d H:i').')';
+            $newAccessToken = $user->createTokenForCli($tokenName, $teamId);
 
-        // Create Sanctum token for CLI
-        $tokenName = 'Saturn CLI ('.now()->format('Y-m-d H:i').')';
-        $newAccessToken = $user->createTokenForCli($tokenName, $teamId);
+            // Update session with approval
+            $session->update([
+                'status' => 'approved',
+                'user_id' => $user->id,
+                'team_id' => $teamId,
+                'token_plain' => $newAccessToken->plainTextToken,
+            ]);
 
-        // Update session with approval
-        $session->update([
-            'status' => 'approved',
-            'user_id' => $user->id,
-            'team_id' => $teamId,
-            'token_plain' => $newAccessToken->plainTextToken,
-        ]);
-
-        return redirect()->back();
+            return redirect()->back();
+        });
     }
 
     /**

@@ -4,7 +4,6 @@ use App\Models\InstanceSettings;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Redis;
 
 uses(DatabaseTransactions::class);
@@ -18,9 +17,6 @@ function tokenRateLimitKey(int $tokenId): string
 }
 
 beforeEach(function () {
-    // Set a low limit so tests don't need to fire 60 requests
-    Config::set('api.token_rate_limit', 3);
-
     $this->team = Team::factory()->create(['name' => 'Rate Limit Test Team']);
     $this->user = User::factory()->create();
     $this->team->members()->attach($this->user->id, ['role' => 'owner']);
@@ -29,6 +25,8 @@ beforeEach(function () {
     $tokenResult = $this->user->createToken('token-a', ['*']);
     $this->tokenA = $tokenResult->plainTextToken;
     $this->tokenAId = $tokenResult->accessToken->id;
+    // Set a low per-token limit so tests don't need to fire 200 requests
+    $tokenResult->accessToken->update(['rate_limit_per_minute' => 3]);
 
     $secondUser = User::factory()->create();
     $this->team->members()->attach($secondUser->id, ['role' => 'owner']);
@@ -36,6 +34,7 @@ beforeEach(function () {
     $tokenResult2 = $secondUser->createToken('token-b', ['*']);
     $this->tokenB = $tokenResult2->plainTextToken;
     $this->tokenBId = $tokenResult2->accessToken->id;
+    $tokenResult2->accessToken->update(['rate_limit_per_minute' => 3]);
 
     if (! InstanceSettings::find(0)) {
         InstanceSettings::create(['id' => 0, 'is_api_enabled' => true]);
@@ -136,13 +135,60 @@ describe('ApiTokenRateLimiter middleware', function () {
         $r4->assertStatus(429);
     });
 
-    test('X-RateLimit-Limit header reflects configured limit', function () {
-        Config::set('api.token_rate_limit', 5);
+    test('X-RateLimit-Limit header reflects ability-based default for wildcard token', function () {
+        // Clear the explicit per-token limit to test ability-based default
+        $token = \App\Models\PersonalAccessToken::find($this->tokenAId);
+        $token->update(['rate_limit_per_minute' => null]);
+
+        // Token with ['*'] abilities maps to root default (200)
+        $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->tokenA])
+            ->getJson('/api/v1/version');
+
+        $response->assertStatus(200);
+        $response->assertHeader('X-RateLimit-Limit', '200');
+    });
+
+    test('uses per-token rate limit from database when set', function () {
+        $token = \App\Models\PersonalAccessToken::find($this->tokenAId);
+        $token->update(['rate_limit_per_minute' => 2]);
+
+        // First 2 requests should succeed
+        for ($i = 0; $i < 2; $i++) {
+            $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->tokenA])
+                ->getJson('/api/v1/version');
+            $response->assertStatus(200);
+        }
+
+        // 3rd request should be blocked
+        $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->tokenA])
+            ->getJson('/api/v1/version');
+        $response->assertStatus(429);
+        $response->assertHeader('X-RateLimit-Limit', '2');
+    });
+
+    test('per-token limit overrides ability-based default', function () {
+        $token = \App\Models\PersonalAccessToken::find($this->tokenAId);
+        $token->update(['rate_limit_per_minute' => 5]);
 
         $response = $this->withHeaders(['Authorization' => 'Bearer '.$this->tokenA])
             ->getJson('/api/v1/version');
 
         $response->assertStatus(200);
         $response->assertHeader('X-RateLimit-Limit', '5');
+    });
+
+    test('ability-based default used when no per-token limit set', function () {
+        // Create a read-only token (should get 120 req/min)
+        $readToken = $this->user->createToken('read-token', ['read']);
+        $readTokenId = $readToken->accessToken->id;
+
+        $response = $this->withHeaders(['Authorization' => 'Bearer '.$readToken->plainTextToken])
+            ->getJson('/api/v1/version');
+
+        $response->assertStatus(200);
+        $response->assertHeader('X-RateLimit-Limit', '120');
+
+        // Clean up
+        Redis::del(tokenRateLimitKey($readTokenId));
     });
 });

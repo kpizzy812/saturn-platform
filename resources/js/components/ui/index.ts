@@ -36,6 +36,7 @@ export {
     DataTableSearch,
     DataTableFilter,
     DataTableContent,
+    DataTableListContent,
     DataTablePagination,
 } from './DataTable';
 export type { DataTableColumn, SortDirection } from './DataTable';

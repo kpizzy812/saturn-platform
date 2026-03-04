@@ -3,20 +3,23 @@ import { AdminLayout } from '@/layouts/AdminLayout';
 import { Link, router } from '@inertiajs/react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Checkbox } from '@/components/ui/Checkbox';
 import { useConfirm } from '@/components/ui';
 import {
-    Search,
+    DataTable,
+    DataTableFilters,
+    DataTableSearch,
+    DataTableListContent,
+    DataTablePagination,
+} from '@/components/ui/DataTable';
+import {
     MoreHorizontal,
     UserCheck,
     UserX,
     Eye,
     Shield,
     Ban,
-    ChevronLeft,
-    ChevronRight,
     Download,
     Trash2,
     CheckSquare,
@@ -101,9 +104,8 @@ function UserRow({ user, isSelected, onToggleSelect }: UserRowProps) {
     const canSelect = !user.is_root_user;
 
     return (
-        <div className="flex items-center justify-between border-b border-border/50 py-4 last:border-0">
+        <div className="flex items-center justify-between border-b border-border/50 px-4 py-4 last:border-0">
             <div className="flex items-center gap-4">
-                {/* Checkbox */}
                 <div className="flex items-center">
                     {canSelect ? (
                         <Checkbox
@@ -111,7 +113,7 @@ function UserRow({ user, isSelected, onToggleSelect }: UserRowProps) {
                             onCheckedChange={() => onToggleSelect(user.id)}
                         />
                     ) : (
-                        <div className="h-4 w-4" /> // Placeholder for alignment
+                        <div className="h-4 w-4" />
                     )}
                 </div>
 
@@ -200,17 +202,16 @@ export default function AdminUsersIndex({
     users = defaultUsers,
     total = 0,
     currentPage = 1,
+    perPage,
     lastPage = 1,
     filters
 }: Props) {
     const confirm = useConfirm();
-    const [searchQuery, setSearchQuery] = React.useState(filters.search || '');
     const [statusFilter, setStatusFilter] = React.useState<'all' | 'active' | 'suspended' | 'pending'>(
         (filters.status as 'all' | 'active' | 'suspended' | 'pending') || 'all'
     );
     const [selectedUserIds, setSelectedUserIds] = React.useState<Set<number>>(new Set());
 
-    // Get selectable users (exclude root/superadmin)
     const selectableUsers = React.useMemo(
         () => users.filter(u => !u.is_root_user),
         [users]
@@ -219,18 +220,9 @@ export default function AdminUsersIndex({
     const allSelected = selectableUsers.length > 0 && selectableUsers.every(u => selectedUserIds.has(u.id));
     const someSelected = selectedUserIds.size > 0;
 
-    // Clear selection when users change (page change, filter, etc.)
     React.useEffect(() => {
         setSelectedUserIds(new Set());
     }, [users]);
-
-    // Debounced search to avoid excessive requests
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            updateFilters({ search: searchQuery });
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
 
     const updateFilters = (newFilters: Record<string, string>) => {
         router.get('/admin/users', {
@@ -332,7 +324,6 @@ export default function AdminUsersIndex({
     };
 
     const handleExport = () => {
-        // Build URL with current filters
         const params = new URLSearchParams();
         if (filters.search) params.set('search', filters.search);
         if (filters.status && filters.status !== 'all') params.set('status', filters.status);
@@ -375,35 +366,19 @@ export default function AdminUsersIndex({
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={handleBulkActivate}
-                                    >
+                                    <Button variant="secondary" size="sm" onClick={handleBulkActivate}>
                                         <UserCheck className="mr-2 h-4 w-4" />
                                         Activate
                                     </Button>
-                                    <Button
-                                        variant="warning"
-                                        size="sm"
-                                        onClick={handleBulkSuspend}
-                                    >
+                                    <Button variant="warning" size="sm" onClick={handleBulkSuspend}>
                                         <Ban className="mr-2 h-4 w-4" />
                                         Suspend
                                     </Button>
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
-                                        onClick={handleBulkDelete}
-                                    >
+                                    <Button variant="danger" size="sm" onClick={handleBulkDelete}>
                                         <Trash2 className="mr-2 h-4 w-4" />
                                         Delete
                                     </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setSelectedUserIds(new Set())}
-                                    >
+                                    <Button variant="ghost" size="sm" onClick={() => setSelectedUserIds(new Set())}>
                                         Clear
                                     </Button>
                                 </div>
@@ -412,122 +387,95 @@ export default function AdminUsersIndex({
                     </Card>
                 )}
 
-                {/* Filters */}
-                <Card variant="glass" className="mb-6">
-                    <CardContent className="p-4">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-                                <Input
+                {/* Filters + List */}
+                <DataTable data={users}>
+                    <Card variant="glass" className="!rounded-xl">
+                        <CardContent className="p-4">
+                            <DataTableFilters>
+                                <DataTableSearch
+                                    value={filters.search || ''}
+                                    onChange={(value) => updateFilters({ search: value })}
                                     placeholder="Search users by name or email..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10"
+                                    className="flex-1 sm:max-w-none"
                                 />
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant={statusFilter === 'all' ? 'primary' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => handleStatusFilter('all')}
-                                >
-                                    All
-                                </Button>
-                                <Button
-                                    variant={statusFilter === 'active' ? 'primary' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => handleStatusFilter('active')}
-                                >
-                                    Active
-                                </Button>
-                                <Button
-                                    variant={statusFilter === 'suspended' ? 'primary' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => handleStatusFilter('suspended')}
-                                >
-                                    Suspended
-                                </Button>
-                                <Button
-                                    variant={statusFilter === 'pending' ? 'primary' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => handleStatusFilter('pending')}
-                                >
-                                    Pending
-                                </Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Users List */}
-                <Card variant="glass">
-                    <CardContent className="p-6">
-                        <div className="mb-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                {selectableUsers.length > 0 && (
-                                    <button
-                                        onClick={toggleSelectAll}
-                                        className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground"
-                                    >
-                                        {allSelected ? (
-                                            <CheckSquare className="h-4 w-4 text-primary" />
-                                        ) : (
-                                            <Square className="h-4 w-4" />
-                                        )}
-                                        {allSelected ? 'Deselect all' : 'Select all'}
-                                    </button>
-                                )}
-                                <p className="text-sm text-foreground-muted">
-                                    Showing {users.length} of {total} users
-                                </p>
-                            </div>
-                            {lastPage > 1 && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex gap-2">
                                     <Button
-                                        variant="ghost"
+                                        variant={statusFilter === 'all' ? 'primary' : 'secondary'}
                                         size="sm"
-                                        onClick={() => handlePageChange(currentPage - 1)}
-                                        disabled={currentPage === 1}
+                                        onClick={() => handleStatusFilter('all')}
                                     >
-                                        <ChevronLeft className="h-4 w-4" />
-                                        Previous
+                                        All
                                     </Button>
-                                    <span className="text-sm text-foreground-muted">
-                                        Page {currentPage} of {lastPage}
-                                    </span>
                                     <Button
-                                        variant="ghost"
+                                        variant={statusFilter === 'active' ? 'primary' : 'secondary'}
                                         size="sm"
-                                        onClick={() => handlePageChange(currentPage + 1)}
-                                        disabled={currentPage === lastPage}
+                                        onClick={() => handleStatusFilter('active')}
                                     >
-                                        Next
-                                        <ChevronRight className="h-4 w-4" />
+                                        Active
+                                    </Button>
+                                    <Button
+                                        variant={statusFilter === 'suspended' ? 'primary' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => handleStatusFilter('suspended')}
+                                    >
+                                        Suspended
+                                    </Button>
+                                    <Button
+                                        variant={statusFilter === 'pending' ? 'primary' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => handleStatusFilter('pending')}
+                                    >
+                                        Pending
                                     </Button>
                                 </div>
-                            )}
-                        </div>
+                            </DataTableFilters>
+                        </CardContent>
+                    </Card>
 
-                        {users.length === 0 ? (
-                            <div className="py-12 text-center">
-                                <UserX className="mx-auto h-12 w-12 text-foreground-muted" />
-                                <p className="mt-4 text-sm text-foreground-muted">No users found</p>
-                                <p className="text-xs text-foreground-subtle">Try adjusting your search or filters</p>
-                            </div>
-                        ) : (
-                            <div>
-                                {users.map((user) => (
-                                    <UserRow
-                                        key={user.id}
-                                        user={user}
-                                        isSelected={selectedUserIds.has(user.id)}
-                                        onToggleSelect={toggleSelectUser}
-                                    />
-                                ))}
-                            </div>
+                    {/* Select all + count */}
+                    <div className="flex items-center justify-between px-2">
+                        <div className="flex items-center gap-4">
+                            {selectableUsers.length > 0 && (
+                                <button
+                                    onClick={toggleSelectAll}
+                                    className="flex items-center gap-2 text-sm text-foreground-muted hover:text-foreground"
+                                >
+                                    {allSelected ? (
+                                        <CheckSquare className="h-4 w-4 text-primary" />
+                                    ) : (
+                                        <Square className="h-4 w-4" />
+                                    )}
+                                    {allSelected ? 'Deselect all' : 'Select all'}
+                                </button>
+                            )}
+                            <p className="text-sm text-foreground-muted">
+                                Showing {users.length} of {total} users
+                            </p>
+                        </div>
+                    </div>
+
+                    <DataTableListContent<User>
+                        renderItem={(user) => (
+                            <UserRow
+                                user={user}
+                                isSelected={selectedUserIds.has(user.id)}
+                                onToggleSelect={toggleSelectUser}
+                            />
                         )}
-                    </CardContent>
-                </Card>
+                        keyExtractor={(user) => user.id}
+                        emptyIcon={<UserX className="h-6 w-6 text-foreground-muted" />}
+                        emptyTitle="No users found"
+                        emptyDescription="Try adjusting your search or filters"
+                    />
+
+                    <DataTablePagination
+                        currentPage={currentPage}
+                        totalPages={lastPage}
+                        onPageChange={handlePageChange}
+                        totalItems={total}
+                        pageSize={perPage}
+                    />
+                </DataTable>
             </div>
         </AdminLayout>
     );

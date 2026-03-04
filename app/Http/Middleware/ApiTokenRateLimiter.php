@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PersonalAccessToken;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redis;
@@ -29,7 +30,10 @@ class ApiTokenRateLimiter
             $limit = (int) config('api.session_rate_limit', 120);
             $key = self::REDIS_KEY_PREFIX.'session:'.hash('sha256', (string) $user->id);
         } else {
-            $limit = (int) config('api.token_rate_limit', 60);
+            // Per-token limit from model (ability-based default or explicit override)
+            $limit = $token instanceof PersonalAccessToken
+                ? $token->effectiveRateLimit()
+                : (int) config('api.token_rate_limit', 60);
             // Use a hash of the token's database ID as the Redis key discriminator.
             // We hash the ID so Redis keys don't expose even indirect token metadata.
             $key = self::REDIS_KEY_PREFIX.hash('sha256', (string) $token->id);

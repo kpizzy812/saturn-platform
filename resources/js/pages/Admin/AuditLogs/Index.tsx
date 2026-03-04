@@ -1,13 +1,19 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { router } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Select } from '@/components/ui/Select';
 import {
-    Search,
+    DataTable,
+    DataTableFilters,
+    DataTableSearch,
+    DataTableFilter,
+    DataTableListContent,
+    DataTablePagination,
+} from '@/components/ui/DataTable';
+import {
     FileText,
     User,
     Download,
@@ -78,7 +84,7 @@ function LogRow({ log }: { log: AuditLogEntry }) {
     };
 
     return (
-        <div className="border-b border-border/50 py-4 last:border-0">
+        <div className="border-b border-border/50 px-4 py-4 last:border-0">
             <div
                 className="flex cursor-pointer items-start justify-between"
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -194,25 +200,9 @@ export default function AdminAuditLogsIndex({
     users,
     filters,
 }: Props) {
-    const [searchQuery, setSearchQuery] = React.useState(filters.search ?? '');
     const [showFilters, setShowFilters] = React.useState(
         !!(filters.action || filters.resource_type || filters.user_id || filters.date_from || filters.date_to)
     );
-    const [selectedAction, setSelectedAction] = React.useState(filters.action ?? '');
-    const [selectedResourceType, setSelectedResourceType] = React.useState(filters.resource_type ?? '');
-    const [selectedUserId, setSelectedUserId] = React.useState(filters.user_id ?? '');
-    const [dateFrom, setDateFrom] = React.useState(filters.date_from ?? '');
-    const [dateTo, setDateTo] = React.useState(filters.date_to ?? '');
-
-    // Debounced search
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            if (searchQuery !== (filters.search ?? '')) {
-                applyFilters({ search: searchQuery });
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
 
     const applyFilters = (newFilters: Record<string, string | undefined>) => {
         const params = new URLSearchParams();
@@ -238,34 +228,7 @@ export default function AdminAuditLogsIndex({
         });
     };
 
-    const handleFilterChange = (key: string, value: string) => {
-        switch (key) {
-            case 'action':
-                setSelectedAction(value);
-                break;
-            case 'resource_type':
-                setSelectedResourceType(value);
-                break;
-            case 'user_id':
-                setSelectedUserId(value);
-                break;
-            case 'date_from':
-                setDateFrom(value);
-                break;
-            case 'date_to':
-                setDateTo(value);
-                break;
-        }
-        applyFilters({ [key]: value || undefined });
-    };
-
     const clearFilters = () => {
-        setSearchQuery('');
-        setSelectedAction('');
-        setSelectedResourceType('');
-        setSelectedUserId('');
-        setDateFrom('');
-        setDateTo('');
         router.get('/admin/audit-logs');
     };
 
@@ -280,6 +243,12 @@ export default function AdminAuditLogsIndex({
         params.set('format', format);
 
         window.location.href = `/admin/audit-logs/export?${params.toString()}`;
+    };
+
+    const handlePageChange = (page: number) => {
+        const params = new URLSearchParams(window.location.search);
+        params.set('page', page.toString());
+        router.get(`/admin/audit-logs?${params.toString()}`);
     };
 
     const hasActiveFilters = filters.search || filters.action || filters.resource_type || filters.user_id || filters.date_from || filters.date_to;
@@ -365,16 +334,13 @@ export default function AdminAuditLogsIndex({
                 <Card variant="glass" className="mb-6">
                     <CardContent className="p-4">
                         <div className="flex flex-col gap-4">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                                <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-                                    <Input
-                                        placeholder="Search logs by description, resource, action..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="pl-10"
-                                    />
-                                </div>
+                            <DataTableFilters>
+                                <DataTableSearch
+                                    value={filters.search ?? ''}
+                                    onChange={(value) => applyFilters({ search: value || undefined })}
+                                    placeholder="Search logs by description, resource, action..."
+                                    className="flex-1 sm:max-w-none"
+                                />
                                 <Button
                                     variant={showFilters ? 'primary' : 'secondary'}
                                     onClick={() => setShowFilters(!showFilters)}
@@ -387,52 +353,48 @@ export default function AdminAuditLogsIndex({
                                         </Badge>
                                     )}
                                 </Button>
-                            </div>
+                            </DataTableFilters>
 
                             {showFilters && (
                                 <div className="grid gap-4 border-t border-border/50 pt-4 sm:grid-cols-2 lg:grid-cols-5">
-                                    <Select
+                                    <DataTableFilter
                                         label="Action"
-                                        value={selectedAction}
-                                        onChange={(e) => handleFilterChange('action', e.target.value)}
+                                        value={filters.action ?? ''}
+                                        onChange={(value) => applyFilters({ action: value || undefined })}
                                         options={[
                                             { value: '', label: 'All Actions' },
                                             ...actions.map((action) => ({ value: action, label: action })),
                                         ]}
                                     />
-
-                                    <Select
+                                    <DataTableFilter
                                         label="Resource Type"
-                                        value={selectedResourceType}
-                                        onChange={(e) => handleFilterChange('resource_type', e.target.value)}
+                                        value={filters.resource_type ?? ''}
+                                        onChange={(value) => applyFilters({ resource_type: value || undefined })}
                                         options={[
                                             { value: '', label: 'All Types' },
                                             ...resourceTypes.map((type) => ({ value: type, label: type })),
                                         ]}
                                     />
-
-                                    <Select
+                                    <DataTableFilter
                                         label="User"
-                                        value={selectedUserId}
-                                        onChange={(e) => handleFilterChange('user_id', e.target.value)}
+                                        value={filters.user_id ?? ''}
+                                        onChange={(value) => applyFilters({ user_id: value || undefined })}
                                         options={[
                                             { value: '', label: 'All Users' },
                                             ...users.map((user) => ({ value: user.id.toString(), label: user.name })),
                                         ]}
                                     />
-
                                     <Input
                                         type="date"
                                         label="Date From"
-                                        value={dateFrom}
-                                        onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                        value={filters.date_from ?? ''}
+                                        onChange={(e) => applyFilters({ date_from: e.target.value || undefined })}
                                     />
-
                                     <Input
                                         type="date"
                                         label="Date To"
-                                        value={dateTo}
-                                        onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                                        value={filters.date_to ?? ''}
+                                        onChange={(e) => applyFilters({ date_to: e.target.value || undefined })}
                                     />
                                 </div>
                             )}
@@ -443,31 +405,31 @@ export default function AdminAuditLogsIndex({
                                     {filters.search && (
                                         <Badge variant="secondary" className="flex items-center gap-1">
                                             Search: {filters.search}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => { setSearchQuery(''); applyFilters({ search: undefined }); }} />
+                                            <X className="h-3 w-3 cursor-pointer" onClick={() => applyFilters({ search: undefined })} />
                                         </Badge>
                                     )}
                                     {filters.action && (
                                         <Badge variant="secondary" className="flex items-center gap-1">
                                             Action: {filters.action}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('action', '')} />
+                                            <X className="h-3 w-3 cursor-pointer" onClick={() => applyFilters({ action: undefined })} />
                                         </Badge>
                                     )}
                                     {filters.resource_type && (
                                         <Badge variant="secondary" className="flex items-center gap-1">
                                             Type: {filters.resource_type}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('resource_type', '')} />
+                                            <X className="h-3 w-3 cursor-pointer" onClick={() => applyFilters({ resource_type: undefined })} />
                                         </Badge>
                                     )}
                                     {filters.user_id && (
                                         <Badge variant="secondary" className="flex items-center gap-1">
                                             User: {users.find(u => u.id.toString() === filters.user_id)?.name}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => handleFilterChange('user_id', '')} />
+                                            <X className="h-3 w-3 cursor-pointer" onClick={() => applyFilters({ user_id: undefined })} />
                                         </Badge>
                                     )}
                                     {(filters.date_from || filters.date_to) && (
                                         <Badge variant="secondary" className="flex items-center gap-1">
                                             Date: {filters.date_from || '...'} - {filters.date_to || '...'}
-                                            <X className="h-3 w-3 cursor-pointer" onClick={() => { handleFilterChange('date_from', ''); handleFilterChange('date_to', ''); }} />
+                                            <X className="h-3 w-3 cursor-pointer" onClick={() => applyFilters({ date_from: undefined, date_to: undefined })} />
                                         </Badge>
                                     )}
                                     <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -480,68 +442,23 @@ export default function AdminAuditLogsIndex({
                 </Card>
 
                 {/* Logs List */}
-                <Card variant="glass">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Activity Log</CardTitle>
-                                <CardDescription>
-                                    Showing {logs.data.length} of {logs.total} entries
-                                </CardDescription>
-                            </div>
-                            {logs.last_page > 1 && (
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        disabled={logs.current_page === 1}
-                                        onClick={() => {
-                                            const params = new URLSearchParams(window.location.search);
-                                            params.set('page', (logs.current_page - 1).toString());
-                                            router.get(`/admin/audit-logs?${params.toString()}`);
-                                        }}
-                                    >
-                                        Previous
-                                    </Button>
-                                    <span className="text-sm text-foreground-muted">
-                                        Page {logs.current_page} of {logs.last_page}
-                                    </span>
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        disabled={logs.current_page === logs.last_page}
-                                        onClick={() => {
-                                            const params = new URLSearchParams(window.location.search);
-                                            params.set('page', (logs.current_page + 1).toString());
-                                            router.get(`/admin/audit-logs?${params.toString()}`);
-                                        }}
-                                    >
-                                        Next
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {logs.data.length === 0 ? (
-                            <div className="py-12 text-center">
-                                <FileText className="mx-auto h-12 w-12 text-foreground-muted" />
-                                <p className="mt-4 text-sm text-foreground-muted">No audit logs found</p>
-                                <p className="text-xs text-foreground-subtle">
-                                    {hasActiveFilters
-                                        ? 'Try adjusting your filters'
-                                        : 'Activity will appear here as users perform actions'}
-                                </p>
-                            </div>
-                        ) : (
-                            <div>
-                                {logs.data.map((log) => (
-                                    <LogRow key={log.id} log={log} />
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                <DataTable data={logs.data}>
+                    <DataTableListContent<AuditLogEntry>
+                        renderItem={(log) => <LogRow log={log} />}
+                        keyExtractor={(log) => log.id}
+                        emptyIcon={<FileText className="h-6 w-6 text-foreground-muted" />}
+                        emptyTitle="No audit logs found"
+                        emptyDescription={hasActiveFilters ? 'Try adjusting your filters' : 'Activity will appear here as users perform actions'}
+                    />
+
+                    <DataTablePagination
+                        currentPage={logs.current_page}
+                        totalPages={logs.last_page}
+                        onPageChange={handlePageChange}
+                        totalItems={logs.total}
+                        pageSize={logs.per_page}
+                    />
+                </DataTable>
             </div>
         </AdminLayout>
     );

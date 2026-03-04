@@ -20,6 +20,7 @@ class Configuration extends Component
 
     public function mount($service)
     {
+        $this->authorize('view', $service);
         $this->service = $service;
         $this->applications = $service->applications->sort();
         $this->databases = $service->databases->sort();

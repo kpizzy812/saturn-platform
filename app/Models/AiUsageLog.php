@@ -48,6 +48,7 @@ class AiUsageLog extends Model
         'cost_usd' => 'decimal:6',
         'response_time_ms' => 'integer',
         'success' => 'boolean',
+        'error_message' => 'encrypted',
     ];
 
     protected $attributes = [

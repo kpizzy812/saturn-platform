@@ -1,11 +1,17 @@
 import * as React from 'react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Link, router } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
+import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { useConfirm } from '@/components/ui';
+import {
+    DataTable,
+    DataTableFilters,
+    DataTableSearch,
+    DataTableListContent,
+    DataTablePagination,
+} from '@/components/ui/DataTable';
 import {
     Dropdown,
     DropdownTrigger,
@@ -20,7 +26,6 @@ import {
     CheckCircle,
     XCircle,
     Play,
-    Search,
     MoreHorizontal,
     Cloud,
     Server,
@@ -185,7 +190,7 @@ function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: (on
     const dbConfig = getDatabaseTypeConfig(backup.database_type);
 
     return (
-        <div className="border-b border-border/50 py-4 last:border-0">
+        <div className="border-b border-border/50 px-4 py-4 last:border-0">
             <div className="flex items-start justify-between">
                 <div className="flex-1">
                     <div className="flex items-center gap-3">
@@ -219,7 +224,6 @@ function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: (on
                         </div>
                     </div>
 
-                    {/* Last execution info */}
                     {backup.last_execution && (
                         <div className="mt-2 space-y-1">
                             <div className="flex items-center gap-4 text-xs text-foreground-muted">
@@ -235,7 +239,6 @@ function BackupRow({ backup, onRunNow }: { backup: BackupSchedule; onRunNow: (on
                                     </span>
                                 )}
                             </div>
-                            {/* Verification & Restore Test Status */}
                             <div className="flex items-center gap-2">
                                 {(() => {
                                     const verifyConfig = getVerificationConfig(backup.last_execution.verification_status);
@@ -329,14 +332,12 @@ function formatCurrency(amount: number): string {
 }
 
 export default function AdminBackupsIndex({ backups: paginatedBackups, stats, databaseTypes: serverDbTypes, filters }: Props) {
-    const [searchQuery, setSearchQuery] = React.useState(filters?.search ?? '');
     const [typeFilter, setTypeFilter] = React.useState<string>(filters?.type || 'all');
     const [showAdvancedStats, setShowAdvancedStats] = React.useState(false);
 
     const items = paginatedBackups?.data ?? [];
     const databaseTypes = (serverDbTypes ?? []).map((t) => t.toLowerCase());
 
-    // Server-side search with debounce
     const applyFilters = (newFilters: { search?: string; type?: string }) => {
         const params: Record<string, string> = {};
         const merged = {
@@ -352,15 +353,6 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
             preserveScroll: true,
         });
     };
-
-    React.useEffect(() => {
-        const timer = setTimeout(() => {
-            if (searchQuery !== (filters?.search ?? '')) {
-                applyFilters({ search: searchQuery });
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
 
     const handleTypeChange = (type: string) => {
         setTypeFilter(type);
@@ -465,7 +457,6 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
                 {/* Advanced Stats */}
                 {showAdvancedStats && (
                     <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {/* Verification Stats (24h) */}
                         <Card variant="glass">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
@@ -480,8 +471,6 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* Restore Tests */}
                         <Card variant="glass">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
@@ -501,8 +490,6 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* Storage Usage */}
                         <Card variant="glass">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
@@ -519,8 +506,6 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* Estimated Cost */}
                         <Card variant="glass">
                             <CardContent className="p-4">
                                 <div className="flex items-center justify-between">
@@ -538,108 +523,63 @@ export default function AdminBackupsIndex({ backups: paginatedBackups, stats, da
                     </div>
                 )}
 
-                {/* Filters */}
-                <Card variant="glass" className="mb-6">
-                    <CardContent className="p-4">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="relative flex-1">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground-muted" />
-                                <Input
+                {/* Filters + List */}
+                <DataTable data={items}>
+                    <Card variant="glass" className="!rounded-xl">
+                        <CardContent className="p-4">
+                            <DataTableFilters>
+                                <DataTableSearch
+                                    value={filters?.search ?? ''}
+                                    onChange={(value) => applyFilters({ search: value })}
                                     placeholder="Search by database name or team..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10"
+                                    className="flex-1 sm:max-w-none"
                                 />
-                            </div>
-                            <div className="flex gap-2">
-                                <Button
-                                    variant={typeFilter === 'all' ? 'primary' : 'secondary'}
-                                    size="sm"
-                                    onClick={() => handleTypeChange('all')}
-                                >
-                                    All
-                                </Button>
-                                {databaseTypes.map((type) => (
+                                <div className="flex gap-2">
                                     <Button
-                                        key={type}
-                                        variant={typeFilter === type ? 'primary' : 'secondary'}
+                                        variant={typeFilter === 'all' ? 'primary' : 'secondary'}
                                         size="sm"
-                                        onClick={() => handleTypeChange(type)}
+                                        onClick={() => handleTypeChange('all')}
                                     >
-                                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        All
                                     </Button>
-                                ))}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                                    {databaseTypes.map((type) => (
+                                        <Button
+                                            key={type}
+                                            variant={typeFilter === type ? 'primary' : 'secondary'}
+                                            size="sm"
+                                            onClick={() => handleTypeChange(type)}
+                                        >
+                                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </DataTableFilters>
+                        </CardContent>
+                    </Card>
 
-                {/* Backups List */}
-                <Card variant="glass">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Backup Schedules ({paginatedBackups?.total ?? 0})</CardTitle>
-                                <CardDescription>Scheduled database backups across all databases</CardDescription>
-                            </div>
-                            {paginatedBackups?.last_page > 1 && (
-                                <p className="text-sm text-foreground-muted">
-                                    Page {paginatedBackups.current_page} of {paginatedBackups.last_page}
-                                </p>
-                            )}
-                        </div>
-                    </CardHeader>
-                    <CardContent>
-                        {items.length === 0 ? (
-                            <div className="py-12 text-center">
-                                <HardDrive className="mx-auto h-12 w-12 text-foreground-muted" />
-                                <p className="mt-4 text-sm text-foreground-muted">
-                                    {!filters?.search && !filters?.type ? 'No backup schedules configured' : 'No matching backups'}
-                                </p>
-                                <p className="text-xs text-foreground-subtle">
-                                    {!filters?.search && !filters?.type
-                                        ? 'Configure backups for your databases to see them here'
-                                        : 'Try adjusting your search or filters'}
-                                </p>
-                            </div>
-                        ) : (
-                            <div>
-                                {items.map((backup) => (
-                                    <BackupRow
-                                        key={backup.id}
-                                        backup={backup}
-                                        onRunNow={(onFinish) => handleRunBackup(backup.uuid, onFinish)}
-                                    />
-                                ))}
-                            </div>
+                    <DataTableListContent<BackupSchedule>
+                        renderItem={(backup) => (
+                            <BackupRow
+                                backup={backup}
+                                onRunNow={(onFinish) => handleRunBackup(backup.uuid, onFinish)}
+                            />
                         )}
+                        keyExtractor={(backup) => backup.id}
+                        emptyIcon={<HardDrive className="h-6 w-6 text-foreground-muted" />}
+                        emptyTitle={!filters?.search && !filters?.type ? 'No backup schedules configured' : 'No matching backups'}
+                        emptyDescription={!filters?.search && !filters?.type
+                            ? 'Configure backups for your databases to see them here'
+                            : 'Try adjusting your search or filters'}
+                    />
 
-                        {/* Pagination */}
-                        {paginatedBackups?.last_page > 1 && (
-                            <div className="mt-6 flex items-center justify-center gap-2">
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => handlePageChange(paginatedBackups.current_page - 1)}
-                                    disabled={paginatedBackups.current_page <= 1}
-                                >
-                                    Previous
-                                </Button>
-                                <span className="px-3 text-sm text-foreground-muted">
-                                    {paginatedBackups.current_page} / {paginatedBackups.last_page}
-                                </span>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => handlePageChange(paginatedBackups.current_page + 1)}
-                                    disabled={paginatedBackups.current_page >= paginatedBackups.last_page}
-                                >
-                                    Next
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                    <DataTablePagination
+                        currentPage={paginatedBackups?.current_page ?? 1}
+                        totalPages={paginatedBackups?.last_page ?? 1}
+                        onPageChange={handlePageChange}
+                        totalItems={paginatedBackups?.total}
+                        pageSize={paginatedBackups?.per_page}
+                    />
+                </DataTable>
 
                 {/* Info */}
                 <Card variant="glass" className="mt-6">
