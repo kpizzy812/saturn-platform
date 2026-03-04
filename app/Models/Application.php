@@ -992,37 +992,24 @@ class Application extends BaseModel
     {
         return Attribute::make(
             set: function ($value) {
-                if ($this->additional_servers->count() === 0) {
-                    if (str($value)->contains('(')) {
-                        $status = str($value)->before('(')->trim()->value();
-                        $health = str($value)->after('(')->before(')')->trim()->value();
-                    } elseif (str($value)->contains(':')) {
-                        $status = str($value)->before(':')->trim()->value();
-                        $health = str($value)->after(':')->trim()->value();
-                    } else {
-                        $status = $value;
-                        $health = 'unhealthy';
-                    }
-
-                    return "$status:$health";
+                if (str($value)->contains('(')) {
+                    $status = str($value)->before('(')->trim()->value();
+                    $health = str($value)->after('(')->before(')')->trim()->value();
+                } elseif (str($value)->contains(':')) {
+                    $status = str($value)->before(':')->trim()->value();
+                    $health = str($value)->after(':')->trim()->value();
                 } else {
-                    if (str($value)->contains('(')) {
-                        $status = str($value)->before('(')->trim()->value();
-                        $health = str($value)->after('(')->before(')')->trim()->value();
-                    } elseif (str($value)->contains(':')) {
-                        $status = str($value)->before(':')->trim()->value();
-                        $health = str($value)->after(':')->trim()->value();
-                    } else {
-                        $status = $value;
-                        $health = 'unhealthy';
-                    }
-
-                    return "$status:$health";
+                    $status = $value;
+                    $health = 'unhealthy';
                 }
+
+                return "$status:$health";
             },
             get: function ($value) {
-                if ($this->additional_servers->count() === 0) {
-                    // running (healthy)
+                // Use additional_servers_count from global scope to avoid lazy loading
+                $hasAdditionalServers = ($this->additional_servers_count ?? 0) > 0;
+
+                if (! $hasAdditionalServers) {
                     if (str($value)->contains('(')) {
                         $status = str($value)->before('(')->trim()->value();
                         $health = str($value)->after('(')->before(')')->trim()->value();
@@ -1036,8 +1023,7 @@ class Application extends BaseModel
 
                     return "$status:$health";
                 } else {
-                    $complex_status = null;
-                    $complex_health = null;
+                    $this->loadMissing('additional_servers');
                     $complex_status = $main_server_status = str($value)->before(':')->value();
                     $complex_health = $main_server_health = str($value)->after(':')->value();
                     $additional_servers_status = $this->additional_servers->pluck('pivot.status');
