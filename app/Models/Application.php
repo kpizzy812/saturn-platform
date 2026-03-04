@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\ApplicationDeploymentStatus;
 use App\Services\ConfigurationGenerator;
 use App\Traits\Auditable;
-use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasConfiguration;
 use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -224,7 +223,7 @@ use Visus\Cuid2\Cuid2;
 
 class Application extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasConfiguration, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes;
+    use Auditable, HasConfiguration, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes;
 
     private static $parserVersion = '5';
 

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Traits\Auditable;
-use App\Traits\ClearsGlobalSearchCache;
 use App\Traits\HasSafeStringAttribute;
 use App\Traits\ValidatesPublicPort;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -45,7 +44,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  */
 class StandaloneClickhouse extends BaseModel
 {
-    use Auditable, ClearsGlobalSearchCache, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;
+    use Auditable, HasFactory, HasSafeStringAttribute, LogsActivity, SoftDeletes, ValidatesPublicPort;
 
     /**
      * The attributes that are mass assignable.
