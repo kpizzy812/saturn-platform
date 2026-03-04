@@ -9,6 +9,7 @@ import {
 import type { Server as ServerType } from '@/types';
 import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
 import { usePermissions } from '@/hooks/usePermissions';
+import { SwarmManagement } from './SwarmManagement';
 
 interface Props {
     server: ServerType;
@@ -30,6 +31,10 @@ export default function ServerShow({ server }: Props) {
         {
             label: 'Proxy',
             content: <ProxyTab server={server} />,
+        },
+        {
+            label: 'Swarm',
+            content: <SwarmManagement server={server} />,
         },
         {
             label: 'Logs',
