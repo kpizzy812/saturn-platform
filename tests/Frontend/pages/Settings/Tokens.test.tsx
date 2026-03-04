@@ -341,4 +341,80 @@ describe('Tokens Settings Page', () => {
             });
         }
     });
+
+    it('displays rate limit badge for tokens with effective_rate_limit', () => {
+        const tokensWithRateLimit = [
+            { ...mockTokens[0], effective_rate_limit: 30, rate_limit_per_minute: null },
+            { ...mockTokens[1], effective_rate_limit: 120, rate_limit_per_minute: null },
+        ];
+        render(<TokensSettings tokens={tokensWithRateLimit} />);
+        expect(screen.getByText('30 req/min')).toBeInTheDocument();
+        expect(screen.getByText('120 req/min')).toBeInTheDocument();
+    });
+
+    it('shows custom rate limit option in create modal', async () => {
+        const user = userEvent.setup();
+        render(<TokensSettings tokens={[]} maxRateLimit={500} />);
+
+        const createButton = screen.getAllByRole('button').find(btn =>
+            btn.textContent?.includes('Create Token')
+        );
+
+        if (createButton) {
+            await user.click(createButton);
+            await waitFor(() => {
+                expect(screen.getByText('Custom Rate Limit')).toBeInTheDocument();
+                expect(screen.getByText('Override the default ability-based rate limit')).toBeInTheDocument();
+            });
+        }
+    });
+
+    it('shows slider when custom rate limit checkbox is enabled', async () => {
+        const user = userEvent.setup();
+        render(<TokensSettings tokens={[]} maxRateLimit={500} />);
+
+        const createButton = screen.getAllByRole('button').find(btn =>
+            btn.textContent?.includes('Create Token')
+        );
+
+        if (createButton) {
+            await user.click(createButton);
+            await waitFor(() => {
+                expect(screen.getByText('Custom Rate Limit')).toBeInTheDocument();
+            });
+
+            // Find and click the custom rate limit checkbox
+            const checkboxes = screen.getAllByRole('checkbox');
+            const rateLimitCheckbox = checkboxes.find(cb => {
+                const label = cb.closest('label');
+                return label?.textContent?.includes('Custom Rate Limit');
+            });
+
+            if (rateLimitCheckbox) {
+                await user.click(rateLimitCheckbox);
+                await waitFor(() => {
+                    expect(screen.getByText('Requests per minute')).toBeInTheDocument();
+                });
+            }
+        }
+    });
+
+    it('hides slider when custom rate limit is not enabled', async () => {
+        const user = userEvent.setup();
+        render(<TokensSettings tokens={[]} maxRateLimit={500} />);
+
+        const createButton = screen.getAllByRole('button').find(btn =>
+            btn.textContent?.includes('Create Token')
+        );
+
+        if (createButton) {
+            await user.click(createButton);
+            await waitFor(() => {
+                expect(screen.getByText('Custom Rate Limit')).toBeInTheDocument();
+            });
+
+            // Slider label should not be visible when checkbox is unchecked
+            expect(screen.queryByText('Requests per minute')).not.toBeInTheDocument();
+        }
+    });
 });

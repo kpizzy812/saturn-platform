@@ -67,6 +67,8 @@ class CodeReview extends Model
         'duration_ms' => 'integer',
         'started_at' => 'datetime',
         'finished_at' => 'datetime',
+        'summary' => 'encrypted',
+        'error_message' => 'encrypted',
     ];
 
     protected $attributes = [

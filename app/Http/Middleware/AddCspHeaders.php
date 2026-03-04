@@ -55,10 +55,14 @@ class AddCspHeaders
             ? "script-src 'self' 'nonce-{$nonce}' 'strict-dynamic'"
             : "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
 
+        $styleSrc = $isProduction
+            ? "style-src 'self' 'nonce-{$nonce}' https://fonts.bunny.net"
+            : "style-src 'self' 'unsafe-inline' https://fonts.bunny.net";
+
         return implode('; ', [
             "default-src 'self'",
             $scriptSrc,
-            "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
+            $styleSrc,
             "img-src 'self' data: https:",
             "connect-src 'self' wss: ws:",
             "font-src 'self' data: https://fonts.bunny.net",

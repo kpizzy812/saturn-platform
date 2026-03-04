@@ -23,11 +23,10 @@ class CodeReviewController extends Controller
      */
     public function show(Request $request, string $uuid): JsonResponse
     {
-        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->firstOrFail();
-
-        // Check authorization
-        if (! Gate::allows('view', $deployment->application)) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Return consistent 404 for both not-found and unauthorized to prevent UUID enumeration
+        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        if (! $deployment || ! Gate::allows('view', $deployment->application)) {
+            return response()->json(['error' => 'Not found'], 404);
         }
 
         $review = CodeReview::where('deployment_id', $deployment->id)
@@ -67,11 +66,10 @@ class CodeReviewController extends Controller
             ], 503);
         }
 
-        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->firstOrFail();
-
-        // Check authorization
-        if (! Gate::allows('update', $deployment->application)) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Return consistent 404 for both not-found and unauthorized to prevent UUID enumeration
+        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        if (! $deployment || ! Gate::allows('update', $deployment->application)) {
+            return response()->json(['error' => 'Not found'], 404);
         }
 
         // Check if commit exists
@@ -116,11 +114,10 @@ class CodeReviewController extends Controller
      */
     public function violations(Request $request, string $uuid): JsonResponse
     {
-        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->firstOrFail();
-
-        // Check authorization
-        if (! Gate::allows('view', $deployment->application)) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Return consistent 404 for both not-found and unauthorized to prevent UUID enumeration
+        $deployment = ApplicationDeploymentQueue::where('deployment_uuid', $uuid)->first();
+        if (! $deployment || ! Gate::allows('view', $deployment->application)) {
+            return response()->json(['error' => 'Not found'], 404);
         }
 
         $review = CodeReview::where('deployment_id', $deployment->id)

@@ -24,6 +24,16 @@ class Import extends Component
 
     public ?string $filename = null;
 
+    public function mount($resource = null, $server = null)
+    {
+        $this->resource = $resource;
+        $this->server = $server;
+
+        if ($resource) {
+            $this->authorize('view', $resource);
+        }
+    }
+
     /**
      * Check if file exists at customLocation on server.
      */

@@ -157,6 +157,8 @@ Route::get('/settings/tokens', function () {
         'id' => $token->id,
         'name' => $token->name,
         'abilities' => $token->abilities,
+        'rate_limit_per_minute' => $token->rate_limit_per_minute,
+        'effective_rate_limit' => $token->effectiveRateLimit(),
         'last_used_at' => $token->last_used_at?->toISOString(),
         'created_at' => $token->created_at->toISOString(),
         'expires_at' => $token->expires_at?->toISOString(),
@@ -164,6 +166,7 @@ Route::get('/settings/tokens', function () {
 
     return Inertia::render('Settings/Tokens', [
         'tokens' => $tokens,
+        'maxRateLimit' => (int) config('api.max_token_rate_limit', 500),
     ]);
 })->name('settings.tokens');
 
@@ -1704,6 +1707,7 @@ Route::post('/settings/tokens', function (Request $request) {
         'abilities' => 'array',
         'abilities.*' => 'string|in:read,write,deploy,root,read:sensitive',
         'expires_at' => 'nullable|date|after:today',
+        'rate_limit_per_minute' => 'nullable|integer|min:1|max:'.config('api.max_token_rate_limit', 500),
     ]);
 
     $user = auth()->user();
@@ -1713,12 +1717,21 @@ Route::post('/settings/tokens', function (Request $request) {
     // Create the token using Sanctum
     $tokenResult = $user->createToken($request->name, $abilities, $expiresAt);
 
+    // Set per-token rate limit if provided
+    if ($request->rate_limit_per_minute !== null) {
+        $tokenResult->accessToken->update([
+            'rate_limit_per_minute' => $request->rate_limit_per_minute,
+        ]);
+    }
+
     // Return JSON response with the token (only shown once)
     return response()->json([
         'token' => $tokenResult->plainTextToken,
         'id' => $tokenResult->accessToken->id,
         'name' => $request->name,
         'abilities' => $abilities,
+        'rate_limit_per_minute' => $tokenResult->accessToken->rate_limit_per_minute,
+        'effective_rate_limit' => $tokenResult->accessToken->effectiveRateLimit(),
         'created_at' => $tokenResult->accessToken->created_at->toISOString(),
         'expires_at' => $expiresAt?->format('c'),
     ]);
