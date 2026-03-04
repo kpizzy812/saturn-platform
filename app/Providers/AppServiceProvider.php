@@ -61,8 +61,12 @@ class AppServiceProvider extends ServiceProvider
 
     private function configureModels(): void
     {
-        // Disabled because it's causing issues with the application
-        // Model::shouldBeStrict();
+        // Prevent lazy loading and silently discarding attributes in non-production
+        // to catch N+1 queries and mass-assignment issues early
+        if (! App::isProduction()) {
+            Model::preventLazyLoading();
+            Model::preventSilentlyDiscardingAttributes();
+        }
     }
 
     private function configurePasswords(): void

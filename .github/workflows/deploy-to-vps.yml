@@ -376,7 +376,8 @@ jobs:
             printf 'DB_PORT=5432\n'
             printf 'DB_DATABASE=saturn\n'
             printf 'DB_USERNAME=saturn\n'
-            printf 'DB_PASSWORD=%s\n\n' "$DB_PASSWORD"
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
+            printf 'DB_SSLMODE=prefer\n\n'
 
             printf '# Redis\n'
             printf 'REDIS_HOST=saturn-redis\n'

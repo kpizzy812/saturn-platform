@@ -30,7 +30,6 @@ class Handler extends ExceptionHandler
     protected $dontReport = [
         ProcessException::class,
         NonReportableException::class,
-        DeploymentException::class,
     ];
 
     /**
