@@ -84,12 +84,12 @@ Route::get('/audit-logs', function (Request $request) {
     // Search filter
     if ($search = $request->get('search')) {
         $query->where(function ($q) use ($search) {
-            $q->where('description', 'like', "%{$search}%")
-                ->orWhere('resource_name', 'like', "%{$search}%")
-                ->orWhere('action', 'like', "%{$search}%")
+            $q->where('description', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('resource_name', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('action', 'like', '%'.escapeLike($search).'%')
                 ->orWhereHas('user', function ($uq) use ($search) {
-                    $uq->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+                    $uq->where('name', 'like', '%'.escapeLike($search).'%')
+                        ->orWhere('email', 'like', '%'.escapeLike($search).'%');
                 });
         });
     }
@@ -101,7 +101,7 @@ Route::get('/audit-logs', function (Request $request) {
 
     // Resource type filter
     if ($resourceType = $request->get('resource_type')) {
-        $query->where('resource_type', 'like', "%{$resourceType}%");
+        $query->where('resource_type', 'like', '%'.escapeLike($resourceType).'%');
     }
 
     // User filter
@@ -185,16 +185,16 @@ Route::get('/audit-logs/export', function (Request $request) {
     // Apply same filters as index
     if ($search = $request->get('search')) {
         $query->where(function ($q) use ($search) {
-            $q->where('description', 'like', "%{$search}%")
-                ->orWhere('resource_name', 'like', "%{$search}%")
-                ->orWhere('action', 'like', "%{$search}%");
+            $q->where('description', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('resource_name', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('action', 'like', '%'.escapeLike($search).'%');
         });
     }
     if ($action = $request->get('action')) {
         $query->where('action', $action);
     }
     if ($resourceType = $request->get('resource_type')) {
-        $query->where('resource_type', 'like', "%{$resourceType}%");
+        $query->where('resource_type', 'like', '%'.escapeLike($resourceType).'%');
     }
     if ($userId = $request->get('user_id')) {
         $query->where('user_id', $userId);

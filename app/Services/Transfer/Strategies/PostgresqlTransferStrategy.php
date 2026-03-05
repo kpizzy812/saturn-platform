@@ -61,9 +61,11 @@ class PostgresqlTransferStrategy extends AbstractTransferStrategy
             // Use custom format for full dump, plain text for partial
             $format = empty($tableFlags) ? '-Fc' : '-Fp';
 
-            // B1: Use escapeshellarg to prevent password injection in process tree
+            // B1: Use escapeshellarg to prevent injection in process tree
             $escapedPassword = escapeshellarg($password);
-            $command = "docker exec -e PGPASSWORD={$escapedPassword} {$containerName} pg_dump {$format} --no-acl --no-owner --username {$user}{$tableFlags} {$dbName} > {$dumpPath}";
+            $escapedUser = escapeshellarg($user);
+            $escapedDbName = escapeshellarg($dbName);
+            $command = "docker exec -e PGPASSWORD={$escapedPassword} {$containerName} pg_dump {$format} --no-acl --no-owner --username {$escapedUser}{$tableFlags} {$escapedDbName} > {$dumpPath}";
 
             $commands = [$command];
             $this->executeCommand($commands, $server, true, 3600);
@@ -125,14 +127,16 @@ class PostgresqlTransferStrategy extends AbstractTransferStrategy
                 false
             );
 
-            // B1: Use escapeshellarg to prevent password injection in process tree
+            // B1: Use escapeshellarg to prevent injection in process tree
             $escapedPassword = escapeshellarg($password);
+            $escapedUser = escapeshellarg($user);
+            $escapedDbName = escapeshellarg($dbName);
             if (trim($fileType) === 'custom') {
                 // Use pg_restore for custom format
-                $command = "docker exec -i -e PGPASSWORD={$escapedPassword} {$containerName} pg_restore --no-acl --no-owner --clean --if-exists --username {$user} -d {$dbName} < {$dumpPath}";
+                $command = "docker exec -i -e PGPASSWORD={$escapedPassword} {$containerName} pg_restore --no-acl --no-owner --clean --if-exists --username {$escapedUser} -d {$escapedDbName} < {$dumpPath}";
             } else {
                 // Use psql for plain text format
-                $command = "docker exec -i -e PGPASSWORD={$escapedPassword} {$containerName} psql --username {$user} -d {$dbName} < {$dumpPath}";
+                $command = "docker exec -i -e PGPASSWORD={$escapedPassword} {$containerName} psql --username {$escapedUser} -d {$escapedDbName} < {$dumpPath}";
             }
 
             $this->executeCommand([$command], $server, true, 3600);
@@ -165,9 +169,11 @@ class PostgresqlTransferStrategy extends AbstractTransferStrategy
             // Query to get tables with their sizes
             $query = "SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) as size, pg_total_relation_size(quote_ident(table_name)) as size_bytes FROM information_schema.tables WHERE table_schema = 'public' ORDER BY pg_total_relation_size(quote_ident(table_name)) DESC;";
 
-            // B1: Use escapeshellarg to prevent password injection in process tree
+            // B1: Use escapeshellarg to prevent injection in process tree
             $escapedPassword = escapeshellarg($password);
-            $command = "docker exec -e PGPASSWORD={$escapedPassword} {$containerName} psql -U {$user} -d {$dbName} -t -A -F '|' -c \"{$query}\"";
+            $escapedUser = escapeshellarg($user);
+            $escapedDbName = escapeshellarg($dbName);
+            $command = "docker exec -e PGPASSWORD={$escapedPassword} {$containerName} psql -U {$escapedUser} -d {$escapedDbName} -t -A -F '|' -c \"{$query}\"";
 
             $output = $this->executeCommand([$command], $server, false);
 
@@ -220,13 +226,15 @@ class PostgresqlTransferStrategy extends AbstractTransferStrategy
                 $query = "SELECT SUM(pg_total_relation_size(quote_ident(table_name))) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ({$tableListStr});";
             } else {
                 // Calculate total database size
-                $escapedDbName = str_replace("'", "''", $dbName);
-                $query = "SELECT pg_database_size('{$escapedDbName}');";
+                $escapedDbNameSql = str_replace(['\\', "'"], ['\\\\', "''"], $dbName);
+                $query = "SELECT pg_database_size('{$escapedDbNameSql}');";
             }
 
-            // B1: Use escapeshellarg to prevent password injection in process tree
+            // B1: Use escapeshellarg to prevent injection in process tree
             $escapedPassword = escapeshellarg($password);
-            $command = "docker exec -e PGPASSWORD={$escapedPassword} {$containerName} psql -U {$user} -d {$dbName} -t -c \"{$query}\"";
+            $escapedUser = escapeshellarg($user);
+            $escapedDbNameShell = escapeshellarg($dbName);
+            $command = "docker exec -e PGPASSWORD={$escapedPassword} {$containerName} psql -U {$escapedUser} -d {$escapedDbNameShell} -t -c \"{$query}\"";
 
             $output = $this->executeCommand([$command], $server, false);
 

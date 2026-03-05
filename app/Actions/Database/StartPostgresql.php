@@ -315,8 +315,12 @@ class StartPostgresql
         foreach ($this->database->init_scripts as $init_script) {
             $filename = data_get($init_script, 'filename');
             $content = data_get($init_script, 'content');
+            // Sanitize filename: allow only safe characters, prevent path traversal
+            $filename = basename((string) $filename);
+            $filename = preg_replace('/[^a-zA-Z0-9._-]/', '_', $filename);
+            $escapedFilename = escapeshellarg($filename);
             $content_base64 = base64_encode($content);
-            $this->commands[] = "echo '{$content_base64}' | base64 -d | tee $this->configuration_dir/docker-entrypoint-initdb.d/{$filename} > /dev/null";
+            $this->commands[] = "echo '{$content_base64}' | base64 -d | tee $this->configuration_dir/docker-entrypoint-initdb.d/{$escapedFilename} > /dev/null";
             $this->init_scripts[] = "$this->configuration_dir/docker-entrypoint-initdb.d/{$filename}";
         }
     }

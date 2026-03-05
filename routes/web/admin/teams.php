@@ -15,8 +15,8 @@ Route::get('/teams', function (\Illuminate\Http\Request $request) {
     // Search filter
     if ($search = $request->get('search')) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%");
+            $q->where('name', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('description', 'like', '%'.escapeLike($search).'%');
         });
     }
 

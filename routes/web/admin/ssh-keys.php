@@ -18,9 +18,9 @@ Route::get('/ssh-keys', function (Request $request) {
     // Search filter
     if ($search = $request->get('search')) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%")
-                ->orWhere('fingerprint', 'like', "%{$search}%");
+            $q->where('name', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('description', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('fingerprint', 'like', '%'.escapeLike($search).'%');
         });
     }
 

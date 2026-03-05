@@ -435,8 +435,8 @@ class TeamController extends ApiController
         if ($request->has('search') && ! empty($request->search)) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('description', 'like', "%{$search}%")
-                    ->orWhere('log_name', 'like', "%{$search}%");
+                $q->where('description', 'like', '%'.escapeLike($search).'%')
+                    ->orWhere('log_name', 'like', '%'.escapeLike($search).'%');
             });
         }
 

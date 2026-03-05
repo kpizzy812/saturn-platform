@@ -18,9 +18,9 @@ Route::get('/servers', function (Request $request) {
     // Search filter
     if ($search = $request->get('search')) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('ip', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%");
+            $q->where('name', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('ip', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('description', 'like', '%'.escapeLike($search).'%');
         });
     }
 
@@ -89,9 +89,9 @@ Route::get('/servers/bulk', function (Request $request) {
     // Search filter (same as index)
     if ($search = $request->get('search')) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('ip', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%");
+            $q->where('name', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('ip', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('description', 'like', '%'.escapeLike($search).'%');
         });
     }
 

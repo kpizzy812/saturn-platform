@@ -110,8 +110,10 @@ class GitAnalyzerController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        // Authorize: user must be able to deploy to this environment
-        $environment = Environment::where('uuid', $validated['environment_uuid'])->firstOrFail();
+        // Authorize: user must be able to deploy to this environment (team-scoped to prevent IDOR)
+        $environment = Environment::whereHas('project', fn ($q) => $q->where('team_id', currentTeam()->id))
+            ->where('uuid', $validated['environment_uuid'])
+            ->firstOrFail();
         if (! auth()->user()->canDeployToEnvironment($environment)) {
             abort(403, 'You do not have permission to deploy to this environment.');
         }

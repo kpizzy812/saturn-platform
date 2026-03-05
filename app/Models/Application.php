@@ -305,6 +305,9 @@ class Application extends BaseModel
         'pre_deployment_command',
         'pre_deployment_command_container',
         'watch_paths',
+        'depends_on',
+        'managed_by_yaml',
+        'yaml_resource_name',
         'custom_healthcheck_found',
         'redirect',
         'compose_parsing_version',
@@ -345,6 +348,8 @@ class Application extends BaseModel
         'last_restart_at' => 'datetime',
         'build_pack_explicitly_set' => 'boolean',
         'monorepo_group_id' => 'string',
+        'depends_on' => 'array',
+        'managed_by_yaml' => 'boolean',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -1836,7 +1841,8 @@ class Application extends BaseModel
                             $source = $source->after('.');
                             $source = $workdir.$source;
                         }
-                        $commands->push("mkdir -p $source > /dev/null 2>&1 || true");
+                        $escapedSource = escapeshellarg($source->value());
+                        $commands->push("mkdir -p {$escapedSource} > /dev/null 2>&1 || true");
                     }
                 }
             }

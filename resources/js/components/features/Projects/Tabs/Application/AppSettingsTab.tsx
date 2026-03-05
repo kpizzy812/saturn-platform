@@ -4,6 +4,8 @@ import { useToast } from '@/components/ui/Toast';
 import { Globe, Copy, ExternalLink, Trash2, Link2, Shield, RefreshCw, Loader2, Zap, Webhook, AlertCircle, Check, Eye, EyeOff, ChevronDown, Plus, HelpCircle, Info } from 'lucide-react';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { BranchSelector } from '@/components/ui/BranchSelector';
+import { WatchPathsEditor } from '@/components/features/WatchPathsEditor';
+import { DependencyEditor } from '@/components/features/DependencyEditor';
 import type { SelectedService } from '../../types';
 
 interface SourceInfo {
@@ -54,6 +56,7 @@ interface ApplicationData {
     docker_registry_image_name: string | null;
     docker_registry_image_tag: string | null;
     watch_paths: string | null;
+    depends_on: string[] | null;
     pre_deployment_command: string | null;
     post_deployment_command: string | null;
     destination?: {
@@ -100,6 +103,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
     const [buildCommand, setBuildCommand] = useState('');
     const [startCommand, setStartCommand] = useState('');
     const [watchPaths, setWatchPaths] = useState('');
+    const [dependsOn, setDependsOn] = useState<string[]>([]);
     const [gitBranch, setGitBranch] = useState('');
 
     // Git branches for BranchSelector
@@ -140,6 +144,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                 setBuildCommand(data.build_command || '');
                 setStartCommand(data.start_command || '');
                 setWatchPaths(data.watch_paths || '');
+                setDependsOn(data.depends_on || []);
                 setGitBranch(data.git_branch || '');
                 if (data.git_repository) {
                     // Use GitHub App token for private repos when available
@@ -283,6 +288,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                     build_command: buildCommand || undefined,
                     start_command: startCommand || undefined,
                     watch_paths: watchPaths || undefined,
+                    depends_on: dependsOn.length > 0 ? dependsOn : null,
                     git_branch: gitBranch || undefined,
                 }),
             });
@@ -506,12 +512,18 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                             />
                         </>
                     )}
-                    <SettingsInput
-                        label="Watch Paths"
-                        value={watchPaths}
+                    <WatchPathsEditor
+                        paths={watchPaths}
                         onChange={setWatchPaths}
-                        placeholder="src/, package.json"
-                        hint="Comma-separated paths. Deployments trigger only when these paths change."
+                        basePath={baseDirectory}
+                    />
+
+                    <DependencyEditor
+                        currentUuid={app.uuid}
+                        currentName={app.name}
+                        dependsOn={dependsOn}
+                        availableResources={[]}
+                        onChange={setDependsOn}
                     />
                 </div>
             </div>

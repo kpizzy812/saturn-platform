@@ -229,6 +229,15 @@ class AppServiceProvider extends ServiceProvider
     private function configureGitHubHttp(): void
     {
         Http::macro('GitHub', function (string $api_url, ?string $github_access_token = null) {
+            // Re-validate URL at time of use to prevent DNS rebinding SSRF
+            $host = parse_url($api_url, PHP_URL_HOST);
+            if ($host) {
+                $ip = gethostbyname($host);
+                if ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                    throw new \RuntimeException("GitHub API URL resolves to a private/reserved IP ({$ip}), request blocked for SSRF protection.");
+                }
+            }
+
             if ($github_access_token) {
                 return Http::withHeaders([
                     'X-GitHub-Api-Version' => '2022-11-28',

@@ -21,6 +21,19 @@ use Exception;
 trait HandlesImageRegistry
 {
     /**
+     * Validate a Docker image name/tag to prevent shell injection.
+     * Allows: alphanumeric, dots, dashes, underscores, slashes, colons.
+     */
+    private function validateDockerImageRef(string $ref, string $label = 'image reference'): string
+    {
+        if (! preg_match('/^[a-zA-Z0-9._\/:@-]+$/', $ref)) {
+            throw new DeploymentException("Invalid {$label}: contains disallowed characters.");
+        }
+
+        return $ref;
+    }
+
+    /**
      * Push built image to Docker registry.
      */
     private function push_to_docker_registry()
@@ -40,7 +53,11 @@ trait HandlesImageRegistry
             return;
         }
         try {
-            instant_remote_process(["docker images --format '{{json .}}' {$this->production_image_name}"], $this->server);
+            // Validate image references to prevent shell injection
+            $this->validateDockerImageRef($this->production_image_name, 'production image name');
+            $escapedImageName = escapeshellarg($this->production_image_name);
+
+            instant_remote_process(["docker images --format '{{json .}}' {$escapedImageName}"], $this->server);
             $this->application_deployment_queue->addLogEntry('----------------------------------------');
             $this->application_deployment_queue->addLogEntry("Pushing image to docker registry ({$this->production_image_name}).");
             $this->execute_remote_command(
@@ -50,16 +67,19 @@ trait HandlesImageRegistry
                 ],
             );
             if ($this->application->docker_registry_image_tag) {
-                // Tag image with docker_registry_image_tag
-                $this->application_deployment_queue->addLogEntry("Tagging and pushing image with {$this->application->docker_registry_image_tag} tag.");
+                $registryName = $this->validateDockerImageRef($this->application->docker_registry_image_name, 'registry image name');
+                $registryTag = $this->validateDockerImageRef($this->application->docker_registry_image_tag, 'registry image tag');
+                $fullRef = "{$registryName}:{$registryTag}";
+
+                $this->application_deployment_queue->addLogEntry("Tagging and pushing image with {$registryTag} tag.");
                 $this->execute_remote_command(
                     [
-                        executeInDocker($this->deployment_uuid, "docker tag {$this->production_image_name} {$this->application->docker_registry_image_name}:{$this->application->docker_registry_image_tag}"),
+                        executeInDocker($this->deployment_uuid, "docker tag {$this->production_image_name} {$fullRef}"),
                         'ignore_errors' => true,
                         'hidden' => true,
                     ],
                     [
-                        executeInDocker($this->deployment_uuid, "docker push {$this->application->docker_registry_image_name}:{$this->application->docker_registry_image_tag}"),
+                        executeInDocker($this->deployment_uuid, "docker push {$fullRef}"),
                         'ignore_errors' => true,
                         'hidden' => true,
                     ],
@@ -128,16 +148,21 @@ trait HandlesImageRegistry
             return;
         }
 
+        // Validate image references to prevent shell injection
+        $this->validateDockerImageRef($this->promoted_from_image, 'promoted source image');
+        $this->validateDockerImageRef($this->production_image_name, 'production image name');
+        $escapedPromoted = escapeshellarg($this->promoted_from_image);
+
         // Try to pull source image — works when a registry is configured or image is on a remote server
         $this->execute_remote_command([
-            "docker pull {$this->promoted_from_image} 2>/dev/null",
+            "docker pull {$escapedPromoted} 2>/dev/null",
             'ignore_errors' => true,
             'hidden' => true,
         ]);
 
         // Check if the source image is now available locally
         $this->execute_remote_command([
-            "docker images -q {$this->promoted_from_image} 2>/dev/null",
+            "docker images -q {$escapedPromoted} 2>/dev/null",
             'hidden' => true,
             'save' => 'promotion_source_found',
         ]);
@@ -152,8 +177,9 @@ trait HandlesImageRegistry
 
         // Tag source image as this deployment's production image when names differ
         if ($this->promoted_from_image !== $this->production_image_name) {
+            $escapedProd = escapeshellarg($this->production_image_name);
             $this->execute_remote_command([
-                "docker tag {$this->promoted_from_image} {$this->production_image_name}",
+                "docker tag {$escapedPromoted} {$escapedProd}",
                 'hidden' => true,
             ]);
             $this->application_deployment_queue->addLogEntry(
@@ -174,19 +200,22 @@ trait HandlesImageRegistry
      */
     private function check_image_locally_or_remotely()
     {
+        $this->validateDockerImageRef($this->production_image_name, 'production image name');
+        $escapedImageName = escapeshellarg($this->production_image_name);
+
         $this->execute_remote_command([
-            "docker images -q {$this->production_image_name} 2>/dev/null",
+            "docker images -q {$escapedImageName} 2>/dev/null",
             'hidden' => true,
             'save' => 'local_image_found',
         ]);
         if (str($this->saved_outputs->get('local_image_found'))->isEmpty() && $this->application->docker_registry_image_name) {
             $this->execute_remote_command([
-                "docker pull {$this->production_image_name} 2>/dev/null",
+                "docker pull {$escapedImageName} 2>/dev/null",
                 'ignore_errors' => true,
                 'hidden' => true,
             ]);
             $this->execute_remote_command([
-                "docker images -q {$this->production_image_name} 2>/dev/null",
+                "docker images -q {$escapedImageName} 2>/dev/null",
                 'hidden' => true,
                 'save' => 'local_image_found',
             ]);

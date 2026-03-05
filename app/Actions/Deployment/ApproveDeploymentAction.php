@@ -31,6 +31,11 @@ class ApproveDeploymentAction
             throw new \Exception('This approval request is no longer pending.');
         }
 
+        // Prevent self-approval: requester cannot approve their own deployment
+        if ($approval->requester_id === $approver->id) {
+            throw new \Exception('You cannot approve your own deployment request.');
+        }
+
         // Approve the request
         $approval->approve($approver, $comment);
 
