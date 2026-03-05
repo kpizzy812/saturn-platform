@@ -193,6 +193,151 @@ Route::group([
         ]);
     })->middleware(['api.ability:write']);
 
+    // Environment Operations (clone, dependency graph, start/stop, saturn.yaml sync)
+    Route::post('/environments/{environment_uuid}/clone', function (\Illuminate\Http\Request $request, string $environment_uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = \App\Models\Environment::where('uuid', $environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+            'target_server_id' => 'nullable|integer',
+            'clone_env_vars' => 'boolean',
+            'clone_scheduled_tasks' => 'boolean',
+            'clone_backup_configs' => 'boolean',
+        ]);
+
+        $action = new \App\Actions\Environment\CloneEnvironmentAction;
+        $newEnv = $action->execute($environment, $validated);
+
+        return response()->json([
+            'uuid' => $newEnv->uuid,
+            'name' => $newEnv->name,
+            'message' => "Environment cloned successfully from '{$environment->name}'.",
+        ], 201);
+    })->middleware(['api.ability:write']);
+
+    Route::get('/environments/{environment_uuid}/dependency-graph', function (string $environment_uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = \App\Models\Environment::where('uuid', $environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
+            ->firstOrFail();
+
+        $resolver = new \App\Services\DependencyResolver;
+        $errors = $resolver->validate($environment);
+
+        return response()->json([
+            'tiers' => $resolver->resolve($environment),
+            'validation_errors' => $errors,
+        ]);
+    })->middleware(['api.ability:read']);
+
+    Route::post('/environments/{environment_uuid}/start', function (string $environment_uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = \App\Models\Environment::where('uuid', $environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
+            ->firstOrFail();
+
+        $action = app(\App\Actions\Environment\StartEnvironmentAction::class);
+        $result = $action->execute($environment);
+
+        return response()->json($result);
+    })->middleware(['api.ability:deploy']);
+
+    Route::post('/environments/{environment_uuid}/stop', function (string $environment_uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = \App\Models\Environment::where('uuid', $environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
+            ->firstOrFail();
+
+        $action = app(\App\Actions\Environment\StopEnvironmentAction::class);
+        $result = $action->execute($environment);
+
+        return response()->json($result);
+    })->middleware(['api.ability:deploy']);
+
+    Route::post('/environments/{environment_uuid}/sync-yaml', function (\Illuminate\Http\Request $request, string $environment_uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = \App\Models\Environment::where('uuid', $environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'content' => 'required|string',
+        ]);
+
+        $parser = new \App\Services\SaturnYaml\SaturnYamlParser;
+        $errors = $parser->validate($validated['content']);
+
+        if (! empty($errors)) {
+            return response()->json(['errors' => $errors], 422);
+        }
+
+        \App\Jobs\SyncSaturnYamlJob::dispatch(
+            $environment->id,
+            $validated['content'],
+            auth()->user()?->name ?? 'api',
+        );
+
+        return response()->json(['message' => 'saturn.yaml sync job dispatched.']);
+    })->middleware(['api.ability:write']);
+
+    Route::post('/environments/{environment_uuid}/validate-yaml', function (\Illuminate\Http\Request $request, string $environment_uuid) {
+        $teamId = getTeamIdFromToken();
+        if (is_null($teamId)) {
+            return invalidTokenResponse();
+        }
+
+        $environment = \App\Models\Environment::where('uuid', $environment_uuid)
+            ->whereHas('project', fn ($q) => $q->where('team_id', $teamId))
+            ->firstOrFail();
+
+        $validated = $request->validate([
+            'content' => 'required|string',
+        ]);
+
+        $parser = new \App\Services\SaturnYaml\SaturnYamlParser;
+        $validationErrors = $parser->validate($validated['content']);
+
+        if (! empty($validationErrors)) {
+            return response()->json(['valid' => false, 'errors' => $validationErrors]);
+        }
+
+        $reconciler = new \App\Services\SaturnYaml\SaturnYamlReconciler;
+        $config = $parser->parse($validated['content']);
+        $plan = $reconciler->plan($config, $environment);
+
+        return response()->json([
+            'valid' => true,
+            'plan' => $plan->toArray(),
+        ]);
+    })->middleware(['api.ability:read']);
+
     Route::get('/security/keys', [SecurityController::class, 'keys'])->middleware(['api.ability:read']);
     Route::post('/security/keys', [SecurityController::class, 'create_key'])->middleware(['api.ability:write']);
 

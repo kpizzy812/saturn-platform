@@ -145,7 +145,7 @@ trait HandlesGitOperations
         $this->create_workdir();
         $this->execute_remote_command(
             [
-                executeInDocker($this->deployment_uuid, "cd {$this->workdir} && git log -1 {$this->commit} --pretty=%B"),
+                executeInDocker($this->deployment_uuid, "cd {$this->workdir} && git log -1 ".escapeshellarg($this->commit)." --pretty=%B"),
                 'hidden' => true,
                 'save' => 'commit_message',
             ]
@@ -160,6 +160,59 @@ trait HandlesGitOperations
 
         // Detect and import environment variables from .env.example
         $this->detectAndImportEnvExample();
+
+        // Detect saturn.yaml and dispatch sync if found
+        $this->detectAndSyncSaturnYaml();
+    }
+
+    /**
+     * Detect saturn.yaml in the cloned repository and dispatch sync job.
+     */
+    private function detectAndSyncSaturnYaml(): void
+    {
+        $detector = new \App\Services\SaturnYaml\SaturnYamlDetector;
+        $baseDir = $this->application->base_directory ?? '/';
+
+        // List files in workdir to check for saturn.yaml
+        $this->execute_remote_command(
+            [
+                executeInDocker($this->deployment_uuid, "ls -1 {$this->workdir}"),
+                'hidden' => true,
+                'save' => 'workdir_files',
+            ]
+        );
+
+        $fileList = array_filter(explode("\n", $this->saved_outputs->get('workdir_files', '')));
+
+        $yamlFilename = $detector->detect($fileList, $baseDir);
+
+        if (! $yamlFilename) {
+            return;
+        }
+
+        $this->application_deployment_queue->addLogEntry("Found {$yamlFilename} — reading content for sync.");
+
+        // Read the saturn.yaml content
+        $this->execute_remote_command(
+            [
+                executeInDocker($this->deployment_uuid, "cat {$this->workdir}/{$yamlFilename}"),
+                'hidden' => true,
+                'save' => 'saturn_yaml_content',
+            ]
+        );
+
+        $yamlContent = $this->saved_outputs->get('saturn_yaml_content', '');
+
+        if (empty($yamlContent)) {
+            return;
+        }
+
+        // Check if content has changed
+        $environment = $this->application->environment;
+        if ($environment && $detector->hasChanged($yamlContent, $environment)) {
+            $this->application_deployment_queue->addLogEntry('saturn.yaml changed — dispatching sync job.');
+            \App\Jobs\SyncSaturnYamlJob::dispatch($environment, $yamlContent, 'deployment');
+        }
     }
 
     /**

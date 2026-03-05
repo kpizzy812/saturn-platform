@@ -4,7 +4,7 @@ import { Link, router } from '@inertiajs/react';
 import { Head } from '@inertiajs/react';
 import { Button, Input, useConfirm, useTheme, BrandIcon } from '@/components/ui';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { Plus, Settings, ChevronDown, Play, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, FileText, Database, Key, Link2, HardDrive, Table, Box, Layers, GitBranch, Command, Search, Sun, Moon, ArrowUpRight, Import, RotateCcw, GitCompare } from 'lucide-react';
+import { Plus, Settings, ChevronDown, Play, Square, X, Activity, Variable, Gauge, Cog, ExternalLink, Copy, ChevronRight, ArrowLeft, Grid3x3, ZoomIn, ZoomOut, Maximize2, Undo2, Redo2, Terminal, Globe, Users, FileText, Database, Key, Link2, HardDrive, Table, Box, Layers, GitBranch, Command, Search, Sun, Moon, ArrowUpRight, Import, RotateCcw, GitCompare } from 'lucide-react';
 import type { Project, Environment, Application, StandaloneDatabase, Service } from '@/types';
 import { ProjectCanvas } from '@/components/features/canvas';
 import { CommandPalette } from '@/components/features/CommandPalette';
@@ -36,6 +36,7 @@ import {
 import { ApprovalRequiredModal } from '@/components/features/ApprovalRequiredModal';
 import { MigrateModal, EnvironmentMigrateModal } from '@/components/features/migration';
 import { CloneModal } from '@/components/transfer';
+import { CloneEnvironmentModal } from '@/components/features/CloneEnvironmentModal';
 import { useMigrationTargets } from '@/hooks/useMigrations';
 import type { EnvironmentMigration, EnvironmentMigrationOptions } from '@/types';
 
@@ -110,6 +111,9 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
 
     // Environment migration modal state (migrate all resources)
     const [showEnvMigrateModal, setShowEnvMigrateModal] = useState(false);
+
+    // Clone environment modal state
+    const [showCloneEnvModal, setShowCloneEnvModal] = useState(false);
 
     // Clone modal state
     const [showCloneModal, setShowCloneModal] = useState(false);
@@ -1074,6 +1078,71 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         router.reload();
     }, [selectedEnv, confirm, addToast]);
 
+    // Start/Stop all resources (with dependency order via API)
+    const [isStartingAll, setIsStartingAll] = useState(false);
+    const [isStoppingAll, setIsStoppingAll] = useState(false);
+
+    const handleStartAll = useCallback(async () => {
+        if (!selectedEnv || !project) return;
+        const confirmed = await confirm({
+            title: 'Start All Resources',
+            description: `Start all resources in "${selectedEnv.name}" environment in dependency order?`,
+            confirmText: 'Start All',
+        });
+        if (!confirmed) return;
+
+        setIsStartingAll(true);
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+        try {
+            const response = await fetch(`/projects/${project.uuid}/environments/${selectedEnv.uuid}/start`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                credentials: 'include',
+            });
+            if (response.ok) {
+                const data = await response.json();
+                addToast('success', 'Start All initiated', `Started: ${data.started?.length || 0} resources.`);
+            } else {
+                addToast('error', 'Start failed', 'Could not start all resources.');
+            }
+        } catch {
+            addToast('error', 'Start failed', 'Network error.');
+        }
+        setIsStartingAll(false);
+        router.reload();
+    }, [selectedEnv, project, confirm, addToast]);
+
+    const handleStopAll = useCallback(async () => {
+        if (!selectedEnv || !project) return;
+        const confirmed = await confirm({
+            title: 'Stop All Resources',
+            description: `Stop all resources in "${selectedEnv.name}" environment? Resources will be stopped in reverse dependency order.`,
+            confirmText: 'Stop All',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        setIsStoppingAll(true);
+        const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+        try {
+            const response = await fetch(`/projects/${project.uuid}/environments/${selectedEnv.uuid}/stop`, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                credentials: 'include',
+            });
+            if (response.ok) {
+                const data = await response.json();
+                addToast('success', 'Stop All initiated', `Stopped: ${data.stopped?.length || 0} resources.`);
+            } else {
+                addToast('error', 'Stop failed', 'Could not stop all resources.');
+            }
+        } catch {
+            addToast('error', 'Stop failed', 'Network error.');
+        }
+        setIsStoppingAll(false);
+        router.reload();
+    }, [selectedEnv, project, confirm, addToast]);
+
     // Canvas zoom controls
     const handleZoomIn = useCallback(() => {
         if (window.__projectCanvasZoomIn) {
@@ -1290,6 +1359,12 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         <Plus className="mr-2 h-4 w-4" />
                                         New Environment
                                     </DropdownItem>
+                                    {canManageEnvironments && selectedEnv && (
+                                        <DropdownItem onClick={() => setShowCloneEnvModal(true)}>
+                                            <Copy className="mr-2 h-4 w-4" />
+                                            Clone Environment
+                                        </DropdownItem>
+                                    )}
                                 </DropdownContent>
                             </Dropdown>
                             <button
@@ -1538,6 +1613,28 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
 
                         {/* Canvas Overlay Buttons */}
                         <div className="absolute right-2 top-2 z-10 flex gap-1.5 md:right-4 md:top-4 md:gap-2">
+                            {/* Start All Button */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="hidden shadow-lg md:flex"
+                                onClick={handleStartAll}
+                                disabled={isStartingAll}
+                            >
+                                <Play className={`h-4 w-4 md:mr-2 ${isStartingAll ? 'animate-pulse' : ''}`} />
+                                <span className="hidden md:inline">{isStartingAll ? 'Starting...' : 'Start All'}</span>
+                            </Button>
+                            {/* Stop All Button */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="hidden shadow-lg md:flex"
+                                onClick={handleStopAll}
+                                disabled={isStoppingAll}
+                            >
+                                <Square className={`h-4 w-4 md:mr-2 ${isStoppingAll ? 'animate-pulse' : ''}`} />
+                                <span className="hidden md:inline">{isStoppingAll ? 'Stopping...' : 'Stop All'}</span>
+                            </Button>
                             {/* Restart All Button */}
                             <Button
                                 variant="outline"
@@ -2336,6 +2433,18 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                     }}
                     resource={{ uuid: cloneSource.uuid, name: cloneSource.name }}
                     resourceType={cloneSource.type}
+                />
+            )}
+
+            {/* Clone Environment Modal */}
+            {selectedEnv && project && (
+                <CloneEnvironmentModal
+                    open={showCloneEnvModal}
+                    onClose={() => setShowCloneEnvModal(false)}
+                    environmentName={selectedEnv.name}
+                    environmentUuid={selectedEnv.uuid}
+                    projectUuid={project.uuid}
+                    onCloned={() => router.reload()}
                 />
             )}
 

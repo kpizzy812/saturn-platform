@@ -7,6 +7,7 @@ use App\Traits\HasSafeStringAttribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use OpenApi\Attributes as OA;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -51,10 +52,14 @@ class Environment extends BaseModel
         'project_id',
         'default_server_id',
         'default_git_branch',
+        'cloned_from_id',
+        'saturn_yaml_hash',
+        'saturn_yaml_last_synced_at',
     ];
 
     protected $casts = [
         'requires_approval' => 'boolean',
+        'saturn_yaml_last_synced_at' => 'datetime',
     ];
 
     public function getActivitylogOptions(): LogOptions
@@ -248,6 +253,25 @@ class Environment extends BaseModel
     public function services(): HasMany
     {
         return $this->hasMany(Service::class);
+    }
+
+    /** @return BelongsTo<Environment, $this> */
+    public function clonedFrom(): BelongsTo
+    {
+        return $this->belongsTo(Environment::class, 'cloned_from_id');
+    }
+
+    /**
+     * Get all resources in this environment (applications + databases + services).
+     *
+     * @return \Illuminate\Support\Collection<int, Application|Service|StandalonePostgresql|StandaloneRedis|StandaloneMysql|StandaloneMariadb|StandaloneMongodb|StandaloneKeydb|StandaloneDragonfly|StandaloneClickhouse>
+     */
+    public function allResources(): Collection
+    {
+        return collect()
+            ->concat($this->applications)
+            ->concat($this->databases())
+            ->concat($this->services);
     }
 
     protected function customizeName($value)

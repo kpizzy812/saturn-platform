@@ -664,6 +664,118 @@ Route::delete('/projects/{uuid}/environments/{env_uuid}', function (string $uuid
     return response()->json(['message' => 'Environment deleted.']);
 })->name('projects.environments.destroy');
 
+// Clone environment
+Route::post('/projects/{uuid}/environments/{env_uuid}/clone', function (Request $request, string $uuid, string $env_uuid) {
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string|max:1000',
+        'target_server_id' => 'nullable|integer',
+        'clone_env_vars' => 'boolean',
+        'clone_scheduled_tasks' => 'boolean',
+        'clone_backup_configs' => 'boolean',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    Gate::authorize('update', $project);
+
+    $environment = $project->environments()
+        ->where('uuid', $env_uuid)
+        ->firstOrFail();
+
+    $action = new \App\Actions\Environment\CloneEnvironmentAction;
+    $newEnv = $action->execute($environment, $request->all());
+
+    return response()->json([
+        'uuid' => $newEnv->uuid,
+        'name' => $newEnv->name,
+        'message' => "Environment cloned successfully.",
+    ], 201);
+})->name('projects.environments.clone');
+
+// Environment dependency graph
+Route::get('/projects/{uuid}/environments/{env_uuid}/dependency-graph', function (string $uuid, string $env_uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $environment = $project->environments()
+        ->where('uuid', $env_uuid)
+        ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
+        ->firstOrFail();
+
+    $resolver = new \App\Services\DependencyResolver;
+
+    return response()->json([
+        'tiers' => $resolver->resolve($environment),
+        'validation_errors' => $resolver->validate($environment),
+    ]);
+})->name('projects.environments.dependency-graph');
+
+// Start/stop all resources in environment
+Route::post('/projects/{uuid}/environments/{env_uuid}/start', function (string $uuid, string $env_uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $environment = $project->environments()
+        ->where('uuid', $env_uuid)
+        ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
+        ->firstOrFail();
+
+    $action = app(\App\Actions\Environment\StartEnvironmentAction::class);
+
+    return response()->json($action->execute($environment));
+})->name('projects.environments.start');
+
+Route::post('/projects/{uuid}/environments/{env_uuid}/stop', function (string $uuid, string $env_uuid) {
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    $environment = $project->environments()
+        ->where('uuid', $env_uuid)
+        ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
+        ->firstOrFail();
+
+    $action = app(\App\Actions\Environment\StopEnvironmentAction::class);
+
+    return response()->json($action->execute($environment));
+})->name('projects.environments.stop');
+
+// Sync saturn.yaml
+Route::post('/projects/{uuid}/environments/{env_uuid}/sync-yaml', function (Request $request, string $uuid, string $env_uuid) {
+    $request->validate([
+        'content' => 'required|string',
+    ]);
+
+    $project = \App\Models\Project::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    Gate::authorize('update', $project);
+
+    $environment = $project->environments()
+        ->where('uuid', $env_uuid)
+        ->firstOrFail();
+
+    $parser = new \App\Services\SaturnYaml\SaturnYamlParser;
+    $errors = $parser->validate($request->input('content'));
+    if (! empty($errors)) {
+        return response()->json(['errors' => $errors], 422);
+    }
+
+    \App\Jobs\SyncSaturnYamlJob::dispatch(
+        $environment->id,
+        $request->input('content'),
+        auth()->user()?->name ?? 'web',
+    );
+
+    return response()->json(['message' => 'saturn.yaml sync started.']);
+})->name('projects.environments.sync-yaml');
+
 // Project-scoped shared variables CRUD
 Route::post('/projects/{uuid}/shared-variables', function (Request $request, string $uuid) {
     $request->validate([
