@@ -79,9 +79,10 @@ interface ApplicationData {
 interface AppSettingsTabProps {
     service: SelectedService;
     onChangeStaged?: () => void;
+    availableResources?: { uuid: string; name: string; type: 'application' | 'database' | 'service'; status?: string }[];
 }
 
-export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps) {
+export function AppSettingsTab({ service, onChangeStaged, availableResources = [] }: AppSettingsTabProps) {
     const { addToast } = useToast();
     const confirm = useConfirm();
     const [app, setApp] = useState<ApplicationData | null>(null);
@@ -522,7 +523,7 @@ export function AppSettingsTab({ service, onChangeStaged }: AppSettingsTabProps)
                         currentUuid={app.uuid}
                         currentName={app.name}
                         dependsOn={dependsOn}
-                        availableResources={[]}
+                        availableResources={availableResources}
                         onChange={setDependsOn}
                     />
                 </div>

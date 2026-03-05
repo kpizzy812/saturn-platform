@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Environment;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
@@ -144,8 +145,10 @@ class DependencyResolver
 
         foreach ($resources as $uuid => $resource) {
             foreach ($resource['depends_on'] as $depUuid) {
-                // Skip invalid references (already caught by validate())
                 if (! isset($resources[$depUuid])) {
+                    // Stale dependency reference — log and skip to avoid breaking startup
+                    Log::warning("DependencyResolver: '{$resource['name']}' depends on unknown UUID '{$depUuid}', skipping");
+
                     continue;
                 }
                 $inDegree[$uuid]++;
