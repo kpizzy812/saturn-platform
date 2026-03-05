@@ -218,7 +218,10 @@ Route::get('/projects/{uuid}', function (string $uuid) {
     // Get user's role in this project
     $currentUser = auth()->user();
     $userRole = $currentUser->roleInProject($project);
-    $canManageEnvironments = in_array($userRole, ['owner', 'admin']);
+    // Superadmins and platform admins always have full access regardless of project membership pivot
+    $canManageEnvironments = in_array($userRole, ['owner', 'admin'])
+        || $currentUser->isSuperAdmin()
+        || $currentUser->isPlatformAdmin();
 
     // Filter environments visible to user (hide production from developers)
     $authService = app(ProjectAuthorizationService::class);
@@ -701,6 +704,8 @@ Route::get('/projects/{uuid}/environments/{env_uuid}/dependency-graph', function
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('view', $project);
+
     $environment = $project->environments()
         ->where('uuid', $env_uuid)
         ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
@@ -720,6 +725,8 @@ Route::post('/projects/{uuid}/environments/{env_uuid}/start', function (string $
         ->where('uuid', $uuid)
         ->firstOrFail();
 
+    Gate::authorize('update', $project);
+
     $environment = $project->environments()
         ->where('uuid', $env_uuid)
         ->with(['applications', 'services', 'postgresqls', 'redis', 'mysqls', 'mariadbs', 'mongodbs', 'keydbs', 'dragonflies', 'clickhouses'])
@@ -734,6 +741,8 @@ Route::post('/projects/{uuid}/environments/{env_uuid}/stop', function (string $u
     $project = \App\Models\Project::ownedByCurrentTeam()
         ->where('uuid', $uuid)
         ->firstOrFail();
+
+    Gate::authorize('update', $project);
 
     $environment = $project->environments()
         ->where('uuid', $env_uuid)
