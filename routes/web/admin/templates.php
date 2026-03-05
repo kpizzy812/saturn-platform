@@ -19,8 +19,8 @@ Route::get('/templates', function (Request $request) {
     if ($request->filled('search')) {
         $search = $request->input('search');
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'ilike', "%{$search}%")
-                ->orWhere('description', 'ilike', "%{$search}%");
+            $q->where('name', 'ilike', '%'.escapeLike($search).'%')
+                ->orWhere('description', 'ilike', '%'.escapeLike($search).'%');
         });
     }
 

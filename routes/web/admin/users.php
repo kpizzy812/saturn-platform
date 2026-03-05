@@ -24,8 +24,8 @@ Route::get('/users', function () {
     // Apply search filter
     if ($search) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'ILIKE', "%{$search}%")
-                ->orWhere('email', 'ILIKE', "%{$search}%");
+            $q->where('name', 'ILIKE', '%'.escapeLike($search).'%')
+                ->orWhere('email', 'ILIKE', '%'.escapeLike($search).'%');
         });
     }
 
@@ -380,8 +380,8 @@ Route::get('/users/export', function () {
 
     if ($search) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'ILIKE', "%{$search}%")
-                ->orWhere('email', 'ILIKE', "%{$search}%");
+            $q->where('name', 'ILIKE', '%'.escapeLike($search).'%')
+                ->orWhere('email', 'ILIKE', '%'.escapeLike($search).'%');
         });
     }
 

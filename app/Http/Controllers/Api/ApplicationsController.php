@@ -582,6 +582,7 @@ class ApplicationsController extends ApiController
             'description' => 'string|nullable',
             'static_image' => 'string',
             'watch_paths' => 'string|nullable',
+            'base_directory' => ['string', 'nullable', 'max:255', 'regex:/^[a-zA-Z0-9._\\/\\-]*$/'],
             'docker_compose_location' => ['string', 'regex:/^[a-zA-Z0-9._\\/\\-]+$/'],
             'docker_compose_raw' => 'string|nullable',
             'docker_compose_domains' => 'array|nullable',
@@ -604,6 +605,32 @@ class ApplicationsController extends ApiController
                         'message' => 'Validation failed.',
                         'errors' => [
                             'ports_exposes' => 'The ports_exposes should be a comma separated list of numbers.',
+                        ],
+                    ], 422);
+                }
+            }
+        }
+        // Validate custom_docker_run_options to block dangerous Docker flags
+        if ($request->has('custom_docker_run_options') && $request->custom_docker_run_options) {
+            $dangerousPatterns = [
+                '/--privileged/i',
+                '/-v\s+\/?[:\s]/i',                    // -v /:/hostfs or -v /etc:/etc
+                '/--volume[=\s]+\/?[:\s]/i',            // --volume=/:/hostfs
+                '/--pid[=\s]+host/i',                   // --pid=host
+                '/--net[=\s]+host/i',                   // --net=host
+                '/--network[=\s]+host/i',               // --network=host
+                '/--cap-add[=\s]+SYS_ADMIN/i',          // --cap-add=SYS_ADMIN
+                '/--cap-add[=\s]+ALL/i',                // --cap-add=ALL
+                '/--security-opt[=\s]+apparmor[=:]unconfined/i',
+                '/--device[=\s]+\/dev/i',               // --device=/dev/sda
+                '/--userns[=\s]+host/i',                // --userns=host
+            ];
+            foreach ($dangerousPatterns as $pattern) {
+                if (preg_match($pattern, $request->custom_docker_run_options)) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'errors' => [
+                            'custom_docker_run_options' => 'Contains a dangerous Docker option that could compromise host security.',
                         ],
                     ], 422);
                 }

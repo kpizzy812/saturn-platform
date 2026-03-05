@@ -469,6 +469,15 @@ Route::post('/settings/account/2fa', function (Request $request) {
 
     // Toggle 2FA based on current state
     if ($user->two_factor_secret) {
+        // Disabling 2FA requires password confirmation to prevent session hijacking attacks
+        $request->validate([
+            'password' => 'required|string',
+        ]);
+
+        if (! \Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+            return redirect()->back()->withErrors(['password' => 'The provided password is incorrect. Password is required to disable 2FA.']);
+        }
+
         // 2FA is enabled, disable it
         $user->forceFill([
             'two_factor_secret' => null,

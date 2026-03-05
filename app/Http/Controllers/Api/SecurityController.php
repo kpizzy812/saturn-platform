@@ -329,7 +329,7 @@ class SecurityController extends ApiController
                 'message' => 'Private Key not found.',
             ], 404);
         }
-        $foundKey->update($request->all());
+        $foundKey->update($request->only($allowedFields));
 
         return response()->json(serializeApiResponse([
             'uuid' => $foundKey->uuid,

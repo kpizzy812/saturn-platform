@@ -34,8 +34,9 @@ trait HandlesDeploymentCommands
         foreach ($containers as $container) {
             $containerName = data_get($container, 'Names');
             if ($containers->count() == 1 || str_starts_with($containerName, $this->application->pre_deployment_command_container.'-'.$this->application->uuid)) {
+                $escapedContainerName = escapeshellarg($containerName);
                 $cmd = "sh -c '".str_replace("'", "'\''", $this->application->pre_deployment_command)."'";
-                $exec = "docker exec {$containerName} {$cmd}";
+                $exec = "docker exec {$escapedContainerName} {$cmd}";
                 $this->execute_remote_command(
                     [
                         'command' => $exec,
@@ -64,8 +65,9 @@ trait HandlesDeploymentCommands
         foreach ($containers as $container) {
             $containerName = data_get($container, 'Names');
             if ($containers->count() == 1 || str_starts_with($containerName, $this->application->post_deployment_command_container.'-'.$this->application->uuid)) {
+                $escapedContainerName = escapeshellarg($containerName);
                 $cmd = "sh -c '".str_replace("'", "'\''", $this->application->post_deployment_command)."'";
-                $exec = "docker exec {$containerName} {$cmd}";
+                $exec = "docker exec {$escapedContainerName} {$cmd}";
                 try {
                     $this->execute_remote_command(
                         [

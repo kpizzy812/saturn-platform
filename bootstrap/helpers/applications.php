@@ -193,21 +193,23 @@ function queue_application_deployment(Application $application, string $deployme
         }
     }
 
-    if ($no_questions_asked) {
-        $deployment->update([
-            'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
-        ]);
-        ApplicationDeploymentJob::dispatch(
-            application_deployment_queue_id: $deployment->id,
-        );
-    } elseif (next_queuable($server_id, $application_id, $commit, $pull_request_id)) {
-        $deployment->update([
-            'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
-        ]);
-        ApplicationDeploymentJob::dispatch(
-            application_deployment_queue_id: $deployment->id,
-        );
-    }
+    // Use DB transaction with row lock to prevent race condition when two
+    // concurrent requests both pass next_queuable() before either updates status
+    \Illuminate\Support\Facades\DB::transaction(function () use ($deployment, $no_questions_asked, $server_id, $application_id, $commit, $pull_request_id) {
+        $deployment = ApplicationDeploymentQueue::lockForUpdate()->find($deployment->id);
+        if (! $deployment || $deployment->status !== ApplicationDeploymentStatus::QUEUED->value) {
+            return;
+        }
+
+        if ($no_questions_asked || next_queuable($server_id, $application_id, $commit, $pull_request_id)) {
+            $deployment->update([
+                'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
+            ]);
+            ApplicationDeploymentJob::dispatch(
+                application_deployment_queue_id: $deployment->id,
+            );
+        }
+    });
 
     return [
         'status' => 'queued',

@@ -240,6 +240,7 @@ class StripeProcessJob implements ShouldQueue
                             'stripe_invoice_paid' => false,
                         ]);
                     }
+                    break;
                 case 'customer.subscription.updated':
                     $teamId = data_get($data, 'metadata.team_id');
                     $userId = data_get($data, 'metadata.user_id');

@@ -18,16 +18,16 @@ Route::get('/applications', function (\Illuminate\Http\Request $request) {
 
     if ($search) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'ilike', "%{$search}%")
-                ->orWhere('fqdn', 'ilike', "%{$search}%")
+            $q->where('name', 'ilike', '%'.escapeLike($search).'%')
+                ->orWhere('fqdn', 'ilike', '%'.escapeLike($search).'%')
                 ->orWhereHas('environment.project.team', function ($tq) use ($search) {
-                    $tq->where('name', 'ilike', "%{$search}%");
+                    $tq->where('name', 'ilike', '%'.escapeLike($search).'%');
                 });
         });
     }
 
     if ($status && $status !== 'all') {
-        $query->where('status', 'ilike', "{$status}%");
+        $query->where('status', 'ilike', escapeLike($status).'%');
     }
 
     // Stats from unfiltered query

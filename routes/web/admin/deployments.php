@@ -15,13 +15,13 @@ Route::get('/deployments', function (\Illuminate\Http\Request $request) {
     // Search filter
     if ($search = $request->get('search')) {
         $query->where(function ($q) use ($search) {
-            $q->where('commit_message', 'like', "%{$search}%")
-                ->orWhere('commit', 'like', "%{$search}%")
+            $q->where('commit_message', 'like', '%'.escapeLike($search).'%')
+                ->orWhere('commit', 'like', '%'.escapeLike($search).'%')
                 ->orWhereHas('application', function ($aq) use ($search) {
-                    $aq->where('name', 'like', "%{$search}%");
+                    $aq->where('name', 'like', '%'.escapeLike($search).'%');
                 })
                 ->orWhereHas('application.environment.project.team', function ($tq) use ($search) {
-                    $tq->where('name', 'like', "%{$search}%");
+                    $tq->where('name', 'like', '%'.escapeLike($search).'%');
                 });
         });
     }

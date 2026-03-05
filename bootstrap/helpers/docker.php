@@ -147,10 +147,11 @@ function executeInDocker(string $containerId, string $command)
 
 function getContainerStatus(Server $server, string $container_id, bool $all_data = false, bool $throwError = false)
 {
+    $escapedId = escapeshellarg($container_id);
     if ($server->isSwarm()) {
-        $container = instant_remote_process(["docker service ls --filter 'name={$container_id}' --format '{{json .}}' "], $server, $throwError);
+        $container = instant_remote_process(["docker service ls --filter name={$escapedId} --format '{{json .}}' "], $server, $throwError);
     } else {
-        $container = instant_remote_process(["docker inspect --format '{{json .}}' {$container_id}"], $server, $throwError);
+        $container = instant_remote_process(["docker inspect --format '{{json .}}' {$escapedId}"], $server, $throwError);
     }
     if (! $container) {
         return 'exited';
@@ -1290,13 +1291,15 @@ function validateComposeFile(string $compose, int $server_id): string|Throwable
 
 function getContainerLogs(Server $server, string $container_id, int $lines = 100): string
 {
+    $escapedId = escapeshellarg($container_id);
+    $lines = (int) $lines;
     if ($server->isSwarm()) {
         $output = instant_remote_process([
-            "docker service logs -n {$lines} {$container_id} 2>&1",
+            "docker service logs -n {$lines} {$escapedId} 2>&1",
         ], $server);
     } else {
         $output = instant_remote_process([
-            "docker logs -n {$lines} {$container_id} 2>&1",
+            "docker logs -n {$lines} {$escapedId} 2>&1",
         ], $server);
     }
 

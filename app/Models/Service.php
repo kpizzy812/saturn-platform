@@ -125,6 +125,15 @@ class Service extends BaseModel
         'target_cpu_percent',
         'target_memory_percent',
         'cooldown_seconds',
+        'watch_paths',
+        'depends_on',
+        'managed_by_yaml',
+        'yaml_resource_name',
+    ];
+
+    protected $casts = [
+        'depends_on' => 'array',
+        'managed_by_yaml' => 'boolean',
     ];
 
     protected $appends = ['server_status', 'status'];

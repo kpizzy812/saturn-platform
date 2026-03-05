@@ -102,8 +102,9 @@ class ApplicationController extends Controller
             'github_app_id' => 'nullable|integer|exists:github_apps,id',
         ]);
 
-        $environment = Environment::findOrFail($validated['environment_id']);
-        $server = Server::findOrFail($validated['server_id']);
+        $environment = Environment::whereHas('project', fn ($q) => $q->where('team_id', currentTeam()->id))
+            ->findOrFail($validated['environment_id']);
+        $server = Server::ownedByCurrentTeam()->findOrFail($validated['server_id']);
 
         // Get destination
         $destinations = $server->destinations();
@@ -134,7 +135,8 @@ class ApplicationController extends Controller
 
         // Link GitHub App source for private repository access
         if (! empty($validated['github_app_id'])) {
-            $githubApp = GithubApp::find($validated['github_app_id']);
+            $githubApp = GithubApp::where(fn ($q) => $q->where('team_id', currentTeam()->id)->orWhere('is_system_wide', true))
+                ->find($validated['github_app_id']);
             if ($githubApp) {
                 $application->source_id = $githubApp->id;
                 $application->source_type = $githubApp->getMorphClass();

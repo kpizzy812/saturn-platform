@@ -462,6 +462,19 @@ class MysqlMetricsService
     }
 
     /**
+     * Escape a value for use in MySQL single-quoted string literals.
+     * Handles backslashes, quotes, null bytes and special characters.
+     */
+    private function escapeMysqlValue(string $value): string
+    {
+        return str_replace(
+            ['\\', "'", '"', "\x00", "\n", "\r", "\x1a"],
+            ['\\\\', "\\'", '\\"', '\\0', '\\n', '\\r', '\\Z'],
+            $value
+        );
+    }
+
+    /**
      * Update MySQL row.
      */
     public function updateRow(mixed $server, mixed $database, string $tableName, array $primaryKey, array $updates): bool
@@ -478,7 +491,7 @@ class MysqlMetricsService
             if (! $this->isValidColumnName((string) $column)) {
                 continue;
             }
-            $escapedValue = str_replace("'", "''", (string) $value);
+            $escapedValue = $this->escapeMysqlValue((string) $value);
             $setClauses[] = "`{$column}` = '{$escapedValue}'";
         }
         if (empty($setClauses)) {
@@ -491,7 +504,7 @@ class MysqlMetricsService
             if (! $this->isValidColumnName((string) $column)) {
                 continue;
             }
-            $escapedValue = str_replace("'", "''", (string) $value);
+            $escapedValue = $this->escapeMysqlValue((string) $value);
             $whereClauses[] = "`{$column}` = '{$escapedValue}'";
         }
         if (empty($whereClauses)) {
@@ -522,7 +535,7 @@ class MysqlMetricsService
             if (! $this->isValidColumnName((string) $column)) {
                 continue;
             }
-            $escapedValue = str_replace("'", "''", (string) $value);
+            $escapedValue = $this->escapeMysqlValue((string) $value);
             $whereClauses[] = "`{$column}` = '{$escapedValue}'";
         }
         if (empty($whereClauses)) {
@@ -558,7 +571,7 @@ class MysqlMetricsService
             if ($value === null) {
                 $values[] = 'NULL';
             } else {
-                $escapedValue = str_replace("'", "''", (string) $value);
+                $escapedValue = $this->escapeMysqlValue((string) $value);
                 $values[] = "'{$escapedValue}'";
             }
         }
