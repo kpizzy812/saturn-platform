@@ -88,7 +88,7 @@ class OtherController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        if ($teamId !== '0') {
+        if ((int) $teamId !== 0) {
             return response()->json(['message' => 'You are not allowed to enable the API.'], 403);
         }
         $settings = instanceSettings();
@@ -140,7 +140,7 @@ class OtherController extends Controller
         if (is_null($teamId)) {
             return invalidTokenResponse();
         }
-        if ($teamId !== '0') {
+        if ((int) $teamId !== 0) {
             return response()->json(['message' => 'You are not allowed to disable the API.'], 403);
         }
         $settings = instanceSettings();

@@ -20,12 +20,12 @@ Route::get('/services', function (\Illuminate\Http\Request $request) {
 
     if ($search) {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'ilike', "%{$search}%")
+            $q->where('name', 'ilike', '%'.escapeLike($search).'%')
                 ->orWhereHas('environment.project.team', function ($tq) use ($search) {
-                    $tq->where('name', 'ilike', "%{$search}%");
+                    $tq->where('name', 'ilike', '%'.escapeLike($search).'%');
                 })
                 ->orWhereHas('environment.project', function ($pq) use ($search) {
-                    $pq->where('name', 'ilike', "%{$search}%");
+                    $pq->where('name', 'ilike', '%'.escapeLike($search).'%');
                 });
         });
     }

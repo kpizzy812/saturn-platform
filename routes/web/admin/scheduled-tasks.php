@@ -26,8 +26,8 @@ Route::get('/scheduled-tasks', function (Request $request) {
     if ($request->filled('search')) {
         $search = $request->input('search');
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'ilike', "%{$search}%")
-                ->orWhere('command', 'ilike', "%{$search}%");
+            $q->where('name', 'ilike', '%'.escapeLike($search).'%')
+                ->orWhere('command', 'ilike', '%'.escapeLike($search).'%');
         });
     }
 

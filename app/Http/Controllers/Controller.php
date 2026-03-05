@@ -100,6 +100,7 @@ class Controller extends BaseController
                     $user->save();
                 }
                 Auth::login($user);
+                request()->session()->regenerate();
                 session(['currentTeam' => $team]);
 
                 return redirect()->route('dashboard');

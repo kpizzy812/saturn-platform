@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Application;
-use App\Models\Environment;
 use App\Services\SaturnYaml\SaturnYamlDetector;
 
 beforeEach(function () {

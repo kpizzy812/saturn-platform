@@ -32,6 +32,14 @@ class SendMessageToSlackJob implements ShouldBeEncrypted, ShouldQueue
     public function handle(): void
     {
         try {
+            // SSRF prevention: validate webhook URL before making request
+            $validation = validateWebhookUrl($this->webhookUrl);
+            if (! $validation['valid']) {
+                Log::warning('SendMessageToSlackJob: blocked unsafe URL', ['error' => $validation['error']]);
+
+                return;
+            }
+
             $response = Http::timeout(10)->post($this->webhookUrl, [
                 'text' => $this->message->title,
                 'blocks' => [

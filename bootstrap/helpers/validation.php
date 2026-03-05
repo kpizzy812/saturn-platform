@@ -265,6 +265,15 @@ function isWebhookUrlSafe(string $url): bool
 }
 
 /**
+ * Escape LIKE/ILIKE wildcard characters (%, _) in a search string.
+ * Prevents wildcard injection in SQL LIKE clauses.
+ */
+function escapeLike(string $value): string
+{
+    return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+}
+
+/**
  * Validates that a file path is safely within the /tmp/ directory.
  * Protects against path traversal attacks by resolving the real path
  * and verifying it stays within /tmp/.

@@ -27,7 +27,7 @@ class StatusPageController extends Controller
             return redirect('/');
         }
 
-        return Cache::remember('status_page_data', 60, function () use ($settings) {
+        return Cache::remember('status_page_data_v2', 60, function () use ($settings) {
             $title = $settings->status_page_title ?? $settings->instance_name ?? 'Saturn';
             $description = $settings->status_page_description ?? '';
             $mode = $settings->status_page_mode ?? 'auto';
@@ -93,13 +93,15 @@ class StatusPageController extends Controller
     }
 
     /**
-     * Auto mode: load all servers + their resources automatically.
+     * Auto mode: load instance-owned servers + their resources automatically.
+     * Only shows resources belonging to the root team (team_id = 0) to prevent cross-team data leakage.
      */
     private function buildAutoData(): array
     {
         $services = [];
 
         $servers = Server::with('latestHealthCheck')
+            ->where('team_id', 0)
             ->whereNull('deleted_at')
             ->get();
 

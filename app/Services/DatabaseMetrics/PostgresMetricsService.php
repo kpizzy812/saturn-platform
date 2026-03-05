@@ -543,6 +543,15 @@ class PostgresMetricsService
     }
 
     /**
+     * Escape a value for use in PostgreSQL single-quoted string literals.
+     * Handles both single quotes and backslashes to prevent SQL injection.
+     */
+    private function escapePgValue(string $value): string
+    {
+        return str_replace(['\\', "'"], ['\\\\', "''"], $value);
+    }
+
+    /**
      * Update PostgreSQL row.
      */
     public function updateRow(mixed $server, mixed $database, string $tableName, array $primaryKey, array $updates): bool
@@ -552,26 +561,26 @@ class PostgresMetricsService
         $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
         $safeTableName = $this->quoteTableName($tableName);
 
-        // Build SET clause — validate column names to prevent SQL injection
+        // Build SET clause — validate column names and escape values to prevent SQL injection
         $setClauses = [];
         foreach ($updates as $column => $value) {
             if (! $this->isValidColumnName((string) $column)) {
                 continue;
             }
-            $escapedValue = str_replace("'", "''", (string) $value);
+            $escapedValue = $this->escapePgValue((string) $value);
             $setClauses[] = "\"{$column}\" = '{$escapedValue}'";
         }
         if (empty($setClauses)) {
             return false;
         }
 
-        // Build WHERE clause — validate column names to prevent SQL injection
+        // Build WHERE clause — validate column names and escape values to prevent SQL injection
         $whereClauses = [];
         foreach ($primaryKey as $column => $value) {
             if (! $this->isValidColumnName((string) $column)) {
                 continue;
             }
-            $escapedValue = str_replace("'", "''", (string) $value);
+            $escapedValue = $this->escapePgValue((string) $value);
             $whereClauses[] = "\"{$column}\" = '{$escapedValue}'";
         }
         if (empty($whereClauses)) {
@@ -595,13 +604,13 @@ class PostgresMetricsService
         $dbName = escapeshellarg($database->postgres_db ?? 'postgres');
         $safeTableName = $this->quoteTableName($tableName);
 
-        // Build WHERE clause — validate column names to prevent SQL injection
+        // Build WHERE clause — validate column names and escape values to prevent SQL injection
         $whereClauses = [];
         foreach ($primaryKey as $column => $value) {
             if (! $this->isValidColumnName((string) $column)) {
                 continue;
             }
-            $escapedValue = str_replace("'", "''", (string) $value);
+            $escapedValue = $this->escapePgValue((string) $value);
             $whereClauses[] = "\"{$column}\" = '{$escapedValue}'";
         }
         if (empty($whereClauses)) {
@@ -636,7 +645,7 @@ class PostgresMetricsService
             if ($value === null) {
                 $values[] = 'NULL';
             } else {
-                $escapedValue = str_replace("'", "''", (string) $value);
+                $escapedValue = $this->escapePgValue((string) $value);
                 $values[] = "'{$escapedValue}'";
             }
         }

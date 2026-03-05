@@ -89,8 +89,8 @@ class ApplicationTemplate extends BaseModel
         }
 
         return $query->where(function ($q) use ($search) {
-            $q->where('name', 'ilike', "%{$search}%")
-                ->orWhere('description', 'ilike', "%{$search}%")
+            $q->where('name', 'ilike', '%'.escapeLike($search).'%')
+                ->orWhere('description', 'ilike', '%'.escapeLike($search).'%')
                 ->orWhereJsonContains('tags', $search);
         });
     }

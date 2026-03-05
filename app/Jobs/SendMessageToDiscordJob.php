@@ -43,6 +43,14 @@ class SendMessageToDiscordJob implements ShouldBeEncrypted, ShouldQueue
     public function handle(): void
     {
         try {
+            // SSRF prevention: validate webhook URL before making request
+            $validation = validateWebhookUrl($this->webhookUrl);
+            if (! $validation['valid']) {
+                Log::warning('SendMessageToDiscordJob: blocked unsafe URL', ['error' => $validation['error']]);
+
+                return;
+            }
+
             $response = Http::timeout(10)->post($this->webhookUrl, $this->message->toPayload());
 
             if ($response->failed()) {

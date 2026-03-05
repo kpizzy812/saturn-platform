@@ -691,7 +691,7 @@ Route::post('/projects/{uuid}/environments/{env_uuid}/clone', function (Request 
     return response()->json([
         'uuid' => $newEnv->uuid,
         'name' => $newEnv->name,
-        'message' => "Environment cloned successfully.",
+        'message' => 'Environment cloned successfully.',
     ], 201);
 })->name('projects.environments.clone');
 

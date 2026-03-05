@@ -67,6 +67,19 @@ class DatabaseImportJob implements ShouldBeEncrypted, ShouldQueue
         $parser = new ConnectionStringParser;
         $parsed = $parser->parse($import->connection_string);
 
+        // SSRF protection: block connections to private/reserved IPs and cloud metadata endpoints
+        $host = $parsed['host'] ?? '';
+        if ($host) {
+            $resolvedIp = gethostbyname($host);
+            if ($resolvedIp !== $host && filter_var($resolvedIp, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
+                throw new \RuntimeException("Connection string host resolves to a private/reserved IP ({$resolvedIp}). Import from internal networks is blocked for security.");
+            }
+            // Block link-local / cloud metadata IPs explicitly
+            if (str_starts_with($resolvedIp, '169.254.') || $resolvedIp === '127.0.0.1' || $resolvedIp === '::1') {
+                throw new \RuntimeException("Connection string host resolves to a disallowed IP ({$resolvedIp}). Import blocked for security.");
+            }
+        }
+
         $this->broadcastProgress($import, 'in_progress', 10, 'Connection string parsed, preparing dump...');
 
         // Build dump command

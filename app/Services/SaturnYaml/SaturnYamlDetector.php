@@ -20,7 +20,7 @@ class SaturnYamlDetector
      */
     public function detect(array $files, ?string $baseDirectory = null): ?string
     {
-        $prefix = $baseDirectory ? rtrim($baseDirectory, '/').'/': '';
+        $prefix = $baseDirectory ? rtrim($baseDirectory, '/').'/' : '';
 
         foreach (self::YAML_FILENAMES as $filename) {
             $path = $prefix.$filename;

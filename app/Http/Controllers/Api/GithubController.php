@@ -290,7 +290,8 @@ class GithubController extends ApiController
                 'team_id' => $teamId,
             ];
 
-            if (! isCloud()) {
+            // Only root team (team_id = 0) can create system-wide GitHub Apps
+            if (! isCloud() && (int) $teamId === 0) {
                 $payload['is_system_wide'] = $request->input('is_system_wide', false);
             }
 
@@ -600,7 +601,8 @@ class GithubController extends ApiController
                 'private_key_uuid',
             ];
 
-            if (! isCloud()) {
+            // Only root team (team_id = 0) can modify is_system_wide
+            if (! isCloud() && (int) $teamId === 0) {
                 $allowedFields[] = 'is_system_wide';
             }
 
@@ -644,7 +646,7 @@ class GithubController extends ApiController
             if (isset($payload['private_key_uuid'])) {
                 $rules['private_key_uuid'] = 'string|uuid';
             }
-            if (! isCloud() && isset($payload['is_system_wide'])) {
+            if (! isCloud() && (int) $teamId === 0 && isset($payload['is_system_wide'])) {
                 $rules['is_system_wide'] = 'boolean';
             }
 

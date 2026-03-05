@@ -264,6 +264,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         $this->deployment_uuid = $this->application_deployment_queue->deployment_uuid;
         $this->pull_request_id = $this->application_deployment_queue->pull_request_id;
         $this->commit = $this->application_deployment_queue->commit;
+        // Validate commit SHA to prevent command injection via webhook payloads
+        if ($this->commit && $this->commit !== 'HEAD' && ! preg_match('/^[0-9a-fA-F]{1,40}$/', $this->commit)) {
+            $this->commit = 'HEAD';
+        }
         $this->rollback = $this->application_deployment_queue->rollback;
         $this->disableBuildCache = $this->application->settings->disable_build_cache;
         $this->force_rebuild = $this->application_deployment_queue->force_rebuild;

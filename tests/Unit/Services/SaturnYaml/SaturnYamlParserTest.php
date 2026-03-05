@@ -187,7 +187,7 @@ YAML;
 });
 
 it('validates invalid YAML syntax', function () {
-    $yaml = "invalid: yaml: [broken";
+    $yaml = 'invalid: yaml: [broken';
 
     $errors = $this->parser->validate($yaml);
     expect($errors)->not->toBeEmpty();

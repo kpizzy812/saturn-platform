@@ -160,10 +160,16 @@ class DatabaseMetricsController extends Controller
         $request->validate(['query' => 'required|string|max:10000']);
         $query = trim($request->input('query'));
 
-        foreach (['/^\s*(DROP\s+DATABASE|DROP\s+USER|DROP\s+ROLE|TRUNCATE\s+ALL)/i', '/;\s*(DROP|TRUNCATE)/i'] as $pattern) {
-            if (preg_match($pattern, $query)) {
-                return $this->errorResponse('This query contains potentially dangerous operations and has been blocked');
-            }
+        // Allowlist: only SELECT, EXPLAIN, SHOW, DESCRIBE, and WITH (CTE) queries are permitted.
+        // Strip leading comments and whitespace before checking.
+        $strippedQuery = preg_replace('/^(\s*(\/\*.*?\*\/|--[^\n]*\n))*\s*/si', '', $query);
+        if (! preg_match('/^\s*(SELECT|EXPLAIN|SHOW|DESCRIBE|DESC|WITH)\b/i', $strippedQuery)) {
+            return $this->errorResponse('Only SELECT, EXPLAIN, SHOW, and DESCRIBE queries are allowed. Data-modifying statements are blocked for safety.');
+        }
+
+        // Block multiple statements (semicolon followed by another statement)
+        if (preg_match('/;\s*(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE|WITH|EXPLAIN|SHOW|DESCRIBE)\b/i', $query)) {
+            return $this->errorResponse('Multiple SQL statements are not allowed');
         }
 
         return $this->withDatabase($uuid, function ($db, $server, $type) use ($query) {

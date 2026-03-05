@@ -58,7 +58,8 @@ class MysqlTransferStrategy extends AbstractTransferStrategy
 
             // B2: Pass password via MYSQL_PWD env var to avoid exposure in ps aux
             $escapedPassword = escapeshellarg($password);
-            $command = "docker exec -e MYSQL_PWD={$escapedPassword} {$containerName} mysqldump -u root --single-transaction --quick --lock-tables=false {$dbName}{$tableFlags} > {$dumpPath}";
+            $escapedDbName = escapeshellarg($dbName);
+            $command = "docker exec -e MYSQL_PWD={$escapedPassword} {$containerName} mysqldump -u root --single-transaction --quick --lock-tables=false {$escapedDbName}{$tableFlags} > {$dumpPath}";
 
             $this->executeCommand([$command], $server, true, 3600);
 
@@ -113,7 +114,8 @@ class MysqlTransferStrategy extends AbstractTransferStrategy
 
             // B2: Pass password via MYSQL_PWD env var to avoid exposure in ps aux
             $escapedPassword = escapeshellarg($password);
-            $command = "docker exec -i -e MYSQL_PWD={$escapedPassword} {$containerName} mysql -u root {$dbName} < {$dumpPath}";
+            $escapedDbName = escapeshellarg($dbName);
+            $command = "docker exec -i -e MYSQL_PWD={$escapedPassword} {$containerName} mysql -u root {$escapedDbName} < {$dumpPath}";
 
             $this->executeCommand([$command], $server, true, 3600);
 
