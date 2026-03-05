@@ -11,6 +11,7 @@ use InvalidArgumentException;
  *
  * Databases without depends_on always start first (tier 0).
  * Returns ordered tiers: each tier can start in parallel, but must wait for previous tiers.
+ * Logs warnings for stale dependency references instead of silently ignoring them.
  */
 class DependencyResolver
 {
