@@ -146,7 +146,8 @@ class CloneEnvironmentAction
 
             $excludeFields = ['id', 'uuid', 'environment_id', 'status', 'created_at', 'updated_at', 'deleted_at',
                 'last_online_at', 'config_hash', 'last_successful_deployment_id',
-                'restart_count', 'last_restart_at', 'last_restart_type'];
+                'restart_count', 'last_restart_at', 'last_restart_type',
+                'depends_on']; // depends_on will be rewired after all resources are cloned
 
             $newApp = $app->replicate($excludeFields);
             $newApp->uuid = $newUuid;
@@ -154,6 +155,7 @@ class CloneEnvironmentAction
             $newApp->status = 'exited';
             $newApp->name = $app->name.'-clone';
             $newApp->fqdn = null; // Must be reconfigured to avoid domain conflicts
+            $newApp->depends_on = $app->depends_on ?? []; // Will be rewired below
             $newApp->save();
 
             // Clone application settings
@@ -194,10 +196,11 @@ class CloneEnvironmentAction
         foreach ($source->services as $service) {
             $newUuid = (string) new Cuid2;
 
-            $newService = $service->replicate(['id', 'uuid', 'environment_id', 'config_hash', 'created_at', 'updated_at', 'deleted_at']);
+            $newService = $service->replicate(['id', 'uuid', 'environment_id', 'config_hash', 'created_at', 'updated_at', 'deleted_at', 'depends_on']);
             $newService->uuid = $newUuid;
             $newService->environment_id = $target->id;
             $newService->name = $service->name.'-clone';
+            $newService->depends_on = $service->depends_on ?? []; // Will be rewired below
             $newService->save();
 
             $uuidMap[$service->uuid] = [
@@ -316,7 +319,12 @@ class CloneEnvironmentAction
 
             $newDeps = [];
             foreach ($model->depends_on as $depUuid) {
-                $newDeps[] = $oldToNew[$depUuid] ?? $depUuid;
+                if (isset($oldToNew[$depUuid])) {
+                    $newDeps[] = $oldToNew[$depUuid];
+                } else {
+                    // Dependency not found in cloned resources — skip it and warn
+                    Log::warning("Cloning: dependency '{$depUuid}' not found for '{$model->name}', removing from depends_on");
+                }
             }
 
             $model->depends_on = $newDeps;

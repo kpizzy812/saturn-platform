@@ -1285,6 +1285,17 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                             {env.id === selectedEnv?.id && <span className="ml-2 text-primary">✓</span>}
                                         </DropdownItem>
                                     ))}
+                                    <DropdownDivider />
+                                    <DropdownItem onClick={() => setShowNewEnvModal(true)}>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        New Environment
+                                    </DropdownItem>
+                                    {canManageEnvironments && selectedEnv && (
+                                        <DropdownItem onClick={() => setShowCloneEnvModal(true)}>
+                                            <Copy className="mr-2 h-4 w-4" />
+                                            Clone Environment
+                                        </DropdownItem>
+                                    )}
                                 </DropdownContent>
                             </Dropdown>
                         </div>
@@ -2185,7 +2196,11 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                         {activeAppTab === 'deployments' && <DeploymentsTab service={selectedService} />}
                                         {activeAppTab === 'variables' && <VariablesTab service={selectedService} onChangeStaged={handleVariableChanged} />}
                                         {activeAppTab === 'metrics' && <MetricsTab service={selectedService} />}
-                                        {activeAppTab === 'settings' && <AppSettingsTab service={selectedService} onChangeStaged={handleConfigChanged} />}
+                                        {activeAppTab === 'settings' && <AppSettingsTab service={selectedService} onChangeStaged={handleConfigChanged} availableResources={[
+                                            ...(envWithRealtimeStatuses?.applications?.map(a => ({ uuid: a.uuid, name: a.name, type: 'application' as const, status: typeof a.status === 'string' ? a.status : String(a.status ?? '') })) ?? []),
+                                            ...(envWithRealtimeStatuses?.databases?.map(d => ({ uuid: d.uuid, name: d.name, type: 'database' as const, status: typeof d.status === 'string' ? d.status : ((d.status as any)?.state ?? '') })) ?? []),
+                                            ...(envWithRealtimeStatuses?.services?.map(s => ({ uuid: s.uuid, name: s.name, type: 'service' as const, status: typeof s.status === 'string' ? s.status : String(s.status ?? '') })) ?? []),
+                                        ]} />}
                                     </>
                                 ) : selectedService.type === 'service' ? (
                                     /* Service (Compose) Content */
