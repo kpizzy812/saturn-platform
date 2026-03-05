@@ -2,22 +2,6 @@
 
 namespace Tests\Unit\Actions\Service;
 
-use App\Actions\Server\CleanupDocker;
-use App\Actions\Service\DeleteService;
-use App\Actions\Service\RestartService;
-use App\Actions\Service\StartService;
-use App\Actions\Service\StopService;
-use App\Enums\ProcessStatus;
-use App\Events\ServiceStatusChanged;
-use App\Models\Server;
-use App\Models\Service;
-use App\Models\ServiceApplication;
-use App\Models\ServiceDatabase;
-use App\Models\StandaloneDocker;
-use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Queue;
-use Mockery;
 use Tests\TestCase;
 
 /**
@@ -29,12 +13,6 @@ use Tests\TestCase;
  */
 class ServiceLifecycleTest extends TestCase
 {
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
-
     // =========================================================================
     // StartService
     // =========================================================================
@@ -54,7 +32,7 @@ class ServiceLifecycleTest extends TestCase
     {
         $source = file_get_contents(app_path('Actions/Service/StartService.php'));
 
-        $this->assertStringContainsString("touch {", $source);
+        $this->assertStringContainsString('touch {', $source);
         $this->assertStringContainsString('.env', $source);
     }
 
@@ -139,9 +117,9 @@ class ServiceLifecycleTest extends TestCase
     {
         $source = file_get_contents(app_path('Actions/Service/StopService.php'));
 
-        $this->assertStringContainsString("ProcessStatus::IN_PROGRESS->value", $source);
-        $this->assertStringContainsString("ProcessStatus::QUEUED->value", $source);
-        $this->assertStringContainsString("ProcessStatus::CANCELLED->value", $source);
+        $this->assertStringContainsString('ProcessStatus::IN_PROGRESS->value', $source);
+        $this->assertStringContainsString('ProcessStatus::QUEUED->value', $source);
+        $this->assertStringContainsString('ProcessStatus::CANCELLED->value', $source);
     }
 
     /** @test */

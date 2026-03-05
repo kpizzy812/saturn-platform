@@ -176,7 +176,7 @@ class StripeProcessJobTest extends TestCase
         $source = file_get_contents(app_path('Jobs/StripeProcessJob.php'));
 
         $this->assertStringContainsString('default:', $source);
-        $this->assertStringContainsString("Unhandled event type", $source);
+        $this->assertStringContainsString('Unhandled event type', $source);
     }
 
     /** @test */

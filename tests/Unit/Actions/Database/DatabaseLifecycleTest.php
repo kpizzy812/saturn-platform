@@ -50,8 +50,8 @@ class DatabaseLifecycleTest extends TestCase
     {
         $source = file_get_contents(app_path('Actions/Database/StartPostgresql.php'));
 
-        $this->assertStringContainsString("psql -U", $source);
-        $this->assertStringContainsString("SELECT 1", $source);
+        $this->assertStringContainsString('psql -U', $source);
+        $this->assertStringContainsString('SELECT 1', $source);
     }
 
     /** @test */
@@ -302,7 +302,7 @@ class DatabaseLifecycleTest extends TestCase
     {
         $source = file_get_contents(app_path('Actions/Database/StartDatabaseProxy.php'));
 
-        $this->assertStringContainsString("docker inspect {", $source);
+        $this->assertStringContainsString('docker inspect {', $source);
         $this->assertStringContainsString('not_found', $source);
         $this->assertStringContainsString('will retry', $source);
     }
@@ -332,7 +332,7 @@ class DatabaseLifecycleTest extends TestCase
     {
         $source = file_get_contents(app_path('Actions/Database/StartDatabaseProxy.php'));
 
-        $this->assertStringContainsString("db-proxy-{", $source);
+        $this->assertStringContainsString('db-proxy-{', $source);
         $this->assertStringContainsString('--project-name', $source);
     }
 
