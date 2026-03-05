@@ -226,7 +226,7 @@ class ServerActionsExtendedTest extends TestCase
         $method = new \ReflectionMethod($action, 'parseDnfOutput');
         $method->setAccessible(true);
 
-        $dnfOutput = "cloud-init.noarch    24.1-1.el9    updates";
+        $dnfOutput = 'cloud-init.noarch    24.1-1.el9    updates';
 
         $result = $method->invoke($action, $dnfOutput);
 
@@ -245,7 +245,7 @@ class ServerActionsExtendedTest extends TestCase
         $method = new \ReflectionMethod($action, 'parsePacmanOutput');
         $method->setAccessible(true);
 
-        $pacmanOutput = "linux 6.7.0.arch3-1 -> 6.7.1.arch1-1";
+        $pacmanOutput = 'linux 6.7.0.arch3-1 -> 6.7.1.arch1-1';
 
         $result = $method->invoke($action, $pacmanOutput);
 

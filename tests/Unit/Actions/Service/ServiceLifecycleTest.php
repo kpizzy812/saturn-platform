@@ -306,6 +306,6 @@ class ServiceLifecycleTest extends TestCase
     {
         $source = file_get_contents(app_path('Actions/Service/DeleteService.php'));
 
-        $this->assertStringContainsString("escapeshellarg(\$storage->name)", $source);
+        $this->assertStringContainsString('escapeshellarg($storage->name)', $source);
     }
 }

@@ -76,7 +76,7 @@ class AiJobsTest extends TestCase
     {
         $source = file_get_contents(app_path('Jobs/ProcessAiChatMessageJob.php'));
 
-        $this->assertStringContainsString("\$this->session->messages()->create(", $source);
+        $this->assertStringContainsString('$this->session->messages()->create(', $source);
         $this->assertStringContainsString("'role' => 'assistant'", $source);
         $this->assertStringContainsString('Sorry, I encountered an error', $source);
     }

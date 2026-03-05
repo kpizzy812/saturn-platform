@@ -50,7 +50,7 @@ class ApplicationActionsExtendedTest extends TestCase
 
         $this->assertStringContainsString('killHelperContainer', $source);
         $this->assertStringContainsString('escapeshellarg($deployment_uuid)', $source);
-        $this->assertStringContainsString("docker rm -f", $source);
+        $this->assertStringContainsString('docker rm -f', $source);
     }
 
     /** @test */
@@ -151,7 +151,7 @@ class ApplicationActionsExtendedTest extends TestCase
     {
         $source = file_get_contents(app_path('Actions/Application/ScanEnvExample.php'));
 
-        $this->assertStringContainsString("rm -rf /tmp/{", $source);
+        $this->assertStringContainsString('rm -rf /tmp/{', $source);
     }
 
     /** @test */

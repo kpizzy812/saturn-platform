@@ -121,7 +121,7 @@ class InfrastructureJobsTest extends TestCase
     {
         $source = file_get_contents(app_path('Jobs/RegenerateSslCertJob.php'));
 
-        $this->assertStringContainsString("now()->addDays(14)", $source);
+        $this->assertStringContainsString('now()->addDays(14)', $source);
         $this->assertStringContainsString("'valid_until', '<='", $source);
     }
 
@@ -263,7 +263,7 @@ class InfrastructureJobsTest extends TestCase
 
         $this->assertStringContainsString('isCloud()', $source);
         $this->assertStringContainsString('stripe_invoice_paid', $source);
-        $this->assertStringContainsString("Team::find(0)", $source);
+        $this->assertStringContainsString('Team::find(0)', $source);
     }
 
     /** @test */
