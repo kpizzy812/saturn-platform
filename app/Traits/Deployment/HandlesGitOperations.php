@@ -211,7 +211,7 @@ trait HandlesGitOperations
         $environment = $this->application->environment;
         if ($environment && $detector->hasChanged($yamlContent, $environment)) {
             $this->application_deployment_queue->addLogEntry('saturn.yaml changed — dispatching sync job.');
-            \App\Jobs\SyncSaturnYamlJob::dispatch($environment, $yamlContent, 'deployment');
+            \App\Jobs\SyncSaturnYamlJob::dispatch($environment->id, $yamlContent, 'deployment');
         }
     }
 

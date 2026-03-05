@@ -50,6 +50,7 @@ class StopEnvironmentAction
             'application' => $this->stopApplication($environment, $uuid),
             'database' => $this->stopDatabase($environment, $uuid),
             'service' => $this->stopService($environment, $uuid),
+            default => throw new \InvalidArgumentException("Unknown resource type: {$type}"),
         };
     }
 

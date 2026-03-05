@@ -186,15 +186,13 @@ class DependencyResolver
                 }
             }
 
-            if (! empty($tier)) {
-                // Sort within tier: databases first, then services, then applications
-                usort($tier, function ($a, $b) {
-                    $order = ['database' => 0, 'service' => 1, 'application' => 2];
+            // Sort within tier: databases first, then services, then applications
+            usort($tier, function ($a, $b) {
+                $order = ['database' => 0, 'service' => 1, 'application' => 2];
 
-                    return ($order[$a['type']] ?? 3) <=> ($order[$b['type']] ?? 3);
-                });
-                $tiers[] = $tier;
-            }
+                return ($order[$a['type']] ?? 3) <=> ($order[$b['type']] ?? 3);
+            });
+            $tiers[] = $tier;
 
             $queue = $nextQueue;
         }

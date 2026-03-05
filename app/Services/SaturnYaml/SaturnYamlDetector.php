@@ -56,12 +56,9 @@ class SaturnYamlDetector
     public function getYamlPath(Application $application): string
     {
         $baseDir = rtrim($application->base_directory ?? '/', '/');
+        $filename = self::YAML_FILENAMES[0];
 
-        foreach (self::YAML_FILENAMES as $filename) {
-            return $baseDir === '/' ? $filename : "{$baseDir}/{$filename}";
-        }
-
-        return 'saturn.yaml';
+        return $baseDir === '/' ? $filename : "{$baseDir}/{$filename}";
     }
 
     /**

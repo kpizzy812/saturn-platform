@@ -51,6 +51,7 @@ class StartEnvironmentAction
             'application' => $this->startApplication($environment, $uuid),
             'database' => $this->startDatabase($environment, $uuid),
             'service' => $this->startService($environment, $uuid),
+            default => throw new \InvalidArgumentException("Unknown resource type: {$type}"),
         };
     }
 
@@ -108,7 +109,7 @@ class StartEnvironmentAction
     {
         $service = $environment->services()->where('uuid', $uuid)->firstOrFail();
 
-        if (str($service->status())->contains('running')) {
+        if (str($service->status)->contains('running')) {
             return;
         }
 
