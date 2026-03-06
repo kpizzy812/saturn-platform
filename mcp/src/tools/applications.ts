@@ -299,4 +299,57 @@ export function registerApplicationTools(server: McpServer, client: SaturnClient
             return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
         },
     );
+
+    // ── saturn.yaml Generation ────────────────────────────────────────────
+
+    server.registerTool(
+        'saturn_generate_yaml',
+        {
+            title: 'Generate saturn.yaml',
+            description:
+                'Analyze a git repository and generate a ready-to-use saturn.yaml file. ' +
+                'Saturn clones the repo, detects the tech stack, databases, ports, healthchecks and env vars, ' +
+                'then produces a saturn.yaml you can commit to the repository root. ' +
+                'The file will be auto-synced on every subsequent deploy. ' +
+                'Use this before creating an application to get the correct configuration.',
+            inputSchema: z.object({
+                git_repository: z.string().describe('Git repository URL, e.g. https://github.com/owner/repo'),
+                git_branch: z.string().optional().describe('Branch to analyze (default: main)'),
+                github_app_id: z.number().optional().describe('GitHub App ID for private repositories'),
+                private_key_id: z.number().optional().describe('Deploy key ID for private repositories'),
+            }),
+        },
+        async ({ git_repository, git_branch, github_app_id, private_key_id }) => {
+            const body: Record<string, unknown> = { git_repository };
+            if (git_branch) body.git_branch = git_branch;
+            if (github_app_id) body.github_app_id = github_app_id;
+            if (private_key_id) body.private_key_id = private_key_id;
+
+            const data = await client.post<{ success: boolean; yaml: string; analysis: unknown }>('/git/generate-yaml', body);
+
+            if (!data.success) {
+                return { content: [{ type: 'text', text: `Failed to generate saturn.yaml: ${(data as any).error}` }] };
+            }
+
+            const analysisInfo = JSON.stringify(data.analysis, null, 2);
+            const output = [
+                '## saturn.yaml generated successfully',
+                '',
+                'Commit this file to the root of your repository.',
+                'Saturn will auto-sync on every deploy.',
+                '',
+                '### Detected resources',
+                '```json',
+                analysisInfo,
+                '```',
+                '',
+                '### saturn.yaml',
+                '```yaml',
+                data.yaml,
+                '```',
+            ].join('\n');
+
+            return { content: [{ type: 'text', text: output }] };
+        },
+    );
 }

@@ -517,6 +517,7 @@ Route::group([
     // Git Repository Analysis & Auto-Provisioning
     Route::post('/git/analyze', [GitAnalyzerController::class, 'analyze'])->middleware(['api.ability:read']);
     Route::post('/git/provision', [GitAnalyzerController::class, 'provision'])->middleware(['api.ability:write']);
+    Route::post('/git/generate-yaml', [GitAnalyzerController::class, 'generateYaml'])->middleware(['api.ability:read']);
 
     // Database CRUD routes
     Route::get('/databases', [DatabasesController::class, 'index'])->middleware(['api.ability:read']);

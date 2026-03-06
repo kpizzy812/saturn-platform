@@ -14,7 +14,9 @@ use App\Services\RepositoryAnalyzer\DTOs\AnalysisResult;
 use App\Services\RepositoryAnalyzer\Exceptions\RepositoryAnalysisException;
 use App\Services\RepositoryAnalyzer\InfrastructureProvisioner;
 use App\Services\RepositoryAnalyzer\RepositoryAnalyzer;
+use App\Services\SaturnYaml\SaturnYamlGenerator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -455,6 +457,62 @@ class GitAnalyzerController extends Controller
 
         if ($realPath && $tempDir && str_starts_with($realPath, $tempDir)) {
             Process::run(['rm', '-rf', $realPath]);
+        }
+    }
+
+    /**
+     * POST /api/v1/git/generate-yaml
+     *
+     * Clone a repository, analyze it and return a ready-to-use saturn.yaml.
+     */
+    public function generateYaml(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'git_repository' => 'required|string|max:1000',
+            'git_branch' => 'nullable|string|max:255',
+            'github_app_id' => 'nullable|integer',
+            'private_key_id' => 'nullable|integer',
+        ]);
+
+        try {
+            $this->validateRepositoryUrl($validated['git_repository']);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (isset($validated['private_key_id'])) {
+            $privateKey = PrivateKey::findOrFail($validated['private_key_id']);
+            Gate::authorize('view', $privateKey);
+        }
+
+        $tempPath = null;
+
+        try {
+            $tempPath = $this->cloneRepository($validated);
+            $result = $this->analyzer->analyze($tempPath);
+
+            $repoName = $this->extractRepoName($validated['git_repository']);
+            $result = $this->fixTempDirAppNames($result, $repoName);
+
+            $generator = new SaturnYamlGenerator;
+            $yaml = $generator->generate($result, $validated['git_branch'] ?? 'main');
+
+            return response()->json([
+                'success' => true,
+                'yaml' => $yaml,
+                'analysis' => [
+                    'applications' => array_map(fn ($a) => ['name' => $a->name, 'framework' => $a->framework, 'build_pack' => $a->buildPack], $result->applications),
+                    'databases' => array_map(fn ($d) => ['name' => $d->name, 'type' => $d->type], $result->databases),
+                ],
+            ]);
+        } catch (RepositoryAnalysisException $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } finally {
+            if ($tempPath !== null) {
+                $this->cleanupTempDirectory($tempPath);
+            }
         }
     }
 
