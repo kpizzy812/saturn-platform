@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { AdminLayout } from '@/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, Badge, Button } from '@/components/ui';
 import { LogsContainer, type LogLine } from '@/components/features/LogsContainer';
@@ -8,6 +8,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import { formatStatus } from '@/lib/formatters';
 import { useLogStream } from '@/hooks/useLogStream';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import {
     GitCommit,
     Clock,
@@ -44,8 +45,34 @@ interface Props {
     deployment?: DeploymentData;
 }
 
-export default function AdminDeploymentShow({ deployment }: Props) {
+export default function AdminDeploymentShow({ deployment: propDeployment }: Props) {
+    const [deployment, setDeployment] = React.useState(propDeployment);
     const [activeTab, setActiveTab] = React.useState<'build' | 'deploy'>('build');
+
+    // Sync state when Inertia reloads props
+    React.useEffect(() => {
+        setDeployment(propDeployment);
+    }, [propDeployment]);
+
+    const isInProgress = deployment?.status === 'in_progress' || deployment?.status === 'queued';
+
+    // Subscribe to DeploymentFinished to update status badge in real-time
+    useRealtimeStatus({
+        onDeploymentFinished: (data) => {
+            if (data.deploymentId === deployment?.id) {
+                router.reload({ only: ['deployment'] });
+            }
+        },
+    });
+
+    // Auto-poll for status when deployment is in progress
+    React.useEffect(() => {
+        if (!isInProgress) return;
+        const interval = setInterval(() => {
+            router.reload({ only: ['deployment'] });
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [isInProgress]);
 
     // Real-time log streaming for in-progress deployments
     const {
@@ -54,7 +81,7 @@ export default function AdminDeploymentShow({ deployment }: Props) {
     } = useLogStream({
         resourceType: 'deployment',
         resourceId: deployment?.uuid || '',
-        enableWebSocket: deployment?.status === 'in_progress',
+        enableWebSocket: isInProgress,
     });
 
     const buildLogsFormatted: LogLine[] = React.useMemo(() => {

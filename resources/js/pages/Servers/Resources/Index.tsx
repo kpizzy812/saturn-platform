@@ -1,9 +1,11 @@
-import { Link } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
+import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Badge } from '@/components/ui';
 import { ArrowLeft, Package, Database, Globe, Boxes } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 
 interface Props {
     server: ServerType;
@@ -12,7 +14,31 @@ interface Props {
     services?: number;
 }
 
-export default function ServerResourcesIndex({ server, applications = 0, databases = 0, services = 0 }: Props) {
+export default function ServerResourcesIndex({ server, applications: propApps = 0, databases: propDbs = 0, services: propServices = 0 }: Props) {
+    const [counts, setCounts] = useState({ applications: propApps, databases: propDbs, services: propServices });
+
+    // Sync when Inertia reloads props
+    useEffect(() => {
+        setCounts({ applications: propApps, databases: propDbs, services: propServices });
+    }, [propApps, propDbs, propServices]);
+
+    // Reload resource counts when apps/DBs/services are deployed or status changes
+    useRealtimeStatus({
+        onDeploymentFinished: () => {
+            router.reload({ only: ['applications', 'databases', 'services'] });
+        },
+        onApplicationStatusChange: () => {
+            router.reload({ only: ['applications'] });
+        },
+        onDatabaseStatusChange: () => {
+            router.reload({ only: ['databases'] });
+        },
+        onServiceStatusChange: () => {
+            router.reload({ only: ['services'] });
+        },
+    });
+
+    const { applications, databases, services } = counts;
     const totalResources = applications + databases + services;
 
     const resourceTypes = [

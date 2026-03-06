@@ -6,6 +6,7 @@ import { StaggerList, StaggerItem, FadeIn } from '@/components/animation';
 import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import { formatStatus } from '@/lib/formatters';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Deployment, DeploymentStatus } from '@/types';
 import {
     GitCommit,
@@ -16,6 +17,8 @@ import {
     Filter,
     ChevronLeft,
     ChevronRight,
+    Wifi,
+    WifiOff,
 } from 'lucide-react';
 
 interface Props {
@@ -42,12 +45,29 @@ interface ExtendedDeployment extends Deployment {
 }
 
 export default function DeploymentsIndex({ deployments: propDeployments, currentPage = 1, totalPages = 1, filters: initialFilters }: Props) {
-    const [deployments, _setDeployments] = React.useState<ExtendedDeployment[]>(
+    const [deployments, setDeployments] = React.useState<ExtendedDeployment[]>(
         Array.isArray(propDeployments) ? propDeployments as ExtendedDeployment[] : []
     );
     const [filterStatus, setFilterStatus] = React.useState<DeploymentStatus | 'all'>(initialFilters?.status || 'all');
     const [searchQuery, setSearchQuery] = React.useState('');
     const [serviceFilter, setServiceFilter] = React.useState<string>(initialFilters?.service || 'all');
+
+    // Sync deployments list when Inertia reloads page props
+    React.useEffect(() => {
+        if (Array.isArray(propDeployments)) {
+            setDeployments(propDeployments as ExtendedDeployment[]);
+        }
+    }, [propDeployments]);
+
+    // Real-time updates: reload list when any deployment is created or finishes
+    const { isConnected } = useRealtimeStatus({
+        onDeploymentCreated: () => {
+            router.reload({ only: ['deployments'] });
+        },
+        onDeploymentFinished: () => {
+            router.reload({ only: ['deployments'] });
+        },
+    });
 
     // Get unique service names for filter
     const serviceNames = React.useMemo(() => {
@@ -103,11 +123,20 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
         <AppLayout title="Deployments" breadcrumbs={[{ label: 'Deployments' }]}>
             <div className="mx-auto max-w-6xl">
             {/* Header */}
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-foreground">Deployment History</h1>
-                <p className="text-foreground-muted">
-                    Track and manage all deployments across your services
-                </p>
+            <div className="mb-6 flex items-start justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-foreground">Deployment History</h1>
+                    <p className="text-foreground-muted">
+                        Track and manage all deployments across your services
+                    </p>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-foreground-subtle">
+                    {isConnected ? (
+                        <><Wifi className="h-3.5 w-3.5 text-success" /><span>Live</span></>
+                    ) : (
+                        <><WifiOff className="h-3.5 w-3.5" /><span>Offline</span></>
+                    )}
+                </div>
             </div>
 
             {/* Filters */}

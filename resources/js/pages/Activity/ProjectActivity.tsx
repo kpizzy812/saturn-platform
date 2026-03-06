@@ -1,6 +1,7 @@
 import * as React from 'react';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { Card, CardContent, Button, Input, Select } from '@/components/ui';
 import { ActivityTimeline } from '@/components/ui/ActivityTimeline';
 import type { ActivityLog, Project, Environment } from '@/types';
@@ -31,6 +32,19 @@ export default function ProjectActivity({
     const project = propProject;
     const activities = React.useMemo(() => propActivities || [], [propActivities]);
     const environments = propEnvironments || [];
+
+    // Real-time updates: reload activity feed when deployments or other tracked events occur
+    useRealtimeStatus({
+        onDeploymentCreated: () => {
+            router.reload({ only: ['activities'] });
+        },
+        onDeploymentFinished: () => {
+            router.reload({ only: ['activities'] });
+        },
+        onApplicationStatusChange: () => {
+            router.reload({ only: ['activities'] });
+        },
+    });
 
     // All hooks must be called before any conditional returns
     const [filterType, setFilterType] = React.useState<FilterType>('all');

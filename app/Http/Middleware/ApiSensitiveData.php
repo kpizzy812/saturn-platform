@@ -33,10 +33,15 @@ class ApiSensitiveData
             // 1. Token has permission (root or read:sensitive) OR is session auth
             // 2. AND user is admin+ in the current team
             if ($hasTokenPermission) {
-                $team = currentTeam();
-                if ($team) {
-                    // Check if user is admin+ in current team
-                    $canReadSensitive = $this->authService->canAccessSensitiveData($user, $team->id);
+                // Platform admins and superadmins always get sensitive data access
+                // regardless of whether currentTeam() resolves correctly in API context
+                if ($user->isPlatformAdmin() || $user->isSuperAdmin()) {
+                    $canReadSensitive = true;
+                } else {
+                    $team = currentTeam();
+                    if ($team) {
+                        $canReadSensitive = $this->authService->canAccessSensitiveData($user, $team->id);
+                    }
                 }
             }
         }

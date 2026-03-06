@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { usePage } from '@inertiajs/react';
+import { getEcho } from '@/lib/echo';
 import { useRealtimeStatus } from './useRealtimeStatus';
 
 interface MetricValue {
@@ -103,7 +105,7 @@ export function useSentinelMetrics({
     serverUuid,
     timeRange = '24h',
     autoRefresh = false,
-    refreshInterval = 30000, // 30 seconds default
+    refreshInterval = 10000, // 10 seconds default (was 30s)
     includeProcesses = false,
     includeContainers = false,
 }: UseSentinelMetricsOptions): UseSentinelMetricsReturn {
@@ -189,15 +191,38 @@ export function useSentinelMetrics({
         return () => clearInterval(interval);
     }, [autoRefresh, refreshInterval, fetchMetrics]);
 
-    // Real-time updates via WebSocket
+    // Real-time updates via WebSocket: refetch when server reachability changes
+    // Note: ServerStatusEvent has serverId (number), not serverUuid — we always refetch
+    // since this hook is already scoped to a specific server page
     useRealtimeStatus({
-        onServerStatusChange: (data) => {
-            // When server status changes, refetch metrics
-            if (data.serverId.toString() === serverUuid) {
-                fetchMetrics();
-            }
+        onServerStatusChange: () => {
+            fetchMetrics();
         },
     });
+
+    // Subscribe to SentinelRestarted event on team channel to refresh immediately
+    const page = usePage();
+    const teamId = (page.props as { team?: { id?: number } }).team?.id;
+
+    React.useEffect(() => {
+        if (teamId == null) return;
+        const echo = getEcho();
+        if (!echo) return;
+
+        const channel = echo.private(`team.${teamId}`);
+        channel.listen('SentinelRestarted', () => {
+            fetchMetrics();
+        });
+
+        return () => {
+            try {
+                // Only leave if no other hook is using this channel
+                // (Echo deduplicates subscriptions automatically)
+            } catch {
+                // ignore
+            }
+        };
+    }, [teamId, fetchMetrics]);
 
     return {
         metrics,

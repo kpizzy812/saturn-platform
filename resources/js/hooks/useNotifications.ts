@@ -1,5 +1,7 @@
 import * as React from 'react';
 import { router } from '@inertiajs/react';
+import { usePage } from '@inertiajs/react';
+import { getEcho } from '@/lib/echo';
 import type { Notification } from '@/types';
 
 interface UseNotificationsOptions {
@@ -35,6 +37,9 @@ export function useNotifications({
     autoRefresh = false,
     refreshInterval = 30000, // 30 seconds
 }: UseNotificationsOptions = {}): UseNotificationsReturn {
+    const page = usePage();
+    const teamId = (page.props as { team?: { id?: number } }).team?.id;
+
     const [notifications, setNotifications] = React.useState<Notification[]>(initialNotifications);
     const [loading, setLoading] = React.useState(false);
     const [error, setError] = React.useState<Error | null>(null);
@@ -47,11 +52,39 @@ export function useNotifications({
         }
     }, [initialNotifications]);
 
-    // Simulate connection status (can be replaced with actual WebSocket connection)
+    // Subscribe to team channel — reload notifications when events that generate
+    // notifications are broadcast (DeploymentFinished, BackupCreated, ServerValidated, etc.)
     React.useEffect(() => {
-        const timer = setTimeout(() => setIsConnected(true), 1000);
-        return () => clearTimeout(timer);
-    }, []);
+        if (teamId == null) return;
+
+        const echo = getEcho();
+        if (!echo) return;
+
+        const channel = echo.private(`team.${teamId}`);
+
+        const reload = () => {
+            router.reload({ only: ['notifications'], preserveScroll: true });
+        };
+
+        channel.listen('DeploymentFinished', reload);
+        channel.listen('BackupCreated', reload);
+        channel.listen('ServerValidated', reload);
+        channel.listen('ScheduledTaskDone', reload);
+        channel.listen('DockerCleanupDone', reload);
+        channel.listen('DeploymentApprovalRequested', reload);
+        channel.listen('DeploymentApprovalResolved', reload);
+
+        setIsConnected(true);
+
+        return () => {
+            try {
+                echo.leave(`team.${teamId}`);
+            } catch {
+                // ignore cleanup errors
+            }
+            setIsConnected(false);
+        };
+    }, [teamId]);
 
     // Calculate unread count
     const unreadCount = React.useMemo(

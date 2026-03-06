@@ -24,6 +24,11 @@ trait HandlesGitOperations
      */
     private function check_git_if_build_needed(): void
     {
+        // Local upload deployments don't have a git repo to check
+        if ($this->is_local_upload()) {
+            return;
+        }
+
         if (is_object($this->source) && $this->source->getMorphClass() === \App\Models\GithubApp::class && $this->source->is_public === false) {
             $repository = githubApi($this->source, "repos/{$this->customRepository}");
             $data = data_get($repository, 'data');
@@ -129,6 +134,13 @@ trait HandlesGitOperations
      */
     private function clone_repository(): void
     {
+        // For local upload deployments, extract the archive instead of cloning a git repo
+        if ($this->is_local_upload()) {
+            $this->extract_local_upload();
+
+            return;
+        }
+
         $this->application_deployment_queue->setStage(ApplicationDeploymentQueue::STAGE_CLONE);
         $importCommands = $this->generate_git_import_commands();
         $this->application_deployment_queue->addLogEntry("\n----------------------------------------");
