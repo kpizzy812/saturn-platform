@@ -87,7 +87,6 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
                 'id' => $invitation->uuid,
                 'team_name' => $team->name,
                 'inviter_name' => $inviter?->name ?? 'Team Admin',
-                'inviter_email' => $inviter?->email ?? '',
                 'role' => ucfirst($invitation->role ?? 'member'),
                 'expires_at' => $invitation->created_at->addDays(
                     config('constants.invitation.link.expiration_days', 7)
@@ -180,17 +179,25 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
     })->name('auth.accept-invite.store');
 
     Route::post('/invitations/{uuid}/decline', function (string $uuid) {
+        $user = auth()->user();
+
+        // Must be authenticated to decline an invitation
+        if (! $user) {
+            return redirect()->route('auth.login')->with('info', 'Please log in to decline the invitation.');
+        }
+
         $invitation = \App\Models\TeamInvitation::where('uuid', $uuid)->first();
 
         if ($invitation) {
+            // Only the invited user may decline their own invitation
+            if (strtolower($user->email) !== strtolower($invitation->email)) {
+                return redirect('/dashboard')->with('error', 'This invitation was not sent to your email address.');
+            }
+
             $invitation->delete();
         }
 
-        if (auth()->check()) {
-            return redirect('/dashboard')->with('info', 'Invitation declined.');
-        }
-
-        return redirect('/login')->with('info', 'Invitation declined.');
+        return redirect('/dashboard')->with('info', 'Invitation declined.');
     })->name('auth.decline-invite');
 });
 
