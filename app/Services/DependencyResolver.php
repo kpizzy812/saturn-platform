@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
 /**
- * Resolves resource startup order within an environment using topological sort.
+ * Resolves resource startup order within an environment using topological sort (Kahn's algorithm).
  *
  * Databases without depends_on always start first (tier 0).
  * Returns ordered tiers: each tier can start in parallel, but must wait for previous tiers.
