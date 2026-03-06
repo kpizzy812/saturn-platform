@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
+import axios from 'axios';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button } from '@/components/ui';
 import {
@@ -25,22 +26,7 @@ export default function GitHubCreate({ webhookUrl, from }: Props) {
 
         try {
             // Create a placeholder GithubApp record to get a UUID for the state parameter
-            const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
-            const response = await fetch('/sources/github', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken || '',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({ is_public: isPublic, name: appName }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to create GitHub App record');
-            }
-
-            const data = await response.json();
+            const { data } = await axios.post('/sources/github', { is_public: isPublic, name: appName });
 
             // Build manifest with the UUID in setup_url so install callback can find the app
             const manifest = JSON.stringify({
