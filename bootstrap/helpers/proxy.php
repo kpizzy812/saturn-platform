@@ -128,6 +128,16 @@ function connectProxyToNetworks(Server $server)
         });
     }
 
+    // Additionally connect to networks of all Traefik-enabled containers discovered via Docker.
+    // This covers resources from other Saturn environments (dev/staging) running on the same host
+    // that the current environment's DB is unaware of.
+    $commands->push(
+        "docker ps -q --filter label=traefik.enable=true 2>/dev/null"
+        ." | xargs -r -I{} docker inspect {} --format '{{range \$k,\$v := .NetworkSettings.Networks}}{{println \$k}}{{end}}' 2>/dev/null"
+        ." | grep -vE '^(saturn|bridge|host|none)$' | sort -u"
+        ." | xargs -r -I{} sh -c 'docker network connect \"{}\" saturn-proxy >/dev/null 2>&1 || true'"
+    );
+
     return $commands->flatten();
 }
 

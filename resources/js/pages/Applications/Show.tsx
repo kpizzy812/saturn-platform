@@ -314,16 +314,26 @@ export default function ApplicationShow({ application: initialApplication, avail
                                     {application.fqdn && (
                                         <div className="text-right">
                                             <p className="text-sm text-foreground-muted mb-2">Domain</p>
-                                            <a
-                                                href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-2 text-primary hover:underline"
-                                            >
-                                                <Globe className="h-4 w-4" />
-                                                {application.fqdn.replace(/^https?:\/\//, '')}
-                                                <ExternalLink className="h-3 w-3" />
-                                            </a>
+                                            {application.status === 'running' ? (
+                                                <a
+                                                    href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 text-primary hover:underline"
+                                                >
+                                                    <Globe className="h-4 w-4" />
+                                                    {application.fqdn.replace(/^https?:\/\//, '')}
+                                                    <ExternalLink className="h-3 w-3" />
+                                                </a>
+                                            ) : (
+                                                <span
+                                                    className="flex items-center gap-2 text-foreground-muted cursor-not-allowed"
+                                                    title="Application is not running"
+                                                >
+                                                    <Globe className="h-4 w-4" />
+                                                    {application.fqdn.replace(/^https?:\/\//, '')}
+                                                </span>
+                                            )}
                                         </div>
                                     )}
                                 </div>
