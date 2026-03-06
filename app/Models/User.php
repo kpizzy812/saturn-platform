@@ -159,6 +159,32 @@ class User extends Authenticatable implements SendsEmail
             }
             $new_team = Team::create($team);
             $user->teams()->attach($new_team, ['role' => 'owner']);
+
+            // For self-hosted non-root users: create a localhost server entry for their team
+            // so they can deploy applications and databases without manual server setup.
+            if (! isCloud() && $user->id !== 0) {
+                $server = Server::create([
+                    'name' => 'localhost',
+                    'description' => "Saturn Platform host machine (localhost).",
+                    'ip' => 'host.docker.internal',
+                    'port' => 22,
+                    'user' => 'root',
+                    'team_id' => $new_team->id,
+                    'private_key_id' => 0,
+                    'proxy' => \App\Data\ServerMetadata::from([
+                        'type' => \App\Enums\ProxyTypes::TRAEFIK->value,
+                        'status' => \App\Enums\ProxyStatus::EXITED->value,
+                    ]),
+                ]);
+                $server->settings->is_reachable = true;
+                $server->settings->is_usable = true;
+                $server->settings->save();
+                StandaloneDocker::create([
+                    'name' => 'localhost-saturn',
+                    'network' => 'saturn',
+                    'server_id' => $server->id,
+                ]);
+            }
         });
 
         static::deleting(function (User $user) {
@@ -362,6 +388,14 @@ class User extends Authenticatable implements SendsEmail
     public function platformRole(): string
     {
         return $this->platform_role ?? 'member';
+    }
+
+    /**
+     * Alias for platformRole() used in admin routes.
+     */
+    public function getPlatformRole(): string
+    {
+        return $this->platformRole();
     }
 
     /**
