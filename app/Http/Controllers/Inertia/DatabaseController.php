@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Inertia;
 
 use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\Server;
 use App\Models\StandaloneMariadb;
 use App\Models\StandaloneMongodb;
 use App\Models\StandaloneMysql;
@@ -30,7 +32,18 @@ class DatabaseController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('Databases/Create');
+        $projects = Project::ownedByCurrentTeam()
+            ->with('environments')
+            ->get();
+
+        $servers = Server::ownedByCurrentTeam()
+            ->where('is_usable', true)
+            ->get();
+
+        return Inertia::render('Databases/Create', [
+            'projects' => $projects,
+            'servers' => $servers,
+        ]);
     }
 
     /**
@@ -45,6 +58,7 @@ class DatabaseController extends Controller
             'description' => 'nullable|string',
             'environment_uuid' => 'nullable|string',
             'server_uuid' => 'nullable|string',
+            'redirect_to' => 'nullable|string',
         ]);
 
         // Get environment - either from request or use default (first project's production env)
@@ -112,6 +126,12 @@ class DatabaseController extends Controller
             'clickhouse' => create_standalone_clickhouse($environment->id, $destination->uuid, $otherData),
             default => throw new \InvalidArgumentException("Unsupported database type: {$request->database_type}"),
         };
+
+        // Redirect back to origin context (e.g. project canvas) if provided
+        $redirectTo = $request->input('redirect_to');
+        if ($redirectTo && str_starts_with($redirectTo, '/') && ! str_starts_with($redirectTo, '//')) {
+            return redirect($redirectTo)->with('success', 'Database created successfully');
+        }
 
         return redirect()->route('databases.show', $database->uuid);
     }

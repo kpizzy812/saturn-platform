@@ -79,20 +79,28 @@ class TeamInvitation extends Model
         return TeamInvitation::whereTeamId(currentTeam()->id);
     }
 
-    public function isValid()
+    public function isValid(): bool
     {
-        $createdAt = $this->created_at;
-        $diff = $createdAt->diffInDays(now());
-        if ($diff <= config('constants.invitation.link.expiration_days')) {
-            return true;
-        } else {
-            $this->delete();
-            $user = User::whereEmail($this->email)->first();
-            if (filled($user)) {
-                $user->deleteIfNotVerifiedAndForcePasswordReset();
-            }
+        $diff = $this->created_at->diffInDays(now());
 
-            return false;
+        return $diff <= config('constants.invitation.link.expiration_days');
+    }
+
+    /**
+     * Delete the invitation if expired and clean up any unverified invited user.
+     * Should only be called from scheduled cleanup jobs, not from read-only views.
+     */
+    public function cleanupIfExpired(): void
+    {
+        if ($this->isValid()) {
+            return;
+        }
+
+        $this->delete();
+
+        $user = User::whereEmail($this->email)->first();
+        if (filled($user)) {
+            $user->deleteIfNotVerifiedAndForcePasswordReset();
         }
     }
 }

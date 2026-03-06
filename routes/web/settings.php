@@ -1527,7 +1527,8 @@ Route::get('/settings/team/invite/data', function () {
     $team = currentTeam();
     $currentUser = auth()->user();
 
-    if (! $currentUser->isAdmin()) {
+    // Only admins and owners can access invite data (developers cannot)
+    if (! $currentUser->isAdminOfTeam($team->id)) {
         return response()->json(['message' => 'Unauthorized'], 403);
     }
 
@@ -1606,8 +1607,8 @@ Route::post('/settings/team/invite', function (Request $request) {
     $team = currentTeam();
     $currentUser = auth()->user();
 
-    // A1: Only admins and owners can send invitations
-    if (! $currentUser->isAdmin()) {
+    // A1: Only admins and owners can send invitations (developers cannot)
+    if (! $currentUser->isAdminOfTeam($team->id)) {
         return redirect()->back()->with('error', 'You do not have permission to invite team members');
     }
 
@@ -1643,7 +1644,7 @@ Route::post('/settings/team/invite', function (Request $request) {
 
     // Create the invitation
     $uuid = (string) \Illuminate\Support\Str::uuid();
-    $link = url("/invitations/{$uuid}");
+    $link = url("/auth/invitations/{$uuid}");
 
     $invitation = \App\Models\TeamInvitation::create([
         'team_id' => $team->id,
@@ -1674,6 +1675,13 @@ Route::post('/settings/team/invite', function (Request $request) {
 
 Route::delete('/settings/team/invitations/{id}', function (string $id) {
     $team = currentTeam();
+    $currentUser = auth()->user();
+
+    // Only admins and owners can cancel invitations
+    if (! $currentUser->isAdminOfTeam($team->id)) {
+        return redirect()->back()->with('error', 'You do not have permission to cancel invitations');
+    }
+
     $invitation = \App\Models\TeamInvitation::where('team_id', $team->id)
         ->where('id', $id)
         ->firstOrFail();
@@ -1685,6 +1693,13 @@ Route::delete('/settings/team/invitations/{id}', function (string $id) {
 
 Route::post('/settings/team/invitations/{id}/resend', function (string $id) {
     $team = currentTeam();
+    $currentUser = auth()->user();
+
+    // Only admins and owners can resend invitations
+    if (! $currentUser->isAdminOfTeam($team->id)) {
+        return redirect()->back()->with('error', 'You do not have permission to resend invitations');
+    }
+
     $invitation = \App\Models\TeamInvitation::where('team_id', $team->id)
         ->where('id', $id)
         ->firstOrFail();
@@ -1693,7 +1708,7 @@ Route::post('/settings/team/invitations/{id}/resend', function (string $id) {
     $uuid = (string) \Illuminate\Support\Str::uuid();
     $invitation->update([
         'uuid' => $uuid,
-        'link' => url("/invitations/{$uuid}"),
+        'link' => url("/auth/invitations/{$uuid}"),
     ]);
 
     // Try to send email notification

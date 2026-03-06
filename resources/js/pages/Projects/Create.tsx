@@ -66,33 +66,7 @@ function toSubdomain(name: string): string {
 }
 
 // ── Secondary deploy options ────────────────────────────────────────
-
-const secondaryOptions = [
-    {
-        icon: <Database className="h-4 w-4" />,
-        label: 'Database',
-        href: '/databases/create',
-        iconBg: 'bg-blue-500/10 text-blue-400',
-    },
-    {
-        icon: <BrandIcon name="docker" className="h-4 w-4" />,
-        label: 'Docker Image',
-        href: '/applications/create?source=docker',
-        iconBg: 'bg-cyan-500/10 text-cyan-400',
-    },
-    {
-        icon: <FileCode className="h-4 w-4" />,
-        label: 'Template',
-        href: '/templates',
-        iconBg: 'bg-purple-500/10 text-purple-400',
-    },
-    {
-        icon: <Folder className="h-4 w-4" />,
-        label: 'Empty Project',
-        href: '/projects/create/empty',
-        iconBg: 'bg-emerald-500/10 text-emerald-400',
-    },
-];
+// Built inside the component so we can carry preselected project context.
 
 // ── Main Component ──────────────────────────────────────────────────
 
@@ -125,6 +99,39 @@ export default function ProjectCreate({ projects = [], wildcardDomain = null, ha
 
     // Whether a repo has been selected (for showing quick config)
     const hasRepo = gitRepository.length > 0;
+
+    // Build secondary option links, injecting project context when coming from a canvas
+    const canvasFrom = preselectedProject ? encodeURIComponent(`/projects/${preselectedProject}`) : null;
+    const secondaryOptions = [
+        {
+            icon: <Database className="h-4 w-4" />,
+            label: 'Database',
+            href: canvasFrom
+                ? `/databases/create?project=${preselectedProject}&environment=${preselectedEnvironment}&from=${canvasFrom}`
+                : '/databases/create',
+            iconBg: 'bg-blue-500/10 text-blue-400',
+        },
+        {
+            icon: <BrandIcon name="docker" className="h-4 w-4" />,
+            label: 'Docker Image',
+            href: canvasFrom
+                ? `/applications/create?source=docker&project=${preselectedProject}&environment=${preselectedEnvironment}&from=${canvasFrom}`
+                : '/applications/create?source=docker',
+            iconBg: 'bg-cyan-500/10 text-cyan-400',
+        },
+        {
+            icon: <FileCode className="h-4 w-4" />,
+            label: 'Template',
+            href: '/templates',
+            iconBg: 'bg-purple-500/10 text-purple-400',
+        },
+        {
+            icon: <Folder className="h-4 w-4" />,
+            label: 'Empty Project',
+            href: '/projects/create/empty',
+            iconBg: 'bg-emerald-500/10 text-emerald-400',
+        },
+    ];
 
     const handleRepoSelected = useCallback((result: RepoSelectorResult) => {
         setGitRepository(result.gitRepository);

@@ -6,15 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\InstanceSettings;
 use App\Models\TeamInvitation;
 use App\Notifications\Test;
-use App\Notifications\TransactionalEmails\InvitationLink;
 use App\Services\Authorization\PermissionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -576,66 +573,6 @@ class SettingsController extends Controller
         $action->execute($team, $member, $currentUser);
 
         return redirect()->back()->with('success', 'Member removed from team successfully');
-    }
-
-    /**
-     * Invite team member.
-     */
-    public function inviteMember(Request $request): RedirectResponse
-    {
-        if (! app(PermissionService::class)->userHasPermission(auth()->user(), 'team.invite')) {
-            return redirect()->back()->withErrors(['member' => 'You do not have permission to invite members']);
-        }
-
-        $request->validate([
-            'email' => 'required|email',
-            'role' => 'required|string|in:owner,admin,member',
-        ]);
-
-        $email = strtolower($request->email);
-        $role = $request->role;
-        $team = currentTeam();
-
-        // Check if user is already a member
-        $existingMember = $team->members()->where('email', $email)->first();
-        if ($existingMember) {
-            return redirect()->back()->with('error', 'User is already a member of this team');
-        }
-
-        // Check for existing pending invitation
-        $existingInvitation = TeamInvitation::where('team_id', $team->id)
-            ->where('email', $email)
-            ->first();
-        if ($existingInvitation) {
-            return redirect()->back()->with('error', 'An invitation has already been sent to this email');
-        }
-
-        // Create the invitation
-        $uuid = (string) Str::uuid();
-        $link = url("/invitations/{$uuid}");
-
-        $invitation = TeamInvitation::create([
-            'team_id' => $team->id,
-            'uuid' => $uuid,
-            'email' => $email,
-            'role' => $role,
-            'link' => $link,
-            'via' => 'link',
-            'invited_by' => auth()->id(),
-        ]);
-
-        // Try to send email notification if email settings are configured
-        try {
-            $user = \App\Models\User::where('email', $email)->first();
-            if ($user) {
-                $user->notify(new InvitationLink($user));
-            }
-        } catch (\Exception $e) {
-            // Email sending failed, but invitation still created
-            Log::warning('Failed to send invitation email: '.$e->getMessage());
-        }
-
-        return redirect()->back()->with('success', 'Invitation sent successfully');
     }
 
     /**

@@ -758,10 +758,13 @@ class Github extends Controller
                 ]);
             }
 
-            // Redirect back to boarding if the user started from there
+            // Redirect back to the origin context stored in session before the GitHub flow
             $returnTo = session()->pull('github_app_return_to');
             if ($returnTo === 'boarding') {
                 return redirect('/boarding')->with('success', 'GitHub App connected successfully!');
+            }
+            if ($returnTo && str_starts_with($returnTo, '/') && ! str_starts_with($returnTo, '//')) {
+                return redirect($returnTo)->with('success', 'GitHub App connected successfully!');
             }
 
             return redirect()->route('sources.github.show', ['id' => $github_app->id]);
