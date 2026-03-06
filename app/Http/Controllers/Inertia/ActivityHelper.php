@@ -28,7 +28,7 @@ class ActivityHelper
         $teamApplicationIds = Application::ownedByCurrentTeam()->pluck('id');
         if ($teamApplicationIds->isNotEmpty()) {
             $deployments = ApplicationDeploymentQueue::whereIn('application_id', $teamApplicationIds)
-                ->with('application')
+                ->with(['application', 'user'])
                 ->orderBy('created_at', 'desc')
                 ->limit($limit)
                 ->get();
@@ -143,7 +143,7 @@ class ActivityHelper
         // Handle deployment activities
         if (str_starts_with($id, 'deploy-')) {
             $deployId = (int) str_replace('deploy-', '', $id);
-            $deployment = ApplicationDeploymentQueue::with('application')->find($deployId);
+            $deployment = ApplicationDeploymentQueue::with(['application', 'user'])->find($deployId);
             if (! $deployment) {
                 return null;
             }
@@ -333,7 +333,7 @@ class ActivityHelper
         // Get deployment activities for project's applications
         if ($applicationIds->isNotEmpty()) {
             $deploymentsQuery = ApplicationDeploymentQueue::whereIn('application_id', $applicationIds)
-                ->with('application')
+                ->with(['application', 'user'])
                 ->orderBy('created_at', 'desc')
                 ->limit($limit + $offset);
 
