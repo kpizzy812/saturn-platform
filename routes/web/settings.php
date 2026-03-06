@@ -1643,7 +1643,7 @@ Route::post('/settings/team/invite', function (Request $request) {
 
     // Create the invitation
     $uuid = (string) \Illuminate\Support\Str::uuid();
-    $link = url("/invitations/{$uuid}");
+    $link = url("/auth/invitations/{$uuid}");
 
     $invitation = \App\Models\TeamInvitation::create([
         'team_id' => $team->id,
@@ -1693,7 +1693,7 @@ Route::post('/settings/team/invitations/{id}/resend', function (string $id) {
     $uuid = (string) \Illuminate\Support\Str::uuid();
     $invitation->update([
         'uuid' => $uuid,
-        'link' => url("/invitations/{$uuid}"),
+        'link' => url("/auth/invitations/{$uuid}"),
     ]);
 
     // Try to send email notification

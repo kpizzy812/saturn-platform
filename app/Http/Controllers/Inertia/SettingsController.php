@@ -612,7 +612,7 @@ class SettingsController extends Controller
 
         // Create the invitation
         $uuid = (string) Str::uuid();
-        $link = url("/invitations/{$uuid}");
+        $link = url("/auth/invitations/{$uuid}");
 
         $invitation = TeamInvitation::create([
             'team_id' => $team->id,

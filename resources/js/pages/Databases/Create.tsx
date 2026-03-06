@@ -91,8 +91,8 @@ export default function DatabaseCreate() {
     const [version, setVersion] = useState('');
     const [description, setDescription] = useState('');
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [selectedProjectUuid, setSelectedProjectUuid] = useState('');
-    const [selectedEnvironmentUuid, setSelectedEnvironmentUuid] = useState('');
+    const [selectedProjectUuid, setSelectedProjectUuid] = useState(() => projects?.[0]?.uuid ?? '');
+    const [selectedEnvironmentUuid, setSelectedEnvironmentUuid] = useState(() => projects?.[0]?.environments?.[0]?.uuid ?? '');
     const [selectedServerUuid, setSelectedServerUuid] = useState('');
 
     const selectedDbType = databaseTypes.find(db => db.type === selectedType);
@@ -222,6 +222,38 @@ export default function DatabaseCreate() {
                                             ))}
                                         </Select>
 
+                                        <Select
+                                            label="Project *"
+                                            value={selectedProjectUuid}
+                                            onChange={(e) => {
+                                                const newUuid = e.target.value;
+                                                setSelectedProjectUuid(newUuid);
+                                                const proj = projects?.find(p => p.uuid === newUuid);
+                                                setSelectedEnvironmentUuid(proj?.environments?.[0]?.uuid ?? '');
+                                            }}
+                                        >
+                                            <option value="" disabled>Select a project</option>
+                                            {projects?.map((project) => (
+                                                <option key={project.uuid} value={project.uuid}>
+                                                    {project.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+
+                                        <Select
+                                            label="Environment *"
+                                            value={selectedEnvironmentUuid}
+                                            onChange={(e) => setSelectedEnvironmentUuid(e.target.value)}
+                                            disabled={!selectedProjectUuid || availableEnvironments.length === 0}
+                                        >
+                                            <option value="" disabled>Select an environment</option>
+                                            {availableEnvironments.map((env) => (
+                                                <option key={env.uuid} value={env.uuid}>
+                                                    {env.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+
                                         <Input
                                             label="Description (Optional)"
                                             placeholder="Production database for main application"
@@ -242,41 +274,6 @@ export default function DatabaseCreate() {
                                         {/* Advanced Settings */}
                                         {showAdvanced && (
                                             <div className="space-y-4 rounded-lg border border-border bg-background-secondary p-4">
-                                                <p className="text-sm text-foreground-muted">
-                                                    Leave these empty to use defaults (first available project/server)
-                                                </p>
-
-                                                <Select
-                                                    label="Project"
-                                                    value={selectedProjectUuid}
-                                                    onChange={(e) => {
-                                                        setSelectedProjectUuid(e.target.value);
-                                                        setSelectedEnvironmentUuid('');
-                                                    }}
-                                                >
-                                                    <option value="">Default (first project)</option>
-                                                    {projects?.map((project) => (
-                                                        <option key={project.uuid} value={project.uuid}>
-                                                            {project.name}
-                                                        </option>
-                                                    ))}
-                                                </Select>
-
-                                                {selectedProjectUuid && availableEnvironments.length > 0 && (
-                                                    <Select
-                                                        label="Environment"
-                                                        value={selectedEnvironmentUuid}
-                                                        onChange={(e) => setSelectedEnvironmentUuid(e.target.value)}
-                                                    >
-                                                        <option value="">Default (production)</option>
-                                                        {availableEnvironments.map((env) => (
-                                                            <option key={env.uuid} value={env.uuid}>
-                                                                {env.name}
-                                                            </option>
-                                                        ))}
-                                                    </Select>
-                                                )}
-
                                                 <Select
                                                     label="Server"
                                                     value={selectedServerUuid}
@@ -299,7 +296,7 @@ export default function DatabaseCreate() {
                                         </Button>
                                         <Button
                                             onClick={() => setStep(3)}
-                                            disabled={!name || !version}
+                                            disabled={!name || !version || !selectedProjectUuid || !selectedEnvironmentUuid}
                                             className="flex-1"
                                         >
                                             Continue
@@ -323,6 +320,21 @@ export default function DatabaseCreate() {
                                                 <p className="font-medium text-foreground">{name}</p>
                                                 <p className="text-sm text-foreground-muted">
                                                     {selectedDbType.displayName} {version}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Project</label>
+                                                <p className="text-sm text-foreground">
+                                                    {projects?.find(p => p.uuid === selectedProjectUuid)?.name ?? '—'}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Environment</label>
+                                                <p className="text-sm text-foreground">
+                                                    {availableEnvironments.find(e => e.uuid === selectedEnvironmentUuid)?.name ?? '—'}
                                                 </p>
                                             </div>
                                         </div>

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Inertia;
 
 use App\Http\Controllers\Controller;
+use App\Models\Project;
+use App\Models\Server;
 use App\Models\StandaloneMariadb;
 use App\Models\StandaloneMongodb;
 use App\Models\StandaloneMysql;
@@ -30,7 +32,18 @@ class DatabaseController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('Databases/Create');
+        $projects = Project::ownedByCurrentTeam()
+            ->with('environments')
+            ->get();
+
+        $servers = Server::ownedByCurrentTeam()
+            ->where('is_usable', true)
+            ->get();
+
+        return Inertia::render('Databases/Create', [
+            'projects' => $projects,
+            'servers' => $servers,
+        ]);
     }
 
     /**

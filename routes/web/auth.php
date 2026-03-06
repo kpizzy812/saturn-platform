@@ -100,7 +100,7 @@ Route::prefix('auth')->middleware(['web'])->group(function () {
     Route::post('/invitations/{uuid}/accept', function (string $uuid) {
         $user = auth()->user();
         if (! $user) {
-            return redirect()->route('login', ['redirect' => "/invitations/{$uuid}"]);
+            return redirect()->route('login', ['redirect' => "/auth/invitations/{$uuid}"]);
         }
 
         // A6: Wrap in transaction with row-level lock to prevent double-accept race condition

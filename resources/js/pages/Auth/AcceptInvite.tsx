@@ -47,7 +47,7 @@ export default function AcceptInvite({ invitation, error, isAuthenticated }: Pro
     }
 
     const handleAccept = () => {
-        post(`/invitations/${invitation.id}/accept`, {
+        post(`/auth/invitations/${invitation.id}/accept`, {
             onSuccess: () => {
                 window.location.href = '/dashboard';
             },
@@ -62,7 +62,7 @@ export default function AcceptInvite({ invitation, error, isAuthenticated }: Pro
             variant: 'danger',
         });
         if (confirmed) {
-            post(`/invitations/${invitation.id}/decline`, {
+            post(`/auth/invitations/${invitation.id}/decline`, {
                 onSuccess: () => {
                     window.location.href = isAuthenticated ? '/dashboard' : '/login';
                 },

@@ -103,6 +103,18 @@ class FortifyServiceProvider extends ServiceProvider
                 return redirect()->route('register');
             }
 
+            // Preserve the intended URL from ?redirect= query param so Fortify
+            // can redirect back to the invite page after successful login.
+            // Only allow internal paths (no scheme/host) to prevent open redirect.
+            $redirect = request()->query('redirect');
+            if ($redirect && is_string($redirect)) {
+                $parsed = parse_url($redirect);
+                $isSafeRelative = empty($parsed['scheme']) && empty($parsed['host']);
+                if ($isSafeRelative) {
+                    session()->put('url.intended', url($redirect));
+                }
+            }
+
             return Inertia::render('Auth/Login', [
                 'is_registration_enabled' => $settings->is_registration_enabled,
                 'enabled_oauth_providers' => $enabled_oauth_providers,
@@ -125,7 +137,36 @@ class FortifyServiceProvider extends ServiceProvider
                     // User is logging in for the first time after being invited
                     // Attach them to the invited team if not already attached
                     if (! $user->teams()->where('team_id', $invitation->team->id)->exists()) {
-                        $user->teams()->attach($invitation->team->id, ['role' => $invitation->role]);
+                        $pivotData = [
+                            'role' => $invitation->role ?? 'member',
+                            'invited_by' => $invitation->invited_by,
+                            'allowed_projects' => $invitation->allowed_projects,
+                        ];
+                        if ($invitation->permission_set_id) {
+                            $pivotData['permission_set_id'] = $invitation->permission_set_id;
+                        }
+                        $user->teams()->attach($invitation->team->id, $pivotData);
+
+                        // Handle custom permissions if specified
+                        /** @var array<int, array{permission_id: int, environment_restrictions: array<string, bool>}>|null $customPerms */
+                        $customPerms = $invitation->custom_permissions;
+                        if (! empty($customPerms)) {
+                            $personalSet = \App\Models\PermissionSet::create([
+                                'name' => "Personal - {$user->name}",
+                                'slug' => 'personal-'.$user->id.'-'.time(),
+                                'description' => 'Custom permissions assigned during invitation',
+                                'team_id' => $invitation->team->id,
+                                'is_system' => false,
+                            ]);
+                            foreach ($customPerms as $perm) {
+                                $personalSet->permissions()->attach($perm['permission_id'], [
+                                    'environment_restrictions' => json_encode($perm['environment_restrictions']),
+                                ]);
+                            }
+                            $user->teams()->updateExistingPivot($invitation->team->id, [
+                                'permission_set_id' => $personalSet->id,
+                            ]);
+                        }
                     }
                     $currentTeam = $invitation->team;
                     $invitation->delete();
