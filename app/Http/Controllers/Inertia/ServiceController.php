@@ -29,7 +29,18 @@ class ServiceController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('Services/Create');
+        $projects = Project::ownedByCurrentTeam()
+            ->with('environments')
+            ->get();
+
+        $servers = Server::ownedByCurrentTeam()
+            ->where('is_usable', true)
+            ->get();
+
+        return Inertia::render('Services/Create', [
+            'projects' => $projects,
+            'servers' => $servers,
+        ]);
     }
 
     /**
@@ -44,6 +55,7 @@ class ServiceController extends Controller
             'project_uuid' => 'required|string',
             'environment_uuid' => 'required|string',
             'server_uuid' => 'required|string',
+            'redirect_to' => 'nullable|string',
         ]);
 
         $project = Project::ownedByCurrentTeam()
@@ -77,6 +89,15 @@ class ServiceController extends Controller
             $service->parse();
         } catch (\Exception $e) {
             Log::warning('Failed to parse docker-compose: '.$e->getMessage());
+        }
+
+        // Redirect back to origin context (e.g. project canvas) if provided
+        if (! empty($validated['redirect_to'])) {
+            $redirectTo = $validated['redirect_to'];
+            // Only allow internal paths (prevent open redirect)
+            if (str_starts_with($redirectTo, '/') && ! str_starts_with($redirectTo, '//')) {
+                return redirect($redirectTo)->with('success', 'Service created successfully');
+            }
         }
 
         return redirect()->route('services.show', $service->uuid)

@@ -79,10 +79,18 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.index');
 
         Route::get('/create', function (Request $request) {
-            // Store return-to context so the GitHub OAuth flow can redirect back
+            // Store return-to context so the GitHub OAuth flow can redirect back after install.
+            // Supports:
+            //   ?from=boarding              → redirect to /boarding after install
+            //   ?from=/applications/create  → redirect to that internal path after install
+            //   ?from=/projects/{uuid}      → redirect back to the project canvas
             $from = $request->query('from');
-            if ($from === 'boarding') {
-                session(['github_app_return_to' => 'boarding']);
+            if ($from) {
+                if ($from === 'boarding') {
+                    session(['github_app_return_to' => 'boarding']);
+                } elseif (str_starts_with($from, '/') && ! str_starts_with($from, '//')) {
+                    session(['github_app_return_to' => $from]);
+                }
             }
 
             // Always use the current request URL for webhook registration.

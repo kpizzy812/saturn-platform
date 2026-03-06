@@ -397,12 +397,13 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
         }
     };
 
-    // Add Service handler - navigate to service creation page
+    // Add Service handler - navigate to service creation page with canvas as return destination
     const handleAddService = () => {
+        const fromUrl = encodeURIComponent(`/projects/${project?.uuid}`);
         if (selectedEnv) {
-            router.visit(`/services/create?project=${project?.uuid}&environment=${selectedEnv.uuid}`);
+            router.visit(`/services/create?project=${project?.uuid}&environment=${selectedEnv.uuid}&from=${fromUrl}`);
         } else {
-            router.visit(`/services/create?project=${project?.uuid}`);
+            router.visit(`/services/create?project=${project?.uuid}&from=${fromUrl}`);
         }
     };
 
@@ -1724,7 +1725,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     {/* Database */}
                                     <DropdownItem
                                         className="flex items-center gap-3 py-3"
-                                        onClick={() => router.visit(`/databases/create?project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
+                                        onClick={() => router.visit(`/databases/create?project=${project.uuid}&environment=${selectedEnv?.uuid}&from=${encodeURIComponent(`/projects/${project.uuid}`)}`)}
                                     >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#336791]">
                                             <Database className="h-4 w-4 text-white" />
@@ -1740,7 +1741,7 @@ export default function ProjectShow({ project, userRole = 'member', canManageEnv
                                     {/* Empty Service */}
                                     <DropdownItem
                                         className="flex items-center gap-3 py-3"
-                                        onClick={() => router.visit(`/services/create?project=${project.uuid}&environment=${selectedEnv?.uuid}`)}
+                                        onClick={() => router.visit(`/services/create?project=${project.uuid}&environment=${selectedEnv?.uuid}&from=${encodeURIComponent(`/projects/${project.uuid}`)}`)}
                                     >
                                         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-600">
                                             <Box className="h-4 w-4 text-white" />

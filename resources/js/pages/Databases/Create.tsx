@@ -85,14 +85,40 @@ type Step = 1 | 2 | 3;
 export default function DatabaseCreate() {
     const { projects, servers } = usePage<{ props: PageProps }>().props as unknown as PageProps;
 
+    // Read context from URL params (passed by canvas and other entry points)
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromParam = urlParams.get('from');
+    const projectParam = urlParams.get('project');
+    const environmentParam = urlParams.get('environment');
+
+    // Determine back URL: use from param if available, otherwise /databases
+    const backUrl = fromParam ? decodeURIComponent(fromParam) : '/databases';
+    const backLabel = fromParam ? 'Back' : 'Back to Databases';
+
     const [step, setStep] = useState<Step>(1);
     const [selectedType, setSelectedType] = useState<DatabaseType | null>(null);
     const [name, setName] = useState('');
     const [version, setVersion] = useState('');
     const [description, setDescription] = useState('');
     const [showAdvanced, setShowAdvanced] = useState(false);
-    const [selectedProjectUuid, setSelectedProjectUuid] = useState(() => projects?.[0]?.uuid ?? '');
-    const [selectedEnvironmentUuid, setSelectedEnvironmentUuid] = useState(() => projects?.[0]?.environments?.[0]?.uuid ?? '');
+    const [selectedProjectUuid, setSelectedProjectUuid] = useState(() => {
+        if (projectParam) {
+            const found = projects?.find(p => p.uuid === projectParam);
+            if (found) return found.uuid;
+        }
+        return projects?.[0]?.uuid ?? '';
+    });
+    const [selectedEnvironmentUuid, setSelectedEnvironmentUuid] = useState(() => {
+        const projectUuid = projectParam && projects?.find(p => p.uuid === projectParam)
+            ? projectParam
+            : projects?.[0]?.uuid ?? '';
+        const proj = projects?.find(p => p.uuid === projectUuid);
+        if (environmentParam) {
+            const found = proj?.environments.find(e => e.uuid === environmentParam);
+            if (found) return found.uuid;
+        }
+        return proj?.environments?.[0]?.uuid ?? '';
+    });
     const [selectedServerUuid, setSelectedServerUuid] = useState('');
 
     const selectedDbType = databaseTypes.find(db => db.type === selectedType);
@@ -122,6 +148,7 @@ export default function DatabaseCreate() {
             description,
             environment_uuid: selectedEnvironmentUuid || undefined,
             server_uuid: selectedServerUuid || undefined,
+            redirect_to: fromParam ? decodeURIComponent(fromParam) : null,
         });
     };
 
@@ -131,11 +158,11 @@ export default function DatabaseCreate() {
                 <div className="w-full max-w-2xl px-4">
                     {/* Back link */}
                     <Link
-                        href="/databases"
+                        href={backUrl}
                         className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Databases
+                        {backLabel}
                     </Link>
 
                     {/* Header */}
