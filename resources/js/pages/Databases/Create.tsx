@@ -388,7 +388,7 @@ export default function DatabaseCreate() {
                                                 </li>
                                                 <li className="flex items-start gap-2">
                                                     <Check className="mt-0.5 h-4 w-4 text-green-500" />
-                                                    <span>You'll be redirected to the database dashboard</span>
+                                                    <span>{fromParam ? "You'll be redirected back to your project" : "You'll be redirected to the database dashboard"}</span>
                                                 </li>
                                             </ul>
                                         </div>
