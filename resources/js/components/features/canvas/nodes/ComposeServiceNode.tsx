@@ -108,8 +108,10 @@ export const ComposeServiceNode = memo(({ data, selected }: { data: ComposeServi
                 {/* Header with Logo */}
                 <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 transition-all duration-200 group-hover:bg-purple-500/30">
-                            <ComposeLogo />
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400 transition-all duration-200 group-hover:bg-purple-500/30 group-hover:scale-110">
+                            <span className="transition-transform duration-200 group-hover:animate-wiggle">
+                                <ComposeLogo />
+                            </span>
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5">
                             <h3 className="font-medium text-foreground text-sm truncate">{data.label}</h3>
