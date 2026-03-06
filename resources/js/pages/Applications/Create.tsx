@@ -939,7 +939,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                             </p>
                                         </div>
                                     </div>
-                                ) : (
+                                ) : formData.source_type === 'docker' ? (
                                     <div data-error={!!errors.docker_image || undefined}>
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Docker Image *
@@ -954,7 +954,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                             error={errors.docker_image}
                                         />
                                     </div>
-                                )}
+                                ) : null}
 
                                 {/* Deployment Configuration */}
                                 <div className="space-y-4">

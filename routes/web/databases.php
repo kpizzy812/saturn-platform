@@ -112,6 +112,7 @@ Route::post('/databases', function (Request $request) {
         'description' => 'nullable|string',
         'environment_uuid' => 'nullable|string',
         'server_uuid' => 'nullable|string',
+        'redirect_to' => 'nullable|string',
     ]);
 
     // Get environment - either from request or use default (first project's production env)
@@ -186,6 +187,12 @@ Route::post('/databases', function (Request $request) {
     // Schedule a status check after container has time to start
     $server = $database->destination->server;
     ServerCheckJob::dispatch($server)->delay(now()->addSeconds(15));
+
+    // Redirect back to origin context (e.g. project canvas) if provided
+    $redirectTo = $request->input('redirect_to');
+    if ($redirectTo && str_starts_with($redirectTo, '/') && ! str_starts_with($redirectTo, '//')) {
+        return redirect($redirectTo)->with('success', 'Database created successfully');
+    }
 
     return redirect()->route('databases.show', $database->uuid);
 })->name('databases.store');
