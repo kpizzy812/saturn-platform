@@ -160,7 +160,9 @@ class StandalonePostgresql extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                return $this->destination->server->isFunctional();
+                $this->loadMissing('destination.server');
+
+                return $this->destination?->server?->isFunctional() ?? false;
             }
         );
     }
