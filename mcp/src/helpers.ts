@@ -124,6 +124,49 @@ export function summarizeDatabases(databases: any[]): DatabaseSummary[] {
     return Array.isArray(databases) ? databases.map(summarizeDatabase) : [];
 }
 
+export interface DeploymentSummary {
+    id: number;
+    deployment_uuid: string;
+    status: string;
+    commit: string | null;
+    commit_message: string | null;
+    git_type: string | null;
+    force_rebuild: boolean;
+    rollback: boolean;
+    is_api: boolean;
+    is_webhook: boolean;
+    requires_approval: boolean | null;
+    approval_status: string | null;
+    started_at: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+}
+
+export function summarizeDeployment(d: any): DeploymentSummary {
+    return {
+        id: d.id ?? 0,
+        deployment_uuid: d.deployment_uuid ?? '',
+        status: d.status ?? 'unknown',
+        commit: d.commit ?? null,
+        commit_message: d.commit_message ?? null,
+        git_type: d.git_type ?? null,
+        force_rebuild: d.force_rebuild ?? false,
+        rollback: d.rollback ?? false,
+        is_api: d.is_api ?? false,
+        is_webhook: d.is_webhook ?? false,
+        requires_approval: d.requires_approval ?? null,
+        approval_status: d.approval_status ?? null,
+        started_at: d.started_at ?? null,
+        created_at: d.created_at ?? null,
+        updated_at: d.updated_at ?? null,
+    };
+}
+
+export function summarizeDeployments(data: any): { count: number; deployments: DeploymentSummary[] } {
+    const deployments = Array.isArray(data?.deployments) ? data.deployments.map(summarizeDeployment) : [];
+    return { count: data?.count ?? deployments.length, deployments };
+}
+
 export interface ServiceSummary {
     uuid: string;
     name: string;
