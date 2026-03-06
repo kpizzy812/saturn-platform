@@ -1188,8 +1188,16 @@ Route::get('/environments/{uuid}/settings', function (string $uuid) {
     $currentUser = auth()->user();
     $userRole = $currentUser->roleInProject($environment->project);
 
+    // Fall back to team role if user has no explicit project membership
+    if (! $userRole) {
+        $teamMembership = $currentUser->teamMembership(currentTeam()->id);
+        $userRole = $teamMembership?->role;
+    }
+
     // Check if user can manage environment settings (owner/admin only)
-    $canManage = in_array($userRole, ['owner', 'admin']);
+    $canManage = in_array($userRole, ['owner', 'admin'])
+        || $currentUser->isSuperAdmin()
+        || $currentUser->isPlatformAdmin();
 
     return Inertia::render('Environments/Settings', [
         'environment' => [
