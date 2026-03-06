@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SaturnClient } from '../client.js';
+import { summarizeDeployments } from '../helpers.js';
 
 export function registerDeploymentTools(server: McpServer, client: SaturnClient): void {
     // ── Trigger ───────────────────────────────────────────────────────────
@@ -95,14 +96,22 @@ export function registerDeploymentTools(server: McpServer, client: SaturnClient)
         'saturn_list_application_deployments',
         {
             title: 'List Application Deployments',
-            description: 'Get deployment history for a specific application.',
+            description:
+                'Get deployment history for a specific application (compact summary, no logs). ' +
+                'Use saturn_get_deployment_logs to fetch logs for a specific deployment UUID.',
             inputSchema: z.object({
                 uuid: z.string().describe('Application UUID'),
+                skip: z.number().int().min(0).optional().describe('Skip first N deployments (default: 0)'),
+                take: z.number().int().min(1).max(50).optional().describe('Max deployments to return (default: 10)'),
             }),
         },
-        async ({ uuid }) => {
-            const data = await client.get(`/deployments/applications/${uuid}`);
-            return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+        async ({ uuid, skip, take }) => {
+            const params = new URLSearchParams();
+            if (skip !== undefined) params.set('skip', String(skip));
+            if (take !== undefined) params.set('take', String(take));
+            const query = params.toString() ? `?${params.toString()}` : '';
+            const data = await client.get<any>(`/deployments/applications/${uuid}${query}`);
+            return { content: [{ type: 'text', text: JSON.stringify(summarizeDeployments(data), null, 2) }] };
         },
     );
 
