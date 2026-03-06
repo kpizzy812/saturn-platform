@@ -158,7 +158,7 @@ export function DatabaseCredentialsTab({ service }: DatabaseCredentialsTabProps)
                                 <code className="text-sm text-foreground">
                                     {credentials.password
                                         ? (showPassword ? credentials.password : '••••••••••••••••')
-                                        : '(not available - requires read:sensitive permission)'}
+                                        : '(not set)'}
                                 </code>
                             </div>
                             <div className="flex gap-1">
