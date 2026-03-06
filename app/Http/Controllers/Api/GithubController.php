@@ -397,12 +397,12 @@ class GithubController extends ApiController
             }
 
             $slim = $repositories->sortBy('name')->values()->map(fn ($repo) => [
-                'id'             => $repo['id'],
-                'name'           => $repo['name'],
-                'full_name'      => $repo['full_name'],
-                'private'        => $repo['private'],
-                'description'    => $repo['description'] ?? null,
-                'html_url'       => $repo['html_url'],
+                'id' => $repo['id'],
+                'name' => $repo['name'],
+                'full_name' => $repo['full_name'],
+                'private' => $repo['private'],
+                'description' => $repo['description'] ?? null,
+                'html_url' => $repo['html_url'],
                 'default_branch' => $repo['default_branch'] ?? 'main',
             ]);
 
