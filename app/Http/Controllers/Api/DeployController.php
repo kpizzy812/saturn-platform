@@ -744,6 +744,12 @@ class DeployController extends ApiController
 
         $deployments = $application->deployments($skip, $take);
 
+        // Exclude the large `logs` JSON column and eager-loaded relations from list responses.
+        // Use GET /deployments/{uuid}/logs for the full log output.
+        $deployments['deployments'] = $deployments['deployments']->map(
+            fn ($d) => $d->unsetRelation('application')->makeHidden(['logs'])->toArray()
+        );
+
         return response()->json($deployments);
     }
 }
