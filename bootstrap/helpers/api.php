@@ -20,12 +20,9 @@ function getTeamIdFromToken()
         return data_get($token, 'team_id');
     }
 
-    // Session auth fallback (SPA): use current team
-    // Security: Block session fallback for API routes to prevent team mismatch
-    if (request()->is('api/*')) {
-        return null;
-    }
-
+    // Session auth fallback (SPA): use current team.
+    // External API consumers always have a Bearer token with team_id (enforced by api.ability middleware),
+    // so reaching here means the request is from the SPA with cookie/CSRF auth.
     $currentTeam = $user->currentTeam();
     if ($currentTeam) {
         return $currentTeam->id;

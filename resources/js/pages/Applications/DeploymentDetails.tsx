@@ -185,7 +185,15 @@ export default function DeploymentDetails({
             variant: 'danger',
         });
         if (!confirmed) return;
-        router.post(`/api/v1/deployments/${deployment.deployment_uuid}/cancel`);
+        await fetch(`/api/v1/deployments/${deployment.deployment_uuid}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content ?? '',
+            },
+            credentials: 'include',
+        });
+        router.reload();
     };
 
     const handleRedeploy = () => {
