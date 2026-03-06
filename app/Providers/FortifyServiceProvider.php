@@ -107,17 +107,32 @@ class FortifyServiceProvider extends ServiceProvider
             // can redirect back to the invite page after successful login.
             // Only allow internal paths (no scheme/host) to prevent open redirect.
             $redirect = request()->query('redirect');
+            $registrationInvite = null;
             if ($redirect && is_string($redirect)) {
                 $parsed = parse_url($redirect);
                 $isSafeRelative = empty($parsed['scheme']) && empty($parsed['host']);
                 if ($isSafeRelative) {
                     session()->put('url.intended', url($redirect));
+
+                    // If redirected from a team invitation page, pass register link so
+                    // unauthenticated users can create an account directly from the login page.
+                    if (preg_match('#^/auth/invitations/([a-f0-9\-]+)$#i', $redirect, $m)) {
+                        $invitation = TeamInvitation::where('uuid', $m[1])->first();
+                        if ($invitation && $invitation->isValid()) {
+                            $registrationInvite = [
+                                'uuid' => $invitation->uuid,
+                                'team_name' => $invitation->team->name,
+                                'register_url' => '/register?invite='.$invitation->uuid,
+                            ];
+                        }
+                    }
                 }
             }
 
             return Inertia::render('Auth/Login', [
                 'is_registration_enabled' => $settings->is_registration_enabled,
                 'enabled_oauth_providers' => $enabled_oauth_providers,
+                'registration_invite' => $registrationInvite,
             ]);
         });
 

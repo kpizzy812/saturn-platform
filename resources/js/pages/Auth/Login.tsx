@@ -10,11 +10,18 @@ interface OAuthProvider {
     enabled: boolean;
 }
 
+interface RegistrationInvite {
+    uuid: string;
+    team_name: string;
+    register_url: string;
+}
+
 interface Props {
     canResetPassword: boolean;
     status?: string;
     is_registration_enabled?: boolean;
     enabled_oauth_providers?: OAuthProvider[];
+    registration_invite?: RegistrationInvite | null;
 }
 
 const providerConfig: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -31,6 +38,7 @@ export default function Login({
     status,
     is_registration_enabled = true,
     enabled_oauth_providers = [],
+    registration_invite,
 }: Props) {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
@@ -148,9 +156,23 @@ export default function Login({
             </form>
 
             {/* Register Link */}
-            {is_registration_enabled && (
+            {registration_invite ? (
+                <p className="mt-6 text-center text-sm text-foreground-muted">
+                    Invited to <span className="font-medium text-foreground">{registration_invite.team_name}</span>?{' '}
+                    <Link href={registration_invite.register_url} className="text-primary hover:underline">
+                        Create account
+                    </Link>
+                </p>
+            ) : is_registration_enabled ? (
                 <p className="mt-6 text-center text-sm text-foreground-muted">
                     Don't have an account?{' '}
+                    <Link href="/register" className="text-primary hover:underline">
+                        Sign up
+                    </Link>
+                </p>
+            ) : (
+                <p className="mt-6 text-center text-sm text-foreground-muted">
+                    Have an invitation?{' '}
                     <Link href="/register" className="text-primary hover:underline">
                         Sign up
                     </Link>
