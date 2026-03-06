@@ -972,7 +972,9 @@ class Application extends BaseModel
     {
         return Attribute::make(
             get: function () {
-                // Check main server infrastructure health
+                // Check main server infrastructure health (load relations to avoid lazy loading violation)
+                $this->loadMissing('destination');
+                $this->destination?->loadMissing('server');
                 $main_server_functional = $this->destination?->server?->isFunctional() ?? false;
 
                 if (! $main_server_functional) {
