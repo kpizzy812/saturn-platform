@@ -249,8 +249,10 @@ sync_db_password() {
     db_name=$(grep '^DB_DATABASE=' "${SATURN_DATA}/source/.env" | cut -d= -f2- || echo "saturn")
 
     if [[ -n "$db_password" ]]; then
+        # Escape single quotes for SQL string literal (standard conforming strings: ' → '')
+        local db_password_sql="${db_password//\'/\'\'}"
         docker exec "${CONTAINER_DB}" psql -U "${db_user}" -d "${db_name}" \
-            -c "ALTER USER \"${db_user}\" PASSWORD '${db_password}';" > /dev/null 2>&1 || true
+            -c "ALTER USER \"${db_user}\" PASSWORD '${db_password_sql}';" > /dev/null 2>&1 || true
         log_success "Database password synced"
     fi
 }
