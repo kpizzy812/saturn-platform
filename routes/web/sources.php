@@ -79,10 +79,18 @@ Route::prefix('sources')->group(function () {
         })->name('sources.github.index');
 
         Route::get('/create', function (Request $request) {
-            // Store return-to context so the GitHub OAuth flow can redirect back
+            // Store return-to context so the GitHub OAuth flow can redirect back after install.
+            // Supports:
+            //   ?from=boarding              → redirect to /boarding after install
+            //   ?from=/applications/create  → redirect to that internal path after install
+            //   ?from=/projects/{uuid}      → redirect back to the project canvas
             $from = $request->query('from');
-            if ($from === 'boarding') {
-                session(['github_app_return_to' => 'boarding']);
+            if ($from) {
+                if ($from === 'boarding') {
+                    session(['github_app_return_to' => 'boarding']);
+                } elseif (str_starts_with($from, '/') && ! str_starts_with($from, '//')) {
+                    session(['github_app_return_to' => $from]);
+                }
             }
 
             // Always use the current request URL for webhook registration.
@@ -274,7 +282,15 @@ Route::prefix('sources')->group(function () {
             ]);
         })->name('sources.gitlab.index');
 
-        Route::get('/create', fn () => Inertia::render('Sources/GitLab/Create'))->name('sources.gitlab.create');
+        Route::get('/create', function (Request $request) {
+            $from = $request->query('from');
+            // Only pass safe internal paths as the return context
+            $safFrom = ($from && str_starts_with($from, '/') && ! str_starts_with($from, '//')) ? $from : null;
+
+            return Inertia::render('Sources/GitLab/Create', [
+                'from' => $safFrom,
+            ]);
+        })->name('sources.gitlab.create');
 
         Route::post('/', function (Request $request) {
             if (! in_array(auth()->user()->role(), ['owner', 'admin'])) {
@@ -288,6 +304,7 @@ Route::prefix('sources')->group(function () {
                 'app_id' => 'nullable|integer',
                 'app_secret' => 'nullable|string',
                 'group_name' => 'nullable|string|max:255',
+                'redirect_to' => 'nullable|string',
             ]);
 
             $team = auth()->user()->currentTeam();
@@ -302,6 +319,12 @@ Route::prefix('sources')->group(function () {
             $gitlabApp->group_name = $validated['group_name'] ?? null;
             $gitlabApp->team_id = $team->id;
             $gitlabApp->save();
+
+            // Redirect back to origin context if provided (prevent open redirect)
+            $redirectTo = $validated['redirect_to'] ?? null;
+            if ($redirectTo && str_starts_with($redirectTo, '/') && ! str_starts_with($redirectTo, '//')) {
+                return redirect($redirectTo)->with('success', 'GitLab connection created successfully');
+            }
 
             return redirect()->route('sources.gitlab.show', ['id' => $gitlabApp->id])
                 ->with('success', 'GitLab connection created successfully');

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
-import { router, Link } from '@inertiajs/react';
+import { router, Link, usePage } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
-import { Card, CardContent, Button, Input, Textarea } from '@/components/ui';
+import { Card, CardContent, Button, Input, Textarea, Select } from '@/components/ui';
 import { ArrowLeft, Check, Container, Search, Box, Sparkles, FileCode, ArrowRight } from 'lucide-react';
 import { validateDockerCompose } from '@/lib/validation';
 
@@ -16,14 +16,43 @@ interface Template {
     featured?: boolean;
 }
 
+interface Environment {
+    uuid: string;
+    name: string;
+}
+
+interface Project {
+    uuid: string;
+    name: string;
+    environments: Environment[];
+}
+
+interface Server {
+    uuid: string;
+    name: string;
+    is_reachable: boolean;
+}
+
 interface Props {
     templates?: Template[];
+    projects?: Project[];
+    servers?: Server[];
 }
 
 type CreateMode = 'select' | 'template' | 'custom';
 type Step = 1 | 2;
 
-export default function ServiceCreate({ templates = [] }: Props) {
+export default function ServiceCreate({ templates = [], projects = [], servers = [] }: Props) {
+    // Read context from URL params (passed by canvas and other entry points)
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromParam = urlParams.get('from');
+    const projectParam = urlParams.get('project');
+    const environmentParam = urlParams.get('environment');
+
+    // Determine back URL: use from param if available, otherwise /services
+    const backUrl = fromParam ? decodeURIComponent(fromParam) : '/services';
+    const backLabel = fromParam ? 'Back' : 'Back to Services';
+
     const [mode, setMode] = useState<CreateMode>('select');
     const [step, setStep] = useState<Step>(1);
     const [name, setName] = useState('');
@@ -31,6 +60,30 @@ export default function ServiceCreate({ templates = [] }: Props) {
     const [dockerCompose, setDockerCompose] = useState('');
     const [dockerComposeError, setDockerComposeError] = useState<string>();
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Project / environment / server selection — pre-select from URL params if available
+    const [selectedProjectUuid, setSelectedProjectUuid] = useState<string>(() => {
+        if (projectParam) {
+            const found = projects.find(p => p.uuid === projectParam);
+            if (found) return found.uuid;
+        }
+        return projects[0]?.uuid ?? '';
+    });
+    const [selectedEnvironmentUuid, setSelectedEnvironmentUuid] = useState<string>(() => {
+        const projectUuid = projectParam && projects.find(p => p.uuid === projectParam)
+            ? projectParam
+            : projects[0]?.uuid ?? '';
+        const proj = projects.find(p => p.uuid === projectUuid);
+        if (environmentParam) {
+            const found = proj?.environments.find(e => e.uuid === environmentParam);
+            if (found) return found.uuid;
+        }
+        return proj?.environments[0]?.uuid ?? '';
+    });
+    const [selectedServerUuid, setSelectedServerUuid] = useState<string>(servers[0]?.uuid ?? '');
+
+    const selectedProject = projects.find(p => p.uuid === selectedProjectUuid);
+    const availableEnvironments = selectedProject?.environments ?? [];
 
     const handleDockerComposeChange = (value: string) => {
         setDockerCompose(value);
@@ -47,6 +100,10 @@ export default function ServiceCreate({ templates = [] }: Props) {
             name,
             description,
             docker_compose_raw: dockerCompose,
+            project_uuid: selectedProjectUuid,
+            environment_uuid: selectedEnvironmentUuid,
+            server_uuid: selectedServerUuid,
+            redirect_to: fromParam ? decodeURIComponent(fromParam) : null,
         });
     };
 
@@ -63,7 +120,8 @@ export default function ServiceCreate({ templates = [] }: Props) {
         return templates.filter(t => t.featured).slice(0, 6);
     }, [templates]);
 
-    const isStepOneValid = name && dockerCompose && !dockerComposeError;
+    const isStepOneValid = name && dockerCompose && !dockerComposeError
+        && selectedProjectUuid && selectedEnvironmentUuid && selectedServerUuid;
 
     // Mode selection screen
     if (mode === 'select') {
@@ -72,11 +130,11 @@ export default function ServiceCreate({ templates = [] }: Props) {
                 <div className="flex min-h-full items-start justify-center py-12">
                     <div className="w-full max-w-3xl px-4">
                         <Link
-                            href="/services"
+                            href={backUrl}
                             className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
                         >
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Services
+                            {backLabel}
                         </Link>
 
                         <div className="mb-8 text-center">
@@ -141,6 +199,7 @@ export default function ServiceCreate({ templates = [] }: Props) {
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to options
                     </button>
+
 
                     <div className="mb-8">
                         <h1 className="mb-2 text-2xl font-semibold text-foreground">Choose a Template</h1>
@@ -214,7 +273,7 @@ export default function ServiceCreate({ templates = [] }: Props) {
                         className="mb-6 inline-flex items-center text-sm text-foreground-muted transition-colors hover:text-foreground"
                     >
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to options
+                        {step === 1 ? 'Back to options' : 'Back'}
                     </button>
 
                     <div className="mb-8 text-center">
@@ -261,6 +320,51 @@ export default function ServiceCreate({ templates = [] }: Props) {
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
                                         />
+
+                                        <Select
+                                            label="Project *"
+                                            value={selectedProjectUuid}
+                                            onChange={(e) => {
+                                                const newUuid = e.target.value;
+                                                setSelectedProjectUuid(newUuid);
+                                                const proj = projects.find(p => p.uuid === newUuid);
+                                                setSelectedEnvironmentUuid(proj?.environments[0]?.uuid ?? '');
+                                            }}
+                                        >
+                                            <option value="" disabled>Select a project</option>
+                                            {projects.map((project) => (
+                                                <option key={project.uuid} value={project.uuid}>
+                                                    {project.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+
+                                        <Select
+                                            label="Environment *"
+                                            value={selectedEnvironmentUuid}
+                                            onChange={(e) => setSelectedEnvironmentUuid(e.target.value)}
+                                            disabled={!selectedProjectUuid || availableEnvironments.length === 0}
+                                        >
+                                            <option value="" disabled>Select an environment</option>
+                                            {availableEnvironments.map((env) => (
+                                                <option key={env.uuid} value={env.uuid}>
+                                                    {env.name}
+                                                </option>
+                                            ))}
+                                        </Select>
+
+                                        <Select
+                                            label="Server *"
+                                            value={selectedServerUuid}
+                                            onChange={(e) => setSelectedServerUuid(e.target.value)}
+                                        >
+                                            <option value="" disabled>Select a server</option>
+                                            {servers.map((server) => (
+                                                <option key={server.uuid} value={server.uuid}>
+                                                    {server.name} {server.is_reachable ? '✓' : '(offline)'}
+                                                </option>
+                                            ))}
+                                        </Select>
 
                                         <Textarea
                                             label="Docker Compose Configuration"
@@ -309,6 +413,21 @@ services:
                                                 <p className="font-medium text-foreground">{name}</p>
                                                 <p className="text-sm text-foreground-muted">
                                                     Docker Compose Service
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Project</label>
+                                                <p className="text-sm text-foreground">
+                                                    {projects.find(p => p.uuid === selectedProjectUuid)?.name ?? '—'}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-lg border border-border bg-background-secondary p-4">
+                                                <label className="mb-1 block text-sm font-medium text-foreground-muted">Environment</label>
+                                                <p className="text-sm text-foreground">
+                                                    {availableEnvironments.find(e => e.uuid === selectedEnvironmentUuid)?.name ?? '—'}
                                                 </p>
                                             </div>
                                         </div>

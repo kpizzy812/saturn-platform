@@ -385,7 +385,7 @@ export function RepoSelector({ githubApps, onRepoSelected, value = '', branch = 
                                         Connect a GitHub App to browse repositories, deploy private repos, and enable auto-deploy on push.
                                     </p>
                                     <a
-                                        href="/sources/github/create"
+                                        href={`/sources/github/create?from=${encodeURIComponent(window.location.pathname + window.location.search)}`}
                                         className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary/90"
                                     >
                                         <Github className="h-4 w-4" />

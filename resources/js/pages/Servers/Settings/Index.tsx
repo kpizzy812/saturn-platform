@@ -86,39 +86,41 @@ export default function ServerSettingsIndex({ server }: Props) {
                 ))}
             </div>
 
-            {/* Danger Zone */}
-            <Card className="border-danger/50">
-                <CardHeader>
-                    <CardTitle className="text-danger">Danger Zone</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-medium text-foreground">Delete this server</h4>
-                            <p className="mt-1 text-sm text-foreground-muted">
-                                Once you delete a server, there is no going back. Please be certain.
-                            </p>
+            {/* Danger Zone — hidden for localhost server */}
+            {!server.is_localhost && (
+                <Card className="border-danger/50">
+                    <CardHeader>
+                        <CardTitle className="text-danger">Danger Zone</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="font-medium text-foreground">Delete this server</h4>
+                                <p className="mt-1 text-sm text-foreground-muted">
+                                    Once you delete a server, there is no going back. Please be certain.
+                                </p>
+                            </div>
+                            <Button
+                                variant="danger"
+                                onClick={async () => {
+                                    const confirmed = await confirm({
+                                        title: 'Delete Server',
+                                        description: `Are you sure you want to delete "${server.name}"? This action cannot be undone.`,
+                                        confirmText: 'Delete',
+                                        variant: 'danger',
+                                    });
+                                    if (confirmed) {
+                                        router.delete(`/servers/${server.uuid}`);
+                                    }
+                                }}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Server
+                            </Button>
                         </div>
-                        <Button
-                            variant="danger"
-                            onClick={async () => {
-                                const confirmed = await confirm({
-                                    title: 'Delete Server',
-                                    description: `Are you sure you want to delete "${server.name}"? This action cannot be undone.`,
-                                    confirmText: 'Delete',
-                                    variant: 'danger',
-                                });
-                                if (confirmed) {
-                                    router.delete(`/servers/${server.uuid}`);
-                                }
-                            }}
-                        >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete Server
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
         </AppLayout>
     );
 }

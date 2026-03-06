@@ -454,7 +454,7 @@ function SettingsTab({ server, can }: { server: ServerType; can: (permission: st
             </div>
 
             {/* Danger Zone */}
-            {can('servers.delete') && (
+            {can('servers.delete') && !server.is_localhost && (
                 <Card className="border-danger/50">
                     <CardHeader>
                         <CardTitle className="text-danger">Danger Zone</CardTitle>

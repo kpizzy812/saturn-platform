@@ -509,7 +509,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                             Connect a GitHub App to browse your repositories, deploy private repos, and enable automatic deploys on push.
                                                         </p>
                                                         <a
-                                                            href="/sources/github/create"
+                                                            href="/sources/github/create?from=%2Fapplications%2Fcreate"
                                                             className="inline-flex items-center gap-1.5 mt-3 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
                                                         >
                                                             <Github className="h-4 w-4" />
@@ -725,7 +725,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                                                 </div>
                                                                 <div className="flex flex-wrap gap-2">
                                                                     <a
-                                                                        href="/sources/github/create"
+                                                                        href="/sources/github/create?from=%2Fapplications%2Fcreate"
                                                                         target="_blank"
                                                                         rel="noopener noreferrer"
                                                                         className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90 transition-colors"

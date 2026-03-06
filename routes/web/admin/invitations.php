@@ -42,6 +42,26 @@ Route::delete('/invitations/{id}', function (int $id) {
 Route::post('/invitations/{id}/resend', function (int $id) {
     $invitation = \App\Models\TeamInvitation::findOrFail($id);
 
-    // Resend logic would go here - for now just flash success
-    return back()->with('success', 'Invitation resent');
+    if (! $invitation->isValid()) {
+        return back()->with('error', 'Cannot resend an expired invitation. Please delete it and create a new one.');
+    }
+
+    // Regenerate UUID so the old link is invalidated
+    $uuid = (string) \Illuminate\Support\Str::uuid();
+    $invitation->update([
+        'uuid' => $uuid,
+        'link' => url("/auth/invitations/{$uuid}"),
+    ]);
+
+    // Try to send email notification
+    try {
+        $user = \App\Models\User::where('email', $invitation->email)->first();
+        if ($user) {
+            $user->notify(new \App\Notifications\TransactionalEmails\InvitationLink($user));
+        }
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::warning('Admin resend invitation email failed: '.$e->getMessage());
+    }
+
+    return back()->with('success', 'Invitation resent successfully');
 })->name('admin.invitations.resend');

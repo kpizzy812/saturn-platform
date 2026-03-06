@@ -4,7 +4,11 @@ import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Button, Input } from '@/components/ui';
 import { GitBranch, ArrowLeft, Info, ExternalLink } from 'lucide-react';
 
-export default function GitLabCreate() {
+interface Props {
+    from?: string;
+}
+
+export default function GitLabCreate({ from }: Props) {
     const [name, setName] = useState('');
     const [apiUrl, setApiUrl] = useState('https://gitlab.com/api/v4');
     const [htmlUrl, setHtmlUrl] = useState('https://gitlab.com');
@@ -12,6 +16,12 @@ export default function GitLabCreate() {
     const [appSecret, setAppSecret] = useState('');
     const [groupName, setGroupName] = useState('');
     const [submitting, setSubmitting] = useState(false);
+
+    // Resolve the back URL and label from the `from` context
+    const backUrl = from && from.startsWith('/') && !from.startsWith('//')
+        ? from
+        : '/sources/gitlab';
+    const backLabel = from ? 'Back' : 'Back to GitLab Sources';
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -23,6 +33,7 @@ export default function GitLabCreate() {
             app_id: appId ? parseInt(appId, 10) : null,
             app_secret: appSecret || null,
             group_name: groupName || null,
+            redirect_to: from || null,
         }, {
             onError: () => setSubmitting(false),
         });
@@ -43,10 +54,10 @@ export default function GitLabCreate() {
             <div className="max-w-2xl mx-auto space-y-6">
                 {/* Header */}
                 <div className="flex items-center gap-4">
-                    <Link href="/sources/gitlab">
+                    <Link href={backUrl}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
-                            Back
+                            {backLabel}
                         </Button>
                     </Link>
                 </div>
