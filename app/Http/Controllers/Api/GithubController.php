@@ -396,8 +396,18 @@ class GithubController extends ApiController
                 $page++;
             }
 
+            $slim = $repositories->sortBy('name')->values()->map(fn ($repo) => [
+                'id'             => $repo['id'],
+                'name'           => $repo['name'],
+                'full_name'      => $repo['full_name'],
+                'private'        => $repo['private'],
+                'description'    => $repo['description'] ?? null,
+                'html_url'       => $repo['html_url'],
+                'default_branch' => $repo['default_branch'] ?? 'main',
+            ]);
+
             return response()->json([
-                'repositories' => $repositories->sortBy('name')->values(),
+                'repositories' => $slim,
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['message' => 'GitHub app not found'], 404);
