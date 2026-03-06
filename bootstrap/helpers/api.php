@@ -16,7 +16,7 @@ function getTeamIdFromToken()
 
     // API token auth: get team_id from token
     $token = $user->currentAccessToken();
-    if ($token && data_get($token, 'team_id')) {
+    if ($token && data_get($token, 'team_id') !== null) {
         return data_get($token, 'team_id');
     }
 
