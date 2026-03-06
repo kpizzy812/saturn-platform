@@ -301,7 +301,7 @@ Route::group([
         \App\Jobs\SyncSaturnYamlJob::dispatch(
             $environment->id,
             $validated['content'],
-            auth()->user()?->name ?? 'api',
+            auth()->user()->name ?? 'api',
         );
 
         return response()->json(['message' => 'saturn.yaml sync job dispatched.']);
@@ -356,6 +356,7 @@ Route::group([
     Route::get('/deployments', [DeployController::class, 'deployments'])->middleware(['api.ability:read']);
     Route::get('/deployments/{uuid}', [DeployController::class, 'deployment_by_uuid'])->middleware(['api.ability:read']);
     // Rate limited log streaming endpoint - 60 requests per minute
+    // Supports pagination: offset, limit (max 500), tail (last N entries), errors_only
     Route::get('/deployments/{uuid}/logs', function ($uuid) {
         $teamId = getTeamIdFromToken();
         if (is_null($teamId)) {
@@ -375,20 +376,66 @@ Route::group([
 
         // Security: hide logs for non-sensitive tokens (logs may contain env vars)
         $canReadSensitive = request()->attributes->get('can_read_sensitive', false);
-        $parsedLogs = [];
 
-        if ($canReadSensitive) {
-            $logs = $deployment->logs;
-            if ($logs) {
-                $parsedLogs = json_decode($logs, true) ?: [];
-            }
+        if (! $canReadSensitive) {
+            return response()->json([
+                'deployment_uuid' => $deployment->deployment_uuid,
+                'status' => $deployment->status,
+                'logs' => [],
+                'total' => 0,
+                'message' => 'Logs require read:sensitive token ability.',
+            ]);
         }
 
-        return response()->json([
+        // Parse pagination params
+        $limit = min((int) request()->query('limit', 200), 500);
+        $offset = max((int) request()->query('offset', 0), 0);
+        $tail = request()->query('tail') !== null ? max((int) request()->query('tail'), 1) : null;
+        $errorsOnly = filter_var(request()->query('errors_only', false), FILTER_VALIDATE_BOOLEAN);
+
+        // Query from optimized log entries table
+        $query = \App\Models\DeploymentLogEntry::where('deployment_id', $deployment->id)
+            ->where('hidden', false)
+            ->orderBy('order');
+
+        if ($errorsOnly) {
+            $query->where('type', 'stderr');
+        }
+
+        $total = $query->count();
+
+        if ($tail !== null) {
+            // tail: return the last N entries (useful for finding failure point)
+            $logs = $query->latest('order')->limit($tail)->get()->reverse()->values();
+        } else {
+            $logs = $query->offset($offset)->limit($limit)->get();
+        }
+
+        $formattedLogs = $logs->map(fn ($entry) => [
+            'order' => $entry->order,
+            'command' => $entry->command,
+            'output' => $entry->output,
+            'type' => $entry->type,
+            'stage' => $entry->stage,
+            'timestamp' => $entry->created_at->toIso8601String(),
+        ])->values();
+
+        $response = [
             'deployment_uuid' => $deployment->deployment_uuid,
             'status' => $deployment->status,
-            'logs' => $parsedLogs,
-        ]);
+            'total' => $total,
+            'logs' => $formattedLogs,
+        ];
+
+        if ($tail !== null) {
+            $response['tail'] = $tail;
+        } else {
+            $response['offset'] = $offset;
+            $response['limit'] = $limit;
+            $response['has_more'] = ($offset + $limit) < $total;
+        }
+
+        return response()->json($response);
     })->middleware(['api.ability:read', 'throttle:60,1']);
     Route::post('/deployments/{uuid}/cancel', [DeployController::class, 'cancel_deployment'])->middleware(['api.ability:deploy']);
     Route::post('/deployments/{uuid}/promote', [DeployController::class, 'promote'])->middleware(['api.ability:deploy']);

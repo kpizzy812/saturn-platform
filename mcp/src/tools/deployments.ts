@@ -61,13 +61,32 @@ export function registerDeploymentTools(server: McpServer, client: SaturnClient)
             title: 'Get Deployment Logs',
             description:
                 'Fetch status and build logs for a specific deployment. ' +
-                'Poll until status is "finished" or "failed". Use saturn_get_application_logs for runtime logs.',
+                'Poll until status is "finished" or "failed". Use saturn_get_application_logs for runtime logs.\n\n' +
+                'PAGINATION: Logs can be large. Use these params to avoid token overflow:\n' +
+                '- tail=50 — get the last 50 lines (best for diagnosing failures)\n' +
+                '- errors_only=true — return only stderr/error lines\n' +
+                '- offset + limit — page through all logs (default limit=200, max=500)\n' +
+                '- Check "has_more" in response to know if more pages exist\n\n' +
+                'RECOMMENDED WORKFLOW for failed deployments:\n' +
+                '1. Call with tail=100 to see the end of the log\n' +
+                '2. If not enough, call with errors_only=true to see all error lines\n' +
+                '3. Use offset/limit to read earlier sections if needed',
             inputSchema: z.object({
                 deployment_uuid: z.string().describe('Deployment UUID returned by saturn_deploy'),
+                offset: z.number().int().min(0).optional().describe('Skip first N log entries (default: 0)'),
+                limit: z.number().int().min(1).max(500).optional().describe('Max entries to return (default: 200, max: 500)'),
+                tail: z.number().int().min(1).optional().describe('Return last N log entries — best for finding errors at the end of a failed build'),
+                errors_only: z.boolean().optional().describe('Return only stderr/error lines to quickly find the root cause'),
             }),
         },
-        async ({ deployment_uuid }) => {
-            const data = await client.get(`/deployments/${deployment_uuid}/logs`);
+        async ({ deployment_uuid, offset, limit, tail, errors_only }) => {
+            const params = new URLSearchParams();
+            if (offset !== undefined) params.set('offset', String(offset));
+            if (limit !== undefined) params.set('limit', String(limit));
+            if (tail !== undefined) params.set('tail', String(tail));
+            if (errors_only !== undefined) params.set('errors_only', String(errors_only));
+            const query = params.toString() ? `?${params.toString()}` : '';
+            const data = await client.get(`/deployments/${deployment_uuid}/logs${query}`);
             return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
         },
     );

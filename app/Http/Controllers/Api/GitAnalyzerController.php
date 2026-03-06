@@ -382,10 +382,11 @@ class GitAnalyzerController extends Controller
     }
 
     /**
-     * Clone repository to temporary directory
+     * Clone repository to temporary directory.
      *
-     * Uses Laravel Process for better timeout handling and security.
-     * For private repos, authenticates via GitHub App installation token.
+     * Authentication priority:
+     *   1. github_app_id  → GitHub App installation token (HTTPS; SSH URLs are converted first)
+     *   2. private_key_id → SSH deploy key via GIT_SSH_COMMAND
      *
      * @throws \RuntimeException
      */
@@ -395,8 +396,9 @@ class GitAnalyzerController extends Controller
 
         $branch = $config['git_branch'] ?? 'main';
         $repository = $config['git_repository'];
+        $gitEnv = [];
 
-        // If github_app_id provided, get installation token for authenticated clone
+        // ── GitHub App token auth ─────────────────────────────────────────────
         if (! empty($config['github_app_id'])) {
             $githubApp = GithubApp::where('id', $config['github_app_id'])
                 ->where(function ($query) {
@@ -405,25 +407,63 @@ class GitAnalyzerController extends Controller
                 })
                 ->first();
 
-            if ($githubApp && $githubApp->installation_id) {
-                try {
-                    $token = generateGithubInstallationToken($githubApp);
-                    // Replace https://github.com/owner/repo with token-authenticated URL
-                    $repository = preg_replace(
-                        '#^https://github\.com/#',
-                        "https://x-access-token:{$token}@github.com/",
-                        $repository
-                    );
-                } catch (\Throwable $e) {
-                    throw new \RuntimeException(
-                        'Failed to authenticate with GitHub App: '.$e->getMessage()
-                    );
-                }
+            if (! $githubApp) {
+                throw new \RuntimeException(
+                    'GitHub App not found or does not belong to your team.'
+                );
             }
+
+            if (! $githubApp->installation_id) {
+                throw new \RuntimeException(
+                    "GitHub App '{$githubApp->name}' has no installation ID. Install it on the repository first."
+                );
+            }
+
+            try {
+                $token = generateGithubInstallationToken($githubApp);
+
+                // Convert SSH URL (git@github.com:owner/repo.git) to HTTPS before injecting token
+                $repository = preg_replace(
+                    '#^git@github\.com:(.+)$#',
+                    'https://github.com/$1',
+                    $repository
+                );
+
+                // Inject token into HTTPS URL
+                $repository = preg_replace(
+                    '#^https://github\.com/#',
+                    "https://x-access-token:{$token}@github.com/",
+                    $repository
+                );
+            } catch (\Throwable $e) {
+                throw new \RuntimeException(
+                    'Failed to authenticate with GitHub App: '.$e->getMessage()
+                );
+            }
+        }
+        // ── SSH deploy key auth ───────────────────────────────────────────────
+        elseif (! empty($config['private_key_id'])) {
+            $privateKey = \App\Models\PrivateKey::find($config['private_key_id']);
+
+            if (! $privateKey) {
+                throw new \RuntimeException('Deploy key not found.');
+            }
+
+            // Write private key to a temp file readable only by current process
+            $keyPath = sys_get_temp_dir().'/saturn-key-'.Str::uuid();
+            file_put_contents($keyPath, $privateKey->private_key);
+            chmod($keyPath, 0600);
+
+            // GIT_SSH_COMMAND injects the key without modifying the URL
+            $gitEnv['GIT_SSH_COMMAND'] = "ssh -i {$keyPath} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null";
+
+            // Ensure key file is removed after request, even on failure
+            register_shutdown_function(fn () => @unlink($keyPath));
         }
 
         // Use Laravel Process facade for timeout support
         $result = Process::timeout(self::CLONE_TIMEOUT)
+            ->env($gitEnv)
             ->run([
                 'git', 'clone',
                 '--depth', '1',
