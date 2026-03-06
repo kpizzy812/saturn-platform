@@ -3,7 +3,7 @@ import { router } from '@inertiajs/react';
 import type { RouterPayload } from '@/types/inertia';
 import { AppLayout } from '@/components/layout';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, Textarea, BranchSelector, Badge } from '@/components/ui';
-import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap, Webhook, Search, Loader2, CheckCircle, Link as LinkIcon } from 'lucide-react';
+import { Github, Gitlab, ChevronRight, Check, AlertCircle, Sparkles, Key, ExternalLink, Zap, Webhook, Search, Loader2, CheckCircle, Link as LinkIcon, Upload, HardDrive, X } from 'lucide-react';
 import { Bitbucket } from '@/components/icons/Bitbucket';
 import { useGitBranches } from '@/hooks/useGitBranches';
 import { MonorepoAnalyzer } from '@/components/features/MonorepoAnalyzer';
@@ -49,7 +49,7 @@ interface Props {
     githubApps?: GithubApp[];
 }
 
-type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker';
+type SourceType = 'github' | 'gitlab' | 'bitbucket' | 'docker' | 'local';
 type BuildPack = 'railpack' | 'nixpacks' | 'dockerfile' | 'dockercompose' | 'dockerimage';
 type ApplicationType = 'web' | 'worker' | 'both';
 
@@ -67,10 +67,11 @@ interface FormData {
     description: string;
     docker_image?: string;
     github_app_id?: number;
+    local_archive?: File | null;
 }
 
 export default function ApplicationsCreate({ projects = [], localhost, userServers = [], needsProject = false, preselectedSource = null, wildcardDomain = null, hasGithubApp = false, githubApps = [] }: Props) {
-    const validSources: SourceType[] = ['github', 'gitlab', 'bitbucket', 'docker'];
+    const validSources: SourceType[] = ['github', 'gitlab', 'bitbucket', 'docker', 'local'];
     const initialSource = preselectedSource && validSources.includes(preselectedSource) ? preselectedSource : null;
 
     const [step, setStep] = useState<1 | 2 | 3 | 'analyze'>(initialSource ? 2 : 1);
@@ -122,7 +123,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
 
     // Fetch branches when repository URL changes (only in manual mode)
     useEffect(() => {
-        if (formData.git_repository && formData.source_type !== 'docker' && repoMode === 'manual') {
+        if (formData.git_repository && formData.source_type !== 'docker' && formData.source_type !== 'local' && repoMode === 'manual') {
             fetchBranches(formData.git_repository);
         }
     }, [formData.git_repository, formData.source_type, repoMode, fetchBranches]);
@@ -339,11 +340,14 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
             if (!formData.name) newErrors.name = 'Application name is required';
         }
         if (!formData.source_type) newErrors.source_type = 'Source type is required';
-        if (formData.source_type !== 'docker' && !formData.git_repository) {
+        if (formData.source_type !== 'docker' && formData.source_type !== 'local' && !formData.git_repository) {
             newErrors.git_repository = 'Repository URL is required';
         }
         if (formData.source_type === 'docker' && !formData.docker_image) {
             newErrors.docker_image = 'Docker image is required';
+        }
+        if (formData.source_type === 'local' && !formData.local_archive) {
+            newErrors.local_archive = 'Please select an archive file (.zip or .tar.gz)';
         }
         if (!formData.project_uuid) newErrors.project_uuid = 'Project is required';
         if (!formData.environment_uuid) newErrors.environment_uuid = 'Environment is required';
@@ -382,6 +386,68 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
 
         setIsSubmitting(true);
         setErrors({});
+
+        // Local upload: two-step — create app then upload archive
+        if (formData.source_type === 'local') {
+            try {
+                const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '';
+
+                // Step 1: create the application record
+                const createRes = await fetch('/applications', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        name: formData.name,
+                        description: formData.description,
+                        source_type: 'local',
+                        build_pack: formData.build_pack,
+                        application_type: formData.application_type,
+                        project_uuid: formData.project_uuid,
+                        environment_uuid: formData.environment_uuid,
+                        server_uuid: formData.server_uuid,
+                        fqdn: formData.fqdn,
+                    }),
+                });
+
+                if (!createRes.ok) {
+                    const data = await createRes.json().catch(() => ({}));
+                    setErrors(data.errors || { general: data.message || 'Failed to create application' });
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                const { uuid, redirect } = await createRes.json();
+
+                // Step 2: upload archive and trigger deployment
+                const uploadForm = new FormData();
+                uploadForm.append('archive', formData.local_archive as File);
+                uploadForm.append('_token', csrfToken);
+
+                const uploadRes = await fetch(`/applications/${uuid}/upload`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                    body: uploadForm,
+                });
+
+                if (!uploadRes.ok) {
+                    const data = await uploadRes.json().catch(() => ({}));
+                    setErrors({ general: data.message || 'Failed to upload archive' });
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                // Redirect to the new application page
+                window.location.href = redirect || `/applications/${uuid}`;
+            } catch {
+                setErrors({ general: 'An unexpected error occurred. Please try again.' });
+                setIsSubmitting(false);
+            }
+            return;
+        }
 
         const submitData = {
             ...formData,
@@ -452,6 +518,14 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     onClick={() => handleSourceSelect('bitbucket')}
                                     selected={formData.source_type === 'bitbucket'}
                                 />
+                                <SourceCard
+                                    icon={<HardDrive className="h-6 w-6" />}
+                                    title="Local Upload"
+                                    description="Upload a local project archive"
+                                    hint="Upload a .zip or .tar.gz of your project"
+                                    onClick={() => handleSourceSelect('local')}
+                                    selected={formData.source_type === 'local'}
+                                />
                             </div>
 
                             <DeployGuide variant="full" className="mt-6" />
@@ -495,8 +569,79 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     </div>
                                 </div>
 
+                                {/* Local Upload: file picker */}
+                                {formData.source_type === 'local' && (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Project Archive *
+                                            </label>
+                                            <div
+                                                className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 text-center transition-colors cursor-pointer
+                                                    ${formData.local_archive
+                                                        ? 'border-primary/50 bg-primary/5'
+                                                        : 'border-border hover:border-primary/40 hover:bg-background-secondary/50'
+                                                    }`}
+                                                onClick={() => document.getElementById('local-archive-input')?.click()}
+                                            >
+                                                <input
+                                                    id="local-archive-input"
+                                                    type="file"
+                                                    accept=".zip,.tar.gz,.tgz"
+                                                    className="hidden"
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0] || null;
+                                                        setFormData(prev => ({ ...prev, local_archive: file }));
+                                                        if (errors.local_archive) setErrors(prev => { const { local_archive: _, ...rest } = prev; return rest; });
+                                                    }}
+                                                />
+                                                {formData.local_archive ? (
+                                                    <div className="flex items-center gap-3">
+                                                        <Upload className="h-5 w-5 text-primary" />
+                                                        <div className="text-left">
+                                                            <p className="text-sm font-medium text-foreground">{formData.local_archive.name}</p>
+                                                            <p className="text-xs text-foreground-muted">{(formData.local_archive.size / 1024 / 1024).toFixed(1)} MB</p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            className="ml-auto text-foreground-muted hover:text-foreground"
+                                                            onClick={(e) => { e.stopPropagation(); setFormData(prev => ({ ...prev, local_archive: null })); }}
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <Upload className="h-10 w-10 text-foreground-muted mb-3" />
+                                                        <p className="text-sm font-medium text-foreground">Drop your archive here or click to browse</p>
+                                                        <p className="text-xs text-foreground-muted mt-1">Supports .zip and .tar.gz — max 512 MB</p>
+                                                        <p className="text-xs text-foreground-subtle mt-1">node_modules, .git and vendor are excluded automatically if present</p>
+                                                    </>
+                                                )}
+                                            </div>
+                                            {errors.local_archive && (
+                                                <p className="mt-1 text-sm text-danger">{errors.local_archive}</p>
+                                            )}
+                                        </div>
+
+                                        <div data-error={!!errors.build_pack || undefined}>
+                                            <label className="block text-sm font-medium text-foreground mb-2">Build Pack</label>
+                                            <select
+                                                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                                value={formData.build_pack}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, build_pack: e.target.value as BuildPack }))}
+                                            >
+                                                <option value="railpack">Railpack (Auto-detect)</option>
+                                                <option value="nixpacks">Nixpacks</option>
+                                                <option value="dockerfile">Dockerfile</option>
+                                            </select>
+                                            <p className="mt-1 text-xs text-foreground-muted">Railpack auto-detects your framework and sets up the build automatically.</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Source Configuration */}
-                                {formData.source_type !== 'docker' ? (
+                                {formData.source_type !== 'docker' && formData.source_type !== 'local' ? (
                                     <div className="space-y-4">
                                         {/* Connect GitHub App prompt */}
                                         {formData.source_type === 'github' && githubApps.length === 0 && (
@@ -1011,7 +1156,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 {/* Actions */}
                                 <div className="flex flex-col gap-4 pt-4 border-t border-border">
                                     {/* Smart Deploy Option */}
-                                    {formData.source_type !== 'docker' && (
+                                    {formData.source_type !== 'docker' && formData.source_type !== 'local' && (
                                         <div className="rounded-lg bg-primary/5 border border-primary/20 p-4">
                                             <div className="flex items-start gap-3">
                                                 <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
@@ -1092,7 +1237,12 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                     <ReviewItem label="Application Name" value={formData.name} />
                                     <ReviewItem label="Source" value={formData.source_type || ''} />
                                     <ReviewItem label="Application Type" value={formData.application_type === 'worker' ? 'Worker (no port)' : formData.application_type === 'both' ? 'Web + Worker' : 'Web'} />
-                                    {formData.source_type !== 'docker' ? (
+                                    {formData.source_type === 'local' ? (
+                                        <>
+                                            <ReviewItem label="Archive" value={formData.local_archive?.name || 'Not selected'} />
+                                            <ReviewItem label="Build Pack" value={formData.build_pack} />
+                                        </>
+                                    ) : formData.source_type !== 'docker' ? (
                                         <>
                                             <ReviewItem label="Repository" value={formData.git_repository} />
                                             <ReviewItem label="Branch" value={formData.git_branch} />
@@ -1114,7 +1264,7 @@ export default function ApplicationsCreate({ projects = [], localhost, userServe
                                 </div>
 
                                 {/* Auto-deploy status indicator */}
-                                {formData.source_type !== 'docker' && (
+                                {formData.source_type !== 'docker' && formData.source_type !== 'local' && (
                                     <div className={`rounded-lg p-4 flex gap-3 ${
                                         hasGithubApp
                                             ? 'bg-green-500/10 border border-green-500/30'

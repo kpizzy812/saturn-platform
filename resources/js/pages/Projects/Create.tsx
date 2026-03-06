@@ -16,6 +16,7 @@ import {
     Settings2,
     Rocket,
     Globe,
+    Upload,
 } from 'lucide-react';
 import { BrandIcon } from '@/components/ui/BrandIcon';
 import type { Project } from '@/types';
@@ -130,6 +131,14 @@ export default function ProjectCreate({ projects = [], wildcardDomain = null, ha
             label: 'Empty Project',
             href: '/projects/create/empty',
             iconBg: 'bg-emerald-500/10 text-emerald-400',
+        },
+        {
+            icon: <Upload className="h-4 w-4" />,
+            label: 'Local Upload',
+            href: canvasFrom
+                ? `/applications/create?source=local&project=${preselectedProject}&environment=${preselectedEnvironment}&from=${canvasFrom}`
+                : '/applications/create?source=local',
+            iconBg: 'bg-orange-500/10 text-orange-400',
         },
     ];
 

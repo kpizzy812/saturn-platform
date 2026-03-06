@@ -31,6 +31,7 @@ use App\Traits\Deployment\HandlesGitOperations;
 use App\Traits\Deployment\HandlesHealthCheck;
 use App\Traits\Deployment\HandlesImageBuilding;
 use App\Traits\Deployment\HandlesImageRegistry;
+use App\Traits\Deployment\HandlesLocalUpload;
 use App\Traits\Deployment\HandlesNixpacksBuildpack;
 use App\Traits\Deployment\HandlesRailpackBuildpack;
 use App\Traits\Deployment\HandlesRuntimeEnvGeneration;
@@ -56,7 +57,7 @@ use Visus\Cuid2\Cuid2;
 
 class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 {
-    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesAutoRollback, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesNixpacksBuildpack, HandlesRailpackBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, EnvironmentVariableAnalyzer, ExecuteRemoteCommand, HandlesAutoRollback, HandlesBuildSecrets, HandlesBuildtimeEnvGeneration, HandlesCanaryDeployment, HandlesComposeFileGeneration, HandlesContainerOperations, HandlesDeploymentCommands, HandlesDeploymentConfiguration, HandlesDeploymentStatus, HandlesDockerComposeBuildpack, HandlesDockerfileModification, HandlesEnvExampleDetection, HandlesGitOperations, HandlesHealthCheck, HandlesImageBuilding, HandlesImageRegistry, HandlesLocalUpload, HandlesNixpacksBuildpack, HandlesRailpackBuildpack, HandlesRuntimeEnvGeneration, HandlesSaturnEnvVariables, HandlesStaticBuildpack, InteractsWithQueue, Queueable, SerializesModels;
 
     public const BUILD_TIME_ENV_PATH = '/artifacts/build-time.env';
 
