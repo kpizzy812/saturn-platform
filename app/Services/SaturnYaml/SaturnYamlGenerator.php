@@ -48,7 +48,7 @@ class SaturnYamlGenerator
             '',
         ]);
 
-        return $header.Yaml::dump($config, depth: 6, indentSpaces: 2, flags: Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+        return $header.Yaml::dump($config, 6, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
     }
 
     /**
@@ -237,8 +237,8 @@ class SaturnYamlGenerator
         }
 
         // App-to-app dependencies from dependency analyzer
+        /** @var AppDependency $dep */
         foreach ($result->appDependencies as $dep) {
-            /** @var AppDependency $dep */
             foreach ($dep->dependsOn as $depName) {
                 $map[$dep->appName][] = $depName;
             }
