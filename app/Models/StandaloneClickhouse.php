@@ -324,6 +324,8 @@ class StandaloneClickhouse extends BaseModel
     {
         return new Attribute(
             get: function () {
+                $this->loadMissing('destination.server');
+
                 if ($this->is_public && $this->public_port) {
                     $serverIp = getServerPublicHost($this->destination->server);
                     if (empty($serverIp)) {
@@ -392,6 +394,7 @@ class StandaloneClickhouse extends BaseModel
 
     public function getCpuMetrics(int $mins = 5)
     {
+        $this->loadMissing('destination.server');
         $server = $this->destination->server;
         $container_name = $this->uuid;
         $from = now()->subMinutes($mins)->toIso8601ZuluString();
@@ -414,6 +417,7 @@ class StandaloneClickhouse extends BaseModel
 
     public function getMemoryMetrics(int $mins = 5)
     {
+        $this->loadMissing('destination.server');
         $server = $this->destination->server;
         $container_name = $this->uuid;
         $from = now()->subMinutes($mins)->toIso8601ZuluString();
