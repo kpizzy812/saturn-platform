@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { AppLayout } from '@/components/layout';
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Tabs, useConfirm } from '@/components/ui';
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import type { Server as ServerType } from '@/types';
 import { useSentinelMetrics } from '@/hooks/useSentinelMetrics';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import { usePermissions } from '@/hooks/usePermissions';
 import { SwarmManagement } from './SwarmManagement';
 
@@ -15,9 +17,37 @@ interface Props {
     server: ServerType;
 }
 
-export default function ServerShow({ server }: Props) {
+export default function ServerShow({ server: propServer }: Props) {
     const { can } = usePermissions();
-    const isOnline = server.is_reachable && server.is_usable;
+
+    // Track server reachability in state so it updates in real-time
+    const [serverStatus, setServerStatus] = useState({
+        isReachable: propServer.is_reachable,
+        isUsable: propServer.is_usable,
+    });
+
+    // Sync when Inertia reloads props
+    useEffect(() => {
+        setServerStatus({
+            isReachable: propServer.is_reachable,
+            isUsable: propServer.is_usable,
+        });
+    }, [propServer.is_reachable, propServer.is_usable]);
+
+    // Subscribe to ServerReachabilityChanged to update status badge in real-time
+    useRealtimeStatus({
+        onServerStatusChange: (data) => {
+            if (data.serverId === propServer.id) {
+                setServerStatus({
+                    isReachable: data.isReachable,
+                    isUsable: data.isUsable,
+                });
+            }
+        },
+    });
+
+    const server = { ...propServer, is_reachable: serverStatus.isReachable, is_usable: serverStatus.isUsable };
+    const isOnline = serverStatus.isReachable && serverStatus.isUsable;
 
     const tabs = [
         {

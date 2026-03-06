@@ -12,6 +12,36 @@
 
 http:
   middlewares:
+    # Allow only Cloudflare edge IPs — blocks direct access to the real server IP.
+    # Cloudflare IP ranges: https://www.cloudflare.com/ips/
+    cloudflare-only:
+      ipAllowList:
+        sourceRange:
+          # IPv4
+          - 173.245.48.0/20
+          - 103.21.244.0/22
+          - 103.22.200.0/22
+          - 103.31.4.0/22
+          - 141.101.64.0/18
+          - 108.162.192.0/18
+          - 190.93.240.0/20
+          - 188.114.96.0/20
+          - 197.234.240.0/22
+          - 198.41.128.0/17
+          - 162.158.0.0/15
+          - 104.16.0.0/13
+          - 104.24.0.0/14
+          - 172.64.0.0/13
+          - 131.0.72.0/22
+          # IPv6
+          - 2400:cb00::/32
+          - 2606:4700::/32
+          - 2803:f800::/32
+          - 2405:b500::/32
+          - 2405:8100::/32
+          - 2a06:98c0::/29
+          - 2c0f:f248::/32
+
     redirect-to-https:
       redirectscheme:
         scheme: https
@@ -47,6 +77,7 @@ http:
   routers:
     monitoring-http:
       middlewares:
+        - cloudflare-only
         - redirect-to-https
       entryPoints:
         - http
@@ -59,6 +90,7 @@ http:
       service: uptime-kuma
       rule: Host(`status.saturn.ac`)
       middlewares:
+        - cloudflare-only
         - security-headers
         - gzip
       tls:
@@ -70,6 +102,7 @@ http:
     # HTTP → HTTPS redirect
     dev-http:
       middlewares:
+        - cloudflare-only
         - redirect-to-https
       entryPoints:
         - http
@@ -83,6 +116,7 @@ http:
       service: dev-app
       rule: Host(`dev.saturn.ac`)
       middlewares:
+        - cloudflare-only
         - security-headers
         - gzip
         - rate-limit
@@ -95,6 +129,8 @@ http:
         - https
       service: dev-realtime
       rule: 'Host(`dev.saturn.ac`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)'
+      middlewares:
+        - cloudflare-only
       tls:
         certresolver: letsencrypt
 
@@ -104,6 +140,8 @@ http:
         - https
       service: dev-terminal
       rule: 'Host(`dev.saturn.ac`) && PathPrefix(`/terminal/ws`)'
+      middlewares:
+        - cloudflare-only
       tls:
         certresolver: letsencrypt
 
@@ -112,6 +150,7 @@ http:
   # ===========================================================================
     staging-http:
       middlewares:
+        - cloudflare-only
         - redirect-to-https
       entryPoints:
         - http
@@ -124,6 +163,7 @@ http:
       service: staging-app
       rule: Host(`uat.saturn.ac`)
       middlewares:
+        - cloudflare-only
         - security-headers
         - gzip
         - rate-limit
@@ -135,6 +175,8 @@ http:
         - https
       service: staging-realtime
       rule: 'Host(`uat.saturn.ac`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)'
+      middlewares:
+        - cloudflare-only
       tls:
         certresolver: letsencrypt
 
@@ -143,6 +185,8 @@ http:
         - https
       service: staging-terminal
       rule: 'Host(`uat.saturn.ac`) && PathPrefix(`/terminal/ws`)'
+      middlewares:
+        - cloudflare-only
       tls:
         certresolver: letsencrypt
 
@@ -151,6 +195,7 @@ http:
   # ===========================================================================
     production-http:
       middlewares:
+        - cloudflare-only
         - redirect-to-https
       entryPoints:
         - http
@@ -163,6 +208,7 @@ http:
       service: production-app
       rule: Host(`saturn.ac`)
       middlewares:
+        - cloudflare-only
         - security-headers
         - hsts-headers
         - gzip
@@ -175,6 +221,8 @@ http:
         - https
       service: production-realtime
       rule: 'Host(`saturn.ac`) && PathRegexp(`^/app/[a-zA-Z0-9]+$`)'
+      middlewares:
+        - cloudflare-only
       tls:
         certresolver: letsencrypt
 
@@ -183,6 +231,8 @@ http:
         - https
       service: production-terminal
       rule: 'Host(`saturn.ac`) && PathPrefix(`/terminal/ws`)'
+      middlewares:
+        - cloudflare-only
       tls:
         certresolver: letsencrypt
 

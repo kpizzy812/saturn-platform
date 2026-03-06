@@ -119,8 +119,10 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
                 {/* Header with Logo */}
                 <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center text-foreground transition-all duration-200 hover:border-border-hover">
-                            <GitHubLogo />
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center text-foreground transition-all duration-200 hover:border-border-hover group-hover:scale-110 group-hover:border-[#7c3aed]/50 group-hover:bg-[#7c3aed]/10">
+                            <span className="transition-transform duration-200 group-hover:animate-wiggle">
+                                <GitHubLogo />
+                            </span>
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5">
                             <h3 className="font-medium text-foreground text-sm truncate">{data.label}</h3>
@@ -146,7 +148,7 @@ export const ServiceNode = memo(({ data, selected }: { data: ServiceNodeData; se
                                     'w-2 h-2 rounded-full transition-all duration-200',
                                     isOnline && 'status-online',
                                     isDeploying && 'status-deploying',
-                                    isError && 'bg-red-500',
+                                    isError && 'status-error',
                                     !isOnline && !isDeploying && !isError && 'bg-foreground-subtle'
                                 )} />
                                 <span className={cn(

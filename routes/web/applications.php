@@ -147,10 +147,10 @@ Route::post('/applications', function (Request $request) {
 
     $validated = $request->validate([
         'name' => 'required|string|max:255',
-        'source_type' => 'required|string|in:github,gitlab,bitbucket,docker',
-        'git_repository' => 'required_unless:source_type,docker|nullable|string',
+        'source_type' => 'required|string|in:github,gitlab,bitbucket,docker,local',
+        'git_repository' => 'nullable|string|required_unless:source_type,docker,local',
         'git_branch' => 'nullable|string',
-        'build_pack' => 'required|string|in:nixpacks,dockerfile,dockercompose,dockerimage',
+        'build_pack' => 'required|string|in:nixpacks,dockerfile,dockercompose,dockerimage,railpack',
         'application_type' => 'nullable|string|in:web,worker,both',
         'project_uuid' => 'required|string',
         'environment_uuid' => 'required|string',
@@ -222,6 +222,13 @@ Route::post('/applications', function (Request $request) {
     if ($validated['source_type'] === 'docker') {
         $application->build_pack = 'dockerimage';
         $application->docker_registry_image_name = $validated['docker_image'];
+    }
+
+    // Handle local upload source — placeholder git fields, archive uploaded separately
+    if ($validated['source_type'] === 'local') {
+        $application->git_repository = 'local';
+        $application->git_branch = 'local';
+        // build_pack already set from validated field (nixpacks/railpack by default)
     }
 
     // Set source type for git — prefer team's active GitHub App for auto-deploy
@@ -309,6 +316,14 @@ Route::post('/applications', function (Request $request) {
             $application->fqdn = generateUrl(server: $server, random: $slug);
             $application->save();
         }
+    }
+
+    // For local upload: return JSON so frontend can follow up with file upload
+    if ($validated['source_type'] === 'local') {
+        return response()->json([
+            'uuid' => $application->uuid,
+            'redirect' => route('applications.show', $application->uuid),
+        ], 201);
     }
 
     return redirect()->route('applications.show', $application->uuid)
@@ -1420,3 +1435,62 @@ Route::get('/applications/{uuid}/incidents/view', function (string $uuid) {
         'environmentUuid' => $environment->uuid,
     ]);
 })->name('applications.incidents.view');
+
+// Local Upload: accept archive and trigger deployment
+Route::post('/applications/{uuid}/upload', function (Request $request, string $uuid) {
+    $application = \App\Models\Application::ownedByCurrentTeam()
+        ->where('uuid', $uuid)
+        ->firstOrFail();
+
+    Gate::authorize('deploy', $application);
+
+    $request->validate([
+        'archive' => 'required|file|mimes:zip,gz,tar|max:524288', // 512 MB max
+    ]);
+
+    $file = $request->file('archive');
+    $deploymentUuid = new Cuid2;
+
+    // Store archive in private storage under deployment uuid
+    $storagePath = "local-uploads/{$deploymentUuid}/source.".($file->getClientOriginalExtension() === 'zip' ? 'zip' : 'tar.gz');
+    $file->storeAs(dirname($storagePath), basename($storagePath), 'local');
+
+    // Queue deployment with local_source_path set
+    $result = queue_application_deployment(
+        application: $application,
+        deployment_uuid: $deploymentUuid,
+        force_rebuild: true,
+        is_api: false
+    );
+
+    if ($result['status'] === 'queue_full') {
+        // Clean up stored archive
+        \Illuminate\Support\Facades\Storage::disk('local')->deleteDirectory("local-uploads/{$deploymentUuid}");
+
+        return response()->json(['message' => $result['message']], 429);
+    }
+
+    // Attach archive path to the queued deployment record
+    \App\Models\ApplicationDeploymentQueue::where('deployment_uuid', (string) $deploymentUuid)
+        ->update(['local_source_path' => $storagePath]);
+
+    return response()->json([
+        'message' => 'Deployment queued',
+        'deployment_uuid' => (string) $deploymentUuid,
+    ], 202);
+})->name('applications.upload-deploy');
+
+// Local Upload: serve archive via signed URL (accessed by deployment server)
+Route::get('/local-upload/download', function (Request $request) {
+    if (! $request->hasValidSignature()) {
+        abort(403, 'Invalid or expired download link.');
+    }
+
+    $path = base64_decode($request->query('path', ''));
+
+    if (empty($path) || ! \Illuminate\Support\Facades\Storage::disk('local')->exists($path)) {
+        abort(404, 'Archive not found.');
+    }
+
+    return \Illuminate\Support\Facades\Storage::disk('local')->download($path);
+})->name('local-upload.download')->withoutMiddleware(['auth', 'verified']);

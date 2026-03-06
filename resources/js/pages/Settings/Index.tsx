@@ -67,13 +67,13 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
                                         key={section.id}
                                         href={section.href}
                                         className={cn(
-                                            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                                            'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                                             isActive
                                                 ? 'bg-background-tertiary text-foreground'
                                                 : 'text-foreground-muted hover:bg-background-secondary hover:text-foreground'
                                         )}
                                     >
-                                        <Icon className="h-4 w-4" />
+                                        <Icon className="h-4 w-4 transition-transform duration-200 group-hover:scale-110 group-hover:animate-wiggle" />
                                         {section.label}
                                     </Link>
                                 );

@@ -166,10 +166,12 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
                 <div className="p-4 pb-3">
                     <div className="flex items-start gap-3">
                         <div className={cn(
-                            'flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center',
+                            'flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110',
                             bgColor
                         )}>
-                            {getDbLogo(data.databaseType)}
+                            <span className="transition-transform duration-200 group-hover:animate-wiggle">
+                                {getDbLogo(data.databaseType)}
+                            </span>
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5">
                             <h3 className="font-medium text-foreground text-sm truncate">{data.label}</h3>
@@ -182,9 +184,9 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
                     <div className="flex items-center gap-2 flex-wrap">
                         <div className="flex items-center gap-1.5">
                             <div className={cn(
-                                'w-2 h-2 rounded-full',
-                                isOnline && 'bg-success',
-                                isError && 'bg-red-500',
+                                'w-2 h-2 rounded-full transition-all duration-200',
+                                isOnline && 'status-online',
+                                isError && 'status-error',
                                 !isOnline && !isError && 'bg-foreground-subtle'
                             )} />
                             <span className={cn(
@@ -201,8 +203,8 @@ export const DatabaseNode = memo(({ data, selected }: { data: DatabaseNodeData; 
                             <div className="flex items-center gap-1.5">
                                 <div className={cn(
                                     'w-2 h-2 rounded-full',
-                                    isHealthy && 'bg-success',
-                                    isUnhealthy && 'bg-red-500',
+                                    isHealthy && 'status-online',
+                                    isUnhealthy && 'status-error',
                                     !isHealthy && !isUnhealthy && 'bg-foreground-subtle'
                                 )} />
                                 <span className={cn(
