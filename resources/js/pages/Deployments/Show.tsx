@@ -10,6 +10,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { getStatusIcon, getStatusVariant } from '@/lib/statusUtils';
 import { formatStatus } from '@/lib/formatters';
 import { useLogStream } from '@/hooks/useLogStream';
+import { useRealtimeStatus } from '@/hooks/useRealtimeStatus';
 import type { Deployment } from '@/types';
 import {
     GitCommit,
@@ -51,9 +52,36 @@ interface Props {
 }
 
 export default function DeploymentShow({ deployment: propDeployment }: Props) {
-    const deployment = propDeployment;
+    const [deployment, setDeployment] = React.useState(propDeployment);
     const [activeTab, setActiveTab] = React.useState<'build' | 'deploy' | 'environment' | 'artifacts'>('build');
     const confirm = useConfirm();
+
+    // Sync state when Inertia reloads props
+    React.useEffect(() => {
+        setDeployment(propDeployment);
+    }, [propDeployment]);
+
+    const isInProgress = deployment?.status === 'in_progress' || deployment?.status === 'queued';
+
+    // Subscribe to DeploymentFinished to update status badge in real-time
+    useRealtimeStatus({
+        onDeploymentFinished: (data) => {
+            const deploymentId = deployment?.deployment_uuid || deployment?.uuid;
+            if (data.deploymentId === deployment?.id || String(data.deploymentId) === deploymentId) {
+                // Reload page data to get final status and logs
+                router.reload({ only: ['deployment'] });
+            }
+        },
+    });
+
+    // Auto-poll for status when deployment is in progress
+    React.useEffect(() => {
+        if (!isInProgress) return;
+        const interval = setInterval(() => {
+            router.reload({ only: ['deployment'] });
+        }, 5000);
+        return () => clearInterval(interval);
+    }, [isInProgress]);
 
     // Real-time log streaming for in-progress deployments
     const {
@@ -62,7 +90,7 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
     } = useLogStream({
         resourceType: 'deployment',
         resourceId: deployment?.uuid || '',
-        enableWebSocket: deployment?.status === 'in_progress',
+        enableWebSocket: isInProgress,
     });
 
     // Action handlers with confirmation dialogs
@@ -175,7 +203,7 @@ export default function DeploymentShow({ deployment: propDeployment }: Props) {
                 ...(deployment?.build_logs || []).map(log => ({ output: log })),
                 ...(deployment?.deploy_logs || []).map(log => ({ output: log })),
             ];
-        return parseDeploymentLogs(allLogs, deployment?.status);
+        return parseDeploymentLogs(allLogs, deployment?.status as string | undefined);
     }, [isStreaming, streamedLogs, deployment?.build_logs, deployment?.deploy_logs, deployment?.status]);
 
     // Determine current stage for the graph

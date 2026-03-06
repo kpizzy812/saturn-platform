@@ -64,15 +64,19 @@ export default function ServiceShow({ service, containers = [] }: Props) {
     const [showCloneModal, setShowCloneModal] = useState(false);
     const { addToast } = useToast();
 
-    // Real-time service status updates
+    // Real-time service status updates — update badge in-place, then reload containers
     useRealtimeStatus({
-        onServiceStatusChange: () => {
-            // Reload page data when service status changes
-            router.reload({ only: ['service', 'containers'] });
+        onServiceStatusChange: (data) => {
+            if (data.serviceId === service?.id) {
+                // Update badge immediately without waiting for full reload
+                setCurrentStatus(data.status);
+                // Reload containers for the updated health data
+                router.reload({ only: ['service', 'containers'], preserveScroll: true });
+            }
         },
     });
 
-    // Sync local state when service prop changes
+    // Sync local state when service prop changes (after reload)
     useEffect(() => {
         setCurrentStatus(service?.status || 'running');
     }, [service?.status]);
