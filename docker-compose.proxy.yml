@@ -49,9 +49,10 @@ services:
       - --providers.file.directory=/etc/traefik/dynamic
       - --providers.file.watch=true
 
-      # Docker provider: auto-discover containers with traefik.enable=true label
+      # Docker provider: auto-discover containers with traefik.enable=true label.
+      # No default network is set here — saturn-proxy connects to each app's own network
+      # (named after its UUID), so Traefik uses whatever network is available per container.
       - --providers.docker=true
-      - --providers.docker.network=saturn
       - --providers.docker.exposedByDefault=false
 
       # Let's Encrypt (HTTP-01 challenge via http entrypoint)

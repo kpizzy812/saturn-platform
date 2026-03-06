@@ -454,17 +454,28 @@ function ApplicationCard({ application, currentStatus, onDeleted, can }: Applica
             {/* Info — interactive links */}
             <div className="relative mt-3 space-y-2">
                 {application.fqdn && (
-                    <a
-                        href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group/link flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 text-xs text-primary transition-all duration-200 hover:bg-white/10 hover:scale-[1.02] min-w-0"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <Globe className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
-                        <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-0 transition-opacity duration-200 group-hover/link:opacity-100" />
-                    </a>
+                    currentStatus.state === 'running' ? (
+                        <a
+                            href={application.fqdn.startsWith('http') ? application.fqdn : `https://${application.fqdn}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group/link flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 text-xs text-primary transition-all duration-200 hover:bg-white/10 hover:scale-[1.02] min-w-0"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Globe className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
+                            <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-0 transition-opacity duration-200 group-hover/link:opacity-100" />
+                        </a>
+                    ) : (
+                        <span
+                            className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 text-xs text-foreground-muted cursor-not-allowed min-w-0"
+                            title="Application is not running"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Globe className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{application.fqdn.replace(/^https?:\/\//, '')}</span>
+                        </span>
+                    )
                 )}
 
                 {/* Repository Info — clickable */}
