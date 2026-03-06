@@ -165,7 +165,7 @@ class User extends Authenticatable implements SendsEmail
             if (! isCloud() && $user->id !== 0) {
                 $server = Server::create([
                     'name' => 'localhost',
-                    'description' => "Saturn Platform host machine (localhost).",
+                    'description' => 'Saturn Platform host machine (localhost).',
                     'ip' => 'host.docker.internal',
                     'port' => 22,
                     'user' => 'root',
