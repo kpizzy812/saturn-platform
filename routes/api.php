@@ -301,7 +301,7 @@ Route::group([
         \App\Jobs\SyncSaturnYamlJob::dispatch(
             $environment->id,
             $validated['content'],
-            auth()->user()?->name ?? 'api',
+            auth()->user()->name ?? 'api',
         );
 
         return response()->json(['message' => 'saturn.yaml sync job dispatched.']);
@@ -417,7 +417,7 @@ Route::group([
             'output' => $entry->output,
             'type' => $entry->type,
             'stage' => $entry->stage,
-            'timestamp' => $entry->created_at?->toIso8601String(),
+            'timestamp' => $entry->created_at->toIso8601String(),
         ])->values();
 
         $response = [
