@@ -405,8 +405,9 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
         return response()->json($formatResourceLink($existingLink));
     }
 
-    // Default use_external_url to true for app-to-app links (browser needs FQDN, not Docker DNS)
-    $useExternalUrl = $targetClass === \App\Models\Application::class;
+    // Default to internal URL (Docker DNS) — faster & bypasses Cloudflare bot protection.
+    // Cross-server auto-detect in autoInjectDatabaseUrl() will force external when needed.
+    $useExternalUrl = false;
 
     $link = \App\Models\ResourceLink::create([
         'environment_id' => $environment->id,
@@ -439,7 +440,7 @@ Route::post('/environments/{uuid}/links/json', function (\Illuminate\Http\Reques
             'target_type' => \App\Models\Application::class,
             'target_id' => $validated['source_id'],
             'auto_inject' => $validated['auto_inject'] ?? true,
-            'use_external_url' => true,
+            'use_external_url' => false,
         ]);
 
         // Auto-inject for target application too

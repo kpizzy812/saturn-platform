@@ -114,6 +114,50 @@ describe('ResourceLink::getSmartAppEnvKey', function () {
     });
 });
 
+describe('ResourceLink::applyUrlPath', function () {
+    it('returns url unchanged when url_path is null', function () {
+        $link = new ResourceLink;
+        $link->url_path = null;
+
+        expect($link->applyUrlPath('http://backend:3000'))->toBe('http://backend:3000');
+    });
+
+    it('returns url unchanged when url_path is empty string', function () {
+        $link = new ResourceLink;
+        $link->url_path = '';
+
+        expect($link->applyUrlPath('http://backend:3000'))->toBe('http://backend:3000');
+    });
+
+    it('appends path to url', function () {
+        $link = new ResourceLink;
+        $link->url_path = '/api/v1';
+
+        expect($link->applyUrlPath('http://backend:3000'))->toBe('http://backend:3000/api/v1');
+    });
+
+    it('normalizes double slashes', function () {
+        $link = new ResourceLink;
+        $link->url_path = '/api/v1';
+
+        expect($link->applyUrlPath('http://backend:3000/'))->toBe('http://backend:3000/api/v1');
+    });
+
+    it('handles path without leading slash', function () {
+        $link = new ResourceLink;
+        $link->url_path = 'api/v1';
+
+        expect($link->applyUrlPath('http://backend:3000'))->toBe('http://backend:3000/api/v1');
+    });
+
+    it('handles both trailing and leading slashes', function () {
+        $link = new ResourceLink;
+        $link->url_path = '/graphql';
+
+        expect($link->applyUrlPath('https://example.com/'))->toBe('https://example.com/graphql');
+    });
+});
+
 describe('ResourceLink casts', function () {
     it('casts auto_inject to boolean', function () {
         $link = new ResourceLink;

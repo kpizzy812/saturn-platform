@@ -231,6 +231,33 @@ test('StoreResourceLinkRequest with optional inject_as passes', function () {
     expect($validator->passes())->toBeTrue();
 });
 
+test('StoreResourceLinkRequest with url_path passes', function () {
+    $validator = Validator::make(
+        [
+            'source_uuid' => 'abc-123',
+            'target_type' => 'application',
+            'target_uuid' => 'def-456',
+            'url_path' => '/api/v1',
+        ],
+        (new StoreResourceLinkRequest)->rules()
+    );
+    expect($validator->passes())->toBeTrue();
+});
+
+test('StoreResourceLinkRequest url_path max 255 chars', function () {
+    $validator = Validator::make(
+        [
+            'source_uuid' => 'abc-123',
+            'target_type' => 'application',
+            'target_uuid' => 'def-456',
+            'url_path' => '/'.str_repeat('a', 255),
+        ],
+        (new StoreResourceLinkRequest)->rules()
+    );
+    expect($validator->fails())->toBeTrue();
+    expect($validator->errors()->has('url_path'))->toBeTrue();
+});
+
 // ─── UpdateResourceLinkRequest: all optional ─────────────────────────────────
 
 test('UpdateResourceLinkRequest empty data passes', function () {
@@ -253,4 +280,29 @@ test('UpdateResourceLinkRequest boolean fields accept true and false', function 
         (new UpdateResourceLinkRequest)->rules()
     );
     expect($validator->passes())->toBeTrue();
+});
+
+test('UpdateResourceLinkRequest url_path accepts valid path', function () {
+    $validator = Validator::make(
+        ['url_path' => '/api/v1'],
+        (new UpdateResourceLinkRequest)->rules()
+    );
+    expect($validator->passes())->toBeTrue();
+});
+
+test('UpdateResourceLinkRequest url_path accepts null', function () {
+    $validator = Validator::make(
+        ['url_path' => null],
+        (new UpdateResourceLinkRequest)->rules()
+    );
+    expect($validator->passes())->toBeTrue();
+});
+
+test('UpdateResourceLinkRequest url_path max 255 chars', function () {
+    $validator = Validator::make(
+        ['url_path' => '/'.str_repeat('a', 255)],
+        (new UpdateResourceLinkRequest)->rules()
+    );
+    expect($validator->fails())->toBeTrue();
+    expect($validator->errors()->has('url_path'))->toBeTrue();
 });

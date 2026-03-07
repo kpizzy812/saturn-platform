@@ -12,6 +12,7 @@ interface ResourceLink {
     target_name?: string;
     target_type: string;
     use_external_url?: boolean;
+    url_path?: string;
 }
 
 interface VariableBadgeEdgeData {
@@ -276,6 +277,14 @@ export const VariableBadgeEdge = memo(({
                                                 <span className="text-[10px] text-foreground-muted">
                                                     {isExternal ? 'External URL (domain)' : 'Internal URL (Docker)'}
                                                 </span>
+                                            </div>
+                                        )}
+                                        {link?.url_path && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-foreground-muted">Path:</span>
+                                                <code className="text-[10px] font-mono text-primary">
+                                                    {link.url_path}
+                                                </code>
                                             </div>
                                         )}
                                     </div>
