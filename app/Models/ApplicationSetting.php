@@ -42,6 +42,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
  * @property int $canary_step_minutes
  * @property bool $canary_auto_promote
  * @property int $canary_error_rate_threshold
+ * @property string $deployment_strategy
  */
 class ApplicationSetting extends Model
 {
@@ -86,6 +87,8 @@ class ApplicationSetting extends Model
         'canary_step_minutes',
         'canary_auto_promote',
         'canary_error_rate_threshold',
+        // Deployment strategy
+        'deployment_strategy',
     ];
 
     protected $casts = [

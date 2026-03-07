@@ -46,8 +46,12 @@ trait HandlesHealthCheck
                     $this->write_deployment_configurations();
                     $this->server = $this->original_server;
                 }
-                if (count($this->application->ports_mappings_array) > 0 || (bool) $this->application->settings->is_consistent_container_name_enabled || str($this->application->settings->custom_internal_name)->isNotEmpty() || $this->pull_request_id !== 0 || str($this->application->custom_docker_run_options)->contains('--ip') || str($this->application->custom_docker_run_options)->contains('--ip6')) {
+                $isStopFirst = ($this->application->settings->deployment_strategy ?? 'rolling') === 'stop-first';
+                if ($isStopFirst || count($this->application->ports_mappings_array) > 0 || (bool) $this->application->settings->is_consistent_container_name_enabled || str($this->application->settings->custom_internal_name)->isNotEmpty() || $this->pull_request_id !== 0 || str($this->application->custom_docker_run_options)->contains('--ip') || str($this->application->custom_docker_run_options)->contains('--ip6')) {
                     $this->application_deployment_queue->addLogEntry('----------------------------------------');
+                    if ($isStopFirst) {
+                        $this->application_deployment_queue->addLogEntry('Deployment strategy is set to stop-first. Stopping old container before starting new one.');
+                    }
                     if (count($this->application->ports_mappings_array) > 0) {
                         $this->application_deployment_queue->addLogEntry('Application has ports mapped to the host system, rolling update is not supported.');
                     }

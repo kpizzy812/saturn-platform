@@ -156,6 +156,7 @@ export function registerApplicationTools(server: McpServer, client: SaturnClient
                 health_check_path: z.string().optional().describe('Health check path, e.g. "/health"'),
                 limits_memory: z.string().optional().describe('Memory limit, e.g. "512m"'),
                 limits_cpus: z.string().optional().describe('CPU limit, e.g. "0.5"'),
+                deployment_strategy: z.enum(['rolling', 'stop-first']).optional().describe('Deployment strategy: "rolling" (zero-downtime, default) or "stop-first" (stop old before starting new — for bots/workers)'),
             }),
         },
         async ({ uuid, ...body }) => {

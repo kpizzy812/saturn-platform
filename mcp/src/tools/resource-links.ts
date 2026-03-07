@@ -31,12 +31,12 @@ export function registerResourceLinkTools(server: McpServer, client: SaturnClien
                 'For app-to-app links, a bidirectional link is created automatically.',
             inputSchema: z.object({
                 environment_uuid: z.string().describe('Environment UUID'),
-                source_id: z.number().describe('Source Application ID (numeric, not UUID)'),
+                source_uuid: z.string().describe('Source Application UUID'),
                 target_type: z.enum([
                     'postgresql', 'mysql', 'mariadb', 'redis', 'keydb',
                     'dragonfly', 'mongodb', 'clickhouse', 'application',
                 ]).describe('Target resource type'),
-                target_id: z.number().describe('Target resource ID (numeric, not UUID)'),
+                target_uuid: z.string().describe('Target resource UUID'),
                 inject_as: z.string().optional().describe('Custom env variable name (e.g. "MY_DB_URL"). Auto-detected if omitted.'),
                 auto_inject: z.boolean().optional().describe('Auto-inject connection URL on deploy (default: true)'),
                 use_external_url: z.boolean().optional().describe('Use external FQDN instead of internal Docker URL (default: true for app-to-app)'),
