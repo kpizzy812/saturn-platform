@@ -77,7 +77,7 @@ trait HandlesComposeFileGeneration
             'networks' => [
                 $this->destination->network => [
                     'aliases' => array_merge(
-                        [$this->container_name],
+                        [$this->container_name, $this->application->uuid],
                         $custom_network_aliases
                     ),
                 ],

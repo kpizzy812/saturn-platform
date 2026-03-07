@@ -40,6 +40,7 @@ export function registerResourceLinkTools(server: McpServer, client: SaturnClien
                 inject_as: z.string().optional().describe('Custom env variable name (e.g. "MY_DB_URL"). Auto-detected if omitted.'),
                 auto_inject: z.boolean().optional().describe('Auto-inject connection URL on deploy (default: true)'),
                 use_external_url: z.boolean().optional().describe('Use external FQDN instead of internal Docker URL (default: true for app-to-app)'),
+                url_path: z.string().optional().describe('Path to append to the injected URL (e.g. "/api/v1"). App-to-app links only.'),
             }),
         },
         async ({ environment_uuid, ...body }) => {
@@ -52,13 +53,14 @@ export function registerResourceLinkTools(server: McpServer, client: SaturnClien
         'saturn_update_resource_link',
         {
             title: 'Update Resource Link',
-            description: 'Update settings of an existing resource link (inject_as, auto_inject, use_external_url).',
+            description: 'Update settings of an existing resource link (inject_as, auto_inject, use_external_url, url_path).',
             inputSchema: z.object({
                 environment_uuid: z.string().describe('Environment UUID'),
                 link_id: z.number().describe('Link ID'),
                 inject_as: z.string().optional().describe('Custom env variable name'),
                 auto_inject: z.boolean().optional().describe('Auto-inject connection URL on deploy'),
                 use_external_url: z.boolean().optional().describe('Use external FQDN instead of internal Docker URL'),
+                url_path: z.string().optional().describe('Path to append to the injected URL (e.g. "/api/v1"). App-to-app links only.'),
             }),
         },
         async ({ environment_uuid, link_id, ...body }) => {

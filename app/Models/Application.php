@@ -2511,6 +2511,7 @@ class Application extends BaseModel
                 } else {
                     $url = $target->internal_app_url;
                 }
+                $url = $link->applyUrlPath($url);
                 $envKey = $link->getSmartAppEnvKey();
             } elseif (isset($target->internal_db_url)) {
                 // Application-to-Database link

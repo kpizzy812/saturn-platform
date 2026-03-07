@@ -20,6 +20,7 @@ class StoreResourceLinkRequest extends FormRequest
             'inject_as' => 'nullable|string|max:255',
             'auto_inject' => 'boolean',
             'use_external_url' => 'boolean',
+            'url_path' => 'nullable|string|max:255',
         ];
     }
 }

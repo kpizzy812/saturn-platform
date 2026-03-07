@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string|null $inject_as
  * @property bool $auto_inject
  * @property bool $use_external_url
+ * @property string|null $url_path
  * @property \Carbon\Carbon $created_at
  * @property \Carbon\Carbon $updated_at
  * @property-read \Illuminate\Database\Eloquent\Model|null $source
@@ -39,6 +40,7 @@ class ResourceLink extends Model
         'inject_as',
         'auto_inject',
         'use_external_url',
+        'url_path',
     ];
 
     protected $casts = [
@@ -154,6 +156,19 @@ class ResourceLink extends Model
         return method_exists($this->target, 'getInternalDbUrlAttribute')
             || isset($this->target->internal_db_url)
             || isset($this->target->internal_app_url);
+    }
+
+    /**
+     * Append url_path to the given URL if set.
+     * Normalizes slashes to avoid double-slash issues.
+     */
+    public function applyUrlPath(string $url): string
+    {
+        if (empty($this->url_path)) {
+            return $url;
+        }
+
+        return rtrim($url, '/').'/'.ltrim($this->url_path, '/');
     }
 
     /**
