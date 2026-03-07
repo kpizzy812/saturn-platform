@@ -19,6 +19,7 @@ import { registerProjectTools } from './tools/projects.js';
 import { registerServerTools } from './tools/servers.js';
 import { registerServiceTools } from './tools/services.js';
 import { registerTeamTools } from './tools/teams.js';
+import { registerResourceLinkTools } from './tools/resource-links.js';
 
 const server = new McpServer({
     name: 'saturn',
@@ -42,6 +43,7 @@ registerProjectTools(server, client);
 registerDatabaseTools(server, client);
 registerServiceTools(server, client);
 registerTeamTools(server, client);
+registerResourceLinkTools(server, client);
 
 async function main() {
     const transport = new StdioServerTransport();
