@@ -61,7 +61,7 @@ trait HandlesSaturnEnvVariables
     private function generate_saturn_env_variables(bool $forBuildTime = false): Collection
     {
         $saturn_envs = collect([]);
-        $local_branch = $this->branch;
+        $local_branch = $this->branch ?? $this->application->git_branch ?? 'main';
         if ($this->pull_request_id !== 0) {
             $this->generatePreviewSaturnEnvs($saturn_envs, $local_branch, $forBuildTime);
         } else {
