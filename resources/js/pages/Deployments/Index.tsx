@@ -81,7 +81,12 @@ export default function DeploymentsIndex({ deployments: propDeployments, current
 
         // Filter by status
         if (filterStatus !== 'all') {
-            filtered = filtered.filter(d => d.status === filterStatus);
+            filtered = filtered.filter(d => {
+                if (filterStatus === 'cancelled') {
+                    return d.status === 'cancelled' || d.status === 'cancelled-by-user';
+                }
+                return d.status === filterStatus;
+            });
         }
 
         // Filter by service

@@ -120,6 +120,14 @@ const statusRegistry: Record<string, StatusConfig> = {
         textColorClass: 'text-foreground-muted',
         dotClass: 'status-stopped',
     },
+    'cancelled-by-user': {
+        label: 'Cancelled',
+        variant: 'default',
+        iconName: 'XCircle',
+        colorClass: 'bg-gray-500',
+        textColorClass: 'text-foreground-muted',
+        dotClass: 'status-stopped',
+    },
 
     // Application statuses
     running: {
@@ -468,7 +476,7 @@ const positiveStatuses = new Set([
 ]);
 
 const negativeStatuses = new Set([
-    'failed', 'error', 'expired', 'unhealthy', 'offline', 'cancelled',
+    'failed', 'error', 'expired', 'unhealthy', 'offline', 'cancelled', 'cancelled-by-user',
 ]);
 
 const loadingStatuses = new Set([
