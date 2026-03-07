@@ -890,6 +890,7 @@ Route::get('/applications/{uuid}/settings', function (string $uuid) {
             'rollback_on_crash_loop' => $settings->rollback_on_crash_loop ?? true,
             'docker_images_to_keep' => $settings->docker_images_to_keep ?? 2,
             'wait_for_ci' => $settings->wait_for_ci ?? false,
+            'deployment_strategy' => $settings->deployment_strategy ?? 'rolling',
         ],
         'projectUuid' => $project->uuid,
         'projectName' => $project->name,
@@ -935,6 +936,8 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'docker_images_to_keep' => 'sometimes|integer|min:1|max:20',
         // CI integration
         'wait_for_ci' => 'sometimes|boolean',
+        // Deployment strategy
+        'deployment_strategy' => 'sometimes|string|in:rolling,stop-first',
     ]);
 
     // Map frontend field names to application model field names
@@ -960,6 +963,7 @@ Route::patch('/applications/{uuid}/settings', function (string $uuid, \Illuminat
         'rollback_on_crash_loop' => 'rollback_on_crash_loop',
         'docker_images_to_keep' => 'docker_images_to_keep',
         'wait_for_ci' => 'wait_for_ci',
+        'deployment_strategy' => 'deployment_strategy',
     ];
 
     $settingsUpdate = [];

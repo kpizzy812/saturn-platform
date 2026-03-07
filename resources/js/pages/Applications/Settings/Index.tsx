@@ -13,6 +13,7 @@ interface ApplicationSettings {
     rollback_on_crash_loop: boolean;
     docker_images_to_keep: number;
     wait_for_ci: boolean;
+    deployment_strategy: string;
 }
 
 interface Props {
@@ -49,6 +50,7 @@ export default function ApplicationSettingsPage({ application, applicationSettin
         rollback_on_health_check_fail: applicationSettings?.rollback_on_health_check_fail ?? true,
         rollback_on_crash_loop: applicationSettings?.rollback_on_crash_loop ?? true,
         docker_images_to_keep: applicationSettings?.docker_images_to_keep ?? 2,
+        deployment_strategy: applicationSettings?.deployment_strategy ?? 'rolling',
     });
     const [isSaving, setIsSaving] = React.useState(false);
     const [errors, setErrors] = React.useState<Record<string, string>>({});
@@ -437,6 +439,27 @@ export default function ApplicationSettingsPage({ application, applicationSettin
                                         <option value="8G">8 GB</option>
                                     </Select>
                                 </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Deployment Strategy */}
+                    <Card>
+                        <CardContent className="p-6">
+                            <h2 className="text-lg font-semibold text-foreground mb-4">Deployment Strategy</h2>
+                            <div className="space-y-2">
+                                <Select
+                                    value={settings.deployment_strategy}
+                                    onChange={(e) => setSettings({ ...settings, deployment_strategy: e.target.value })}
+                                >
+                                    <option value="rolling">Rolling (Zero-Downtime)</option>
+                                    <option value="stop-first">Stop-First (Stop Old → Start New)</option>
+                                </Select>
+                                <p className="text-sm text-foreground-muted">
+                                    {settings.deployment_strategy === 'rolling'
+                                        ? 'Starts the new container, waits for health check, then stops the old one. Best for web applications.'
+                                        : 'Stops the old container before starting the new one. Use for bots, workers, or services that cannot run multiple instances simultaneously.'}
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
