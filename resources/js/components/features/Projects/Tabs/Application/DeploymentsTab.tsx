@@ -38,6 +38,7 @@ export function DeploymentsTab({ service }: DeploymentsTabProps) {
             case 'failed':
                 return 'crashed';
             case 'cancelled':
+            case 'cancelled-by-user':
                 return 'cancelled';
             default:
                 return status;
