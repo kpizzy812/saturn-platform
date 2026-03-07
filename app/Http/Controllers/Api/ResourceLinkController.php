@@ -77,11 +77,11 @@ class ResourceLinkController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['source_id', 'target_type', 'target_id'],
+                required: ['source_uuid', 'target_type', 'target_uuid'],
                 properties: [
-                    new OA\Property(property: 'source_id', type: 'integer', description: 'Source Application ID'),
+                    new OA\Property(property: 'source_uuid', type: 'string', description: 'Source Application UUID'),
                     new OA\Property(property: 'target_type', type: 'string', description: 'Target type (postgresql, mysql, redis, application, etc.)'),
-                    new OA\Property(property: 'target_id', type: 'integer', description: 'Target resource ID'),
+                    new OA\Property(property: 'target_uuid', type: 'string', description: 'Target resource UUID'),
                     new OA\Property(property: 'inject_as', type: 'string', nullable: true, description: 'Custom env variable name'),
                     new OA\Property(property: 'auto_inject', type: 'boolean', description: 'Auto-inject on deploy'),
                     new OA\Property(property: 'use_external_url', type: 'boolean', description: 'Use external FQDN instead of internal Docker URL (app-to-app only)'),
@@ -112,8 +112,8 @@ class ResourceLinkController extends Controller
 
         $validated = $request->validated();
 
-        // Verify source application exists in this environment
-        $application = Application::where('id', $validated['source_id'])
+        // Verify source application exists in this environment (by UUID)
+        $application = Application::where('uuid', $validated['source_uuid'])
             ->where('environment_id', $environment->id)
             ->first();
 
@@ -124,12 +124,12 @@ class ResourceLinkController extends Controller
         $targetClass = $this->allowedTargetTypes[$validated['target_type']];
 
         // Prevent self-linking for application targets
-        if ($targetClass === Application::class && $validated['source_id'] === $validated['target_id']) {
+        if ($targetClass === Application::class && $validated['source_uuid'] === $validated['target_uuid']) {
             return response()->json(['message' => 'Cannot link an application to itself.'], 400);
         }
 
-        // Verify target exists in this environment
-        $target = $targetClass::where('id', $validated['target_id'])
+        // Verify target exists in this environment (by UUID)
+        $target = $targetClass::where('uuid', $validated['target_uuid'])
             ->where('environment_id', $environment->id)
             ->first();
 

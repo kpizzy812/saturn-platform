@@ -14,9 +14,9 @@ class StoreResourceLinkRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'source_id' => 'required|integer',
+            'source_uuid' => 'required|string',
             'target_type' => 'required|string|in:postgresql,mysql,mariadb,redis,keydb,dragonfly,mongodb,clickhouse,application',
-            'target_id' => 'required|integer',
+            'target_uuid' => 'required|string',
             'inject_as' => 'nullable|string|max:255',
             'auto_inject' => 'boolean',
             'use_external_url' => 'boolean',
