@@ -995,6 +995,8 @@ class ApplicationComposeParser
             if ($this->isPullRequest) {
                 $fqdns = $this->processPreviewFqdns($fqdns, $changedServiceName);
             }
+        } else {
+            $fqdns = collect([]);
         }
 
         // Generate SERVICE_FQDN & SERVICE_URL for dockercompose
