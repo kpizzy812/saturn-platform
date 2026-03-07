@@ -85,6 +85,7 @@ class ResourceLinkController extends Controller
                     new OA\Property(property: 'inject_as', type: 'string', nullable: true, description: 'Custom env variable name'),
                     new OA\Property(property: 'auto_inject', type: 'boolean', description: 'Auto-inject on deploy'),
                     new OA\Property(property: 'use_external_url', type: 'boolean', description: 'Use external FQDN instead of internal Docker URL (app-to-app only)'),
+                    new OA\Property(property: 'url_path', type: 'string', nullable: true, description: 'Path to append to the injected URL (e.g. /api/v1). App-to-app links only.'),
                 ]
             )
         ),
@@ -139,8 +140,9 @@ class ResourceLinkController extends Controller
             return response()->json(['message' => "{$targetLabel} not found in this environment."], 404);
         }
 
-        // For app-to-app links, default to external URL (browser needs FQDN, not Docker DNS)
-        $useExternalUrl = $validated['use_external_url'] ?? ($targetClass === Application::class);
+        // Default to internal URL (Docker DNS) — faster & bypasses Cloudflare bot protection.
+        // Cross-server auto-detect below will force external when needed.
+        $useExternalUrl = $validated['use_external_url'] ?? false;
         if ($targetClass === Application::class && ! $useExternalUrl) {
             $sourceServer = $application->destination?->server;
             $targetServer = $target->destination?->server;
@@ -177,6 +179,7 @@ class ResourceLinkController extends Controller
             'inject_as' => $validated['inject_as'] ?? null,
             'auto_inject' => $validated['auto_inject'] ?? true,
             'use_external_url' => $useExternalUrl,
+            'url_path' => $validated['url_path'] ?? null,
         ]);
 
         // Immediately inject if auto_inject is enabled
@@ -320,6 +323,7 @@ class ResourceLinkController extends Controller
                     new OA\Property(property: 'inject_as', type: 'string', nullable: true, description: 'Custom env variable name'),
                     new OA\Property(property: 'auto_inject', type: 'boolean', description: 'Auto-inject on deploy'),
                     new OA\Property(property: 'use_external_url', type: 'boolean', description: 'Use external FQDN instead of internal Docker URL'),
+                    new OA\Property(property: 'url_path', type: 'string', nullable: true, description: 'Path to append to the injected URL (e.g. /api/v1). App-to-app links only.'),
                 ]
             )
         ),
@@ -354,10 +358,11 @@ class ResourceLinkController extends Controller
 
         $validated = $request->validated();
 
-        // Determine old env key before update
+        // Determine old env key and url_path before update
         $oldEnvKey = $link->target_type === Application::class
             ? $link->getSmartAppEnvKey()
             : $link->getEnvKey();
+        $oldUrlPath = $link->url_path;
 
         $link->update($validated);
 
@@ -366,13 +371,18 @@ class ResourceLinkController extends Controller
             ? $link->getSmartAppEnvKey()
             : $link->getEnvKey();
 
-        if ($oldEnvKey !== $newEnvKey && $link->source instanceof Application) {
-            // Remove old env var
-            $link->source->environment_variables()
-                ->where('key', $oldEnvKey)
-                ->delete();
+        $envKeyChanged = $oldEnvKey !== $newEnvKey;
+        $urlPathChanged = $oldUrlPath !== $link->url_path;
 
-            // Inject new one if auto_inject is enabled
+        if ($link->source instanceof Application && ($envKeyChanged || $urlPathChanged)) {
+            if ($envKeyChanged) {
+                // Remove old env var when key changed
+                $link->source->environment_variables()
+                    ->where('key', $oldEnvKey)
+                    ->delete();
+            }
+
+            // Re-inject with new key/path if auto_inject is enabled
             if ($link->auto_inject) {
                 $link->source->autoInjectDatabaseUrl();
             }
@@ -417,6 +427,7 @@ class ResourceLinkController extends Controller
             'env_key' => $envKey,
             'auto_inject' => $link->auto_inject,
             'use_external_url' => $link->use_external_url,
+            'url_path' => $link->url_path,
             'created_at' => $link->created_at->toIso8601String(),
             'updated_at' => $link->updated_at->toIso8601String(),
         ];
